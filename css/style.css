@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /**
  *
  * @package Maupassant
@@ -94,7 +95,7 @@ a:focus {
       border-bottom: 1px solid #ddd;
       display: block;
       font-weight: normal; }
-    #sidebar .widget .comments-title {
+    .category-list｛ font-size 0.9em padding 15px 20px .category-list-count｛ margin-left 8px font-size 0.8em color color-meta #sidebar .widget:before content '(' #sidebar .widget:after content ')' ｝ ul, #sidebar .widget ol, #sidebar .widget dl｛ list-style none ｝ ul, #sidebar .widget ol, #sidebar .widget dl｛ margin-left 20px li:before content '> ' ｝ ｝ .comments-title {
       color: #6E7173;
       line-height: 2.7;
       margin-top: 0;
