@@ -103,12 +103,9 @@ a:focus {
       display: block;
       font-weight: normal; }
     #sidebar .widget .category-list-child {
-      font-size: 16px;
       padding: 15px; }
       #sidebar .widget .category-list-child .category-list-count {
-        margin-left: 8px;
-        font-size: 16px;
-        color: color-meta; }
+        margin-left: 8px; }
     #sidebar .widget .tagcloud {
       margin-top: 10px; }
       #sidebar .widget .tagcloud a {
