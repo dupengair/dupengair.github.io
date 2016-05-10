@@ -1,0 +1,207 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>《高级C、C++编译技术》阅读笔记 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">《高级C、C++编译技术》阅读笔记</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">《高级C、C++编译技术》阅读笔记</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《高级C、C-编译技术》/">《高级C、C++编译技术》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><pre><code>第一章 多任务操作系统基础        
+1    程序的二进制文件中包含了程序运行过程中的内存映射布局的细节    7
+2    链接器要对编译器生成的二进制文件进行合并，装载器进行进程内存映射的初始化工作    7
+3    所有现在操作系统都是按这种角色分离的方式设计的    7
+
+第二章 程序生命周期阶段基础        
+4    预处理阶段：头文件包含、宏替换、条件编译    12
+5    词法分析的目的在于检查程序是否满足编程语言的语法规则，语义分析的目的是发现符合语法规则的语句是否有实际意义    13
+6    汇编阶段将标准的语言集合转换成特定CPU指令集的语言集合    14
+7    构建程序的目的在于：将编译的每个独立的源文件生成的节拼到一个二进制可执行文件中。目标文件中的独立的节都有可能包含在最终的程序内存映射中，因此目标文件中每个节的起始地址都会被临时设置成0，等待链接时调整。目标文件只需要指定堆和栈的默认长度，不影响其中的数据    23
+8    程序构建过程中需要支持代码复用以及拼接来自不同项目二进制文件的能力，所以明确要求实现（C/C++）构建时分成两个阶段    25
+9    在拼接这些节之前，函数与变量的实际地址是无法确定的，此时函数调用和外部变量为未解析引用。    26
+10    虚拟内存使链接器将需要填入的程序内存假设为从0开始，而且每个程序的地址范围相同，使得每个程序拥有一致简单的地址空间视图    27
+11    链接的第一步重定位进行拼接，将多个目标文件中的小节拼接到程序的内存映射中，将这些节的地址范围线性地转换为程序内存映射地址范围    27
+12    第二步解析引用，为不同部分的代码建立关联，使程序成为一个整体，编译器会假定外部符号未来会在进程内存映射中存在，但直到生成完整内存映射之前，这些符号都会当成未解析引用    27
+13    可执行文件并不完全是通过编译项目源代码文件生成的。启动程序的一些代码片段是在链接阶段才添加到程序的内存映射中的，通常放在内存映射的起始处。    33
+
+第三章 加载程序执行阶段        
+14    shell会先通过派生于自身相同的子进程来创建自己的副本（fork），这样能有效的将所有shell的环境变量传递给新进程。等待创建好内存映射后，原始数据会被新进程的内存映射覆盖，为执行做好准备    37
+15    对于前台进程，shell会等待这个clone的进程执行完成，后台进程shell则会继续监视别的命令    39
+16    内核通过exe函数族接管shell，最终都会调用sys_execve来执行程序。    39
+17    执行的第一步是识别可执行格式，如果识别出elf，会调用load_elf_binary()，为程序启动准备内存映射    39
+18    链接器是个高度复杂的模块，为何能解析引用，链接器必须非常了解各个节的内部细节。装载器要简单恩多，它将链接器创建的节组合成段复制到进程内存映射中，只关心节的可读写属性，以及可执行文件启动前是否需要打补丁    40
+19    装载器首先会定位可执行二进制文件中的PT_INTERP段，用于动态加载    40
+20    接着装载器会读取二进制文件的头，确定每个段的地址和字节长度    42
+21    真正的复制操作是程序启动后建立好进程的物理内存页和程序内存映射表之间的虚拟内存映射关系才执行的，程序运行需要某个段时才会加载对应的页，这种策略使程序中每一部分只有在运行时真正需要才会加载。    42
+22    转载启运行程序开始，先查找ELF头的e_entry字段，这是.text段的首地址，通常是_start函数的地址。_start函数为__libc_stat_main准备入口参数，后者启动程序并调用_init和注册__fini函数初始化程序，最后调用main执行用户主程序。    43
+23    程序流实际上是一连串的函数调用，函数变量的传递机制形成了一些特殊的汇编语言惯例，这些基于栈的实现机制就是调用惯例    44
+24    若要实现若干用于导出函数与数据的动态链接库接口， cdec1调用管理是首选    45
+
+第四章 重用概念的作用        
+25    静态库只是目标文件的集合，可以解包，从而添加或更改目标文件    49
+26    装载时重定位LTR，是目标程序的私有代码与公共代码分离，部分代码可以在程序间共享。这种技术为了实现应用程序地址映射，装载时修改了.text的符号，导致动态库加载的地址范围可能完全不同，从而使每个应用程序都要在内存中加载公共代码的副本。即只共享代码，不共享运行时内存。    49
+27    位置无关代码PIC，通过修改动态库代码访问符号的方式（因为进程的内存映射都从0开始），只加载一份动态库副本到内存中，通过内存映射实现各应用程序间共享。    50
+28    构建动态库包含了编译和解析引用的过程，生成的二进制文件与可执行文件本质相同，只是缺少可以独立运行的startup routines    52
+29    有些符号不在编译时解析，这个过程可以在完成链接之后，生成最终的二进制文件时执行    52
+30    我们可以修改动态库使其独立运行    52
+31    符号查找时，链接器会将已经完成链接的动态库二进制文件与正在编译的项目合并，这一阶段要保证所有符号都能被正确解析，二进制文件所需符号都能在动态库中找到    53
+32    运行时装载和符号解析：
+    1、查找库位置 
+    2、载入内存映射 
+    3、解析符号到正确地址——动态链接    53
+33    动态库特点:
+    1. 构建过程更完整，包括编译和链接，之比可执行文件少了启动代码 
+    2. 可以链接其它库    56
+34    二进制接口ABI：编译链接过程根据源代码接口创建的符号集合(主要是函数入口)
+    1. 构建阶段客户端二进制文件只检查动态库的外部接口符号，不关心函数体
+    2. 运行时链接使用的动态库二进制文件，必须与构建时保持一致的ABI    57
+35    &quot;静态库与动态库的导入：
+    1. 静态库只导入链接目标文件需要的符号(以目标文件为单位)
+    2. 动态库链接时装载整个动态库，代码体积的增长只在运行时体现
+    3. 静态库的符号是全局的，链接时保留可见性，多个静态库的相同符号会引起冲突
+4. 动态库通过链接器能避免符号冲突&quot;    58
+36    链接器选项-rdynamic将.symtab节中的所有符号导出到动态符号节.dynsym以便用于动态链接    59
+
+第五章 使用静态库        
+37    动态库的隐含假设是模块化，设计原则规定只提供接口    67
+38    静态库的链接规则：
+    1. 静态库从传递给链接器的列表的最后一个开始链接，反向逐个链接
+    2. 在所有目标文件中，只有包含可执行文件使用到符号的目标文件才被链接
+    3. 动态库和静态库很活使用时，用ar -x将静态库解包然后打包成动态库    68
+
+第六章 设计动态库：基础篇        
+39    Linux惯例，以lib前缀，.so扩展名    70
+40    选项-fPIC:使用加载时重定位技术避免将动态库代码段.text绑定到第一个加载的进程,否则当更多    进程链接时,内存只能装入更多的副本    71
+41    静态库与fPIC：
+    静态库链接到动态库，必需使用-fPIC    72
+42    C++的二进制接口问题：
+    1. 复杂的符号命名规则，需要名称修饰，其实现依赖于编译器
+        1) 函数接口属于类，因此有从属信息
+        2) 函数重载，需要标识不同的参数    77
+43    2. 静态初始化问题
+    1) 对象初始化依赖于构造函数，需要编译器根据继承链执按顺序执行
+    2) 静态对象的初始化顺序无法指定
+    解决方案
+        1) 为_init和_fini函数提供自定义实现
+        2）通过函数访问对象的静态实例，编译器和C++11标准保证了线程安全性&quot;    78
+44    3.模板
+    1）不同的模板实例化以后产生完全不同的机器代码，用作动态库导出时产生问题
+解决方案：
+    1）编译器生成所有模板的特化代码，并创建弱符号
+    2) 链接完成以后再将模板实例化，插入机器代码&quot;    79
+45    设计ABI：
+    1）通过extern &quot;&quot;C&quot;&quot;使用C风格接口
+    2）使用工厂模式提供C风格接口    
+    3）使用被广泛支持的标准C关键字
+    4）使用工厂机制C++或模块C
+    5）只对外提供必需的符号
+    6）利用命名空间来解决符号名称冲突问题    80
+46    控制符合可见性:
+    1. 编译器选项：-fvisibility=&lt;hidden&gt;
+    2. 函数前使用编译属性修饰：__attribute__((visibility(&quot;&quot;&lt;default|hidden&gt;&quot;&quot;)))
+    3. 头文件使用编译指令：#pragma GCC visibility [push|pop] (hidden)
+    4. 使用strip    82
+47    强制编译器符号解析必需成功：--no-undefined，gcc处理编译器选项必需使用-Wl,前缀：-Wl，--no-undefined，如果直接使用LD就不用    94
+48    动态链接模式：
+    启动时链接
+    运行时加载    95
+
+第七章 定位库文件        
+49    Linux基于库文件命名规则进行定位：lib + &lt;name&gt; + .so + &lt;version&gt;    101
+50    动态库版本信息： version = &lt;主版本 Major&gt;.&lt;次版本 Minor&gt;.&lt;补丁号 patch&gt;    101
+51    动态库名称soname：lib + &lt;name&gt; + .so + &lt;Major&gt;  如libz.so.1    101
+52    &quot;soname由链接器嵌入二进制库文件专有的ELF字段中：
+    $gcc -shared &lt;objs&gt; -Wl, -soname, libfoo.so.1 -o libfoo.so.1.0.0
+    通过readelf -d 查看：
+    0x000000001(SONAME)    Library soname: [libfoo.so.1]&quot;    102
+53    linker name：foo    102
+54    编译时指定库文件： -L&lt;路径&gt; -l&lt;linker name&gt;    102
+55    选项-L只在链接时起作用，-l在运行时也会产生影响    104
+56    linux动态库运行时定位规则：
+    1. 预加载库
+    2. LD_LIBRARY_PATH环境变量
+    3. ldconfig缓存
+    4. 默认路径(/lib和/usr/lib)    110
+57    预加载库：
+    1）通过LD_PRELOAD环境变量：
+        export LD_PRELOAD=/path:$LD_PRELOAD
+    2）通过/etc/ld.so.preload文件定义
+    3）rpath/runpath选项
+       对应ELF的DT_RPATH和DT_RUNPATH字段，后者优先级更高，用于避免rpath指定的是相对于应用程序启动的路径
+       通过-R或-rpath想链接器传递，或者指定LD_RUN_PATH环境变量    110
+58    LD_LIBRARY_PATH:
+    1. 临时的机制
+    2. runpath被设计支持LD_LIBRARY_PATH的需求，同时避免rpath指定的是相对于应用程序启动的相对路径
+      gcc -Wl, -R/path -Wl, --enable-new-dtags -lfoo        112
+59    ldconfig:
+    将指定路径插入动态库搜索列表/etc/ld.so.conf，库名添加到列表/etc/ld.so.cache    113
+60    指定runpath的优先级：
+    1. LD_LIBRARY_PATH
+    2. runpath
+    3. ld.so.cache
+    4. default(/lib /usr/lib)
+    指定rpath时：
+    1. 被加载库的rpath
+    2. 可执行文件的rpath
+    3. LD_LIBRARY_PATH
+    4. ld.so.cache
+    5. default    114
+
+第八章 设计动态库：进阶篇        
+61    动态链接的重要原则是，不同进程共享一个动态库的代码段    119
+62    一些指令需要在运行时获得内存地址：
+    1. 数据访问指令(mov等)需要操作数的地址
+    2. 子程序调用(call、jmp等)需要代码段的函数地址    120
+63    动态库加载的地址范围需要加载器模块的内部算法决定，可执行文件格式在一定程度上限定了地址范围    120
+64    链接器完成目标文件的初始布局后，扫描并解析引用列表，将正确地址嵌入汇编。装载器将在加载过程中执行地址转换。    121
+65    只有动态库中需要对外可见的符号，以及库中用到这些符号的接口，才受地址转换的影响，链接器知道符号对外可见时才使用绝对地址，从而在装载时进行地址转换，使绝对地址失效    122
+66    动态库装载的策略：
+    1. 链接器识别自身符号局限性
+      * 动态库内存映射的地址范围从零开始，与可执行文件不同
+    　* 链接器遇到无法解析的符号以临时值填充
+    2. 链接器统计失效符号引用，准备修复提示
+      * 记录在重定位节.rel.dyn
+      * 包括需要修复的地址，以及需要执行的正确动作
+    3. 装载器遵循修复提示进行地址转换
+      * 装载器读取动态库，将数据映射到内存，然后读取重定位节，根据修复提示完成地址转换    125
+67    ELF文件格式详细定义了链接器应该如何为装载器指定重定位提示    127
+68    装载时重定位LTR，不仅能大幅缩小应用程序二进制文件长度，同时使得不同类型的应用程序可以统一执行某些操作系统特定任务    129
+68    位置无关代码PIC，实现需要引用的外部符号分两个步骤：
+    1. 使用mov指令访问存放实际符号地址的“全局偏移表”
+    2. 将该地址的数据，即符号的地址内容，加载到有效的CPU寄存器    129
+69    全局偏移表GOT存放在.got节，.text和.got节之间的偏移是链接期可知的常数    131
+70    延迟绑定：
+    1. 程序启动后，指令用到了地址保存在.got和.got.plt小节中的符号时，装载器才会去设置这两个小节的数据
+    2. 可以更快的完成加载
+    3. 程序运行时对动态库的符号引用越少，获得的性能提升越大    131
+71    动态链接可能形成一个递归链，中间的动态库既要解析来自其加载库的引用，也需要重新解析其自身的符号    132
+
+第九章 动态链接时的重复符号处理        
+72    重复符号定义：
+        C：只要符号名相同
+        C++：由于函数重载，需要函数名和参数列表都相同    136
+73    目标文件或静态库同时链接到可执行文件时，不允许出现重复符号，只有局部符号可以重复(局部静态)    137
+74    通常情况下，解析重复符号最好的办法就是强化符号与其特定模块的从属关系，如C++的命名空间    142
+75    通过运行时加载库通常不会出现重复符号的问题，因为需要将地址赋予客户端应用程序的符号变量    143
+76    链接器选择最佳符号的策略：
+    1. 重复符号位置
+       链接器为出现在进程内存映射中不同部分的符号赋予不同的重要等级(优先级123，如静态库与动态库之间)
+    2. 链接时指定的顺序（注意是链接顺序，与使用顺序无关）
+       更早传递给链接器的动态库符号有更高的优先级（同一优先级下，如多个动态库之间）    143
+77    链接器选择符号的优先级：
+        优先级1：客户二进制文件符号（目标文件或静态库中，不允许重复）
+                 Linux通常将这些目标文件的节安排到进程内存映射的低地址
+        优先级2：动态库可见符号
+                 动态库导出符号存储在动态库.dynsym节中
+        优先级3：不参与链接
+                 包括静态符号与没有用到的符号，以及除去的符号(不可见或strip等)
+                 因为链接时不可见，所以不会引发任何冲突    144
+78    注意：单例模式通常要放在动态库中，如果放在静态库，链接到动态库和可执行文件时，会因为内部符号不可见，生成多个实例    160
+79    被链接的库不会继承命名空间    161
+
+第十章 动态库的版本控制        
+80    主版本号变更：客户端可执行程序需要重新构建
+    1. 对功能的较大修改或重新设计
+    2. ABI变更导致无法链接
+    3. 修改程序依赖项    162
+81    次版本号变更：在原有功能上增加或改进，不影响原有接口的定义和使用，不需要重新构建    163
+82    修订版本号变更：主要代码变更在内部，不影响ABI和原有功能    163
+83    
+    动态库文件名：lib + &lt;name&gt; + .so + .&lt;主版本 Major&gt;.&lt;次版本 Minor&gt;.&lt;补丁号 patch&gt;
+    动态库soname：lib + &lt;name&gt; + .so + &lt;Major&gt;  如libz.so.1    164
+84    动态库链接过程：
+    1. 可执行文件编译时，链接到动态库的soname
+    2. 运行环境下，在动态库同目录下以soname建立符号链接
+    3. 由于软连接对应soname包含松散的版本信息，可以避免如果精确指定动态库版本导致无法链接到新版本    165
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/" data-id="cio1o6us50180nofyzuo1q2t1" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《高级C、C-编译技术》/">《高级C、C++编译技术》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-说明/" class="next">说明</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-Templates》/">《C++ Templates》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C程序设计语言》/">《C程序设计语言》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux设备驱动程序》/">《Linux设备驱动程序》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第一版》/">《The C++ Standard Library 第一版》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《http权威指南》/">《http权威指南》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《wireshark数据包分析实战》/">《wireshark数据包分析实战》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《实战Linux-Shell-编程与服务器管理》/">《实战Linux Shell 编程与服务器管理》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《程序员的自我修养——链接、装载与库》/">《程序员的自我修养——链接、装载与库》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《面向模式的软件体系结构-卷1-模式系统》/">《面向模式的软件体系结构 卷1-模式系统》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《高级C、C-编译技术》/">《高级C、C++编译技术》</a><span class="category-list-count">1</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《C程序设计语言》/" style="font-size: 15px;">《C程序设计语言》</a> <a href="/tags/《C-Templates》/" style="font-size: 15px;">《C++ Templates》</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Linux设备驱动程序》/" style="font-size: 15px;">《Linux设备驱动程序》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《The-C-Standard-Library-第一版》/" style="font-size: 15px;">《The C++ Standard Library 第一版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《http权威指南》/" style="font-size: 15px;">《http权威指南》</a> <a href="/tags/《wireshark数据包分析实战》/" style="font-size: 15px;">《wireshark数据包分析实战》</a> <a href="/tags/《实战Linux-Shell-编程与服务器管理》/" style="font-size: 15px;">《实战Linux Shell 编程与服务器管理》</a> <a href="/tags/《程序员的自我修养——链接、装载与库》/" style="font-size: 15px;">《程序员的自我修养——链接、装载与库》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a> <a href="/tags/《面向模式的软件体系结构-卷1-模式系统》/" style="font-size: 15px;">《面向模式的软件体系结构 卷1-模式系统》</a> <a href="/tags/《高级C、C-编译技术》/" style="font-size: 15px;">《高级C、C++编译技术》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">《高级C、C++编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
