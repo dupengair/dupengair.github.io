@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>amb bootloader阅读笔记 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">amb bootloader阅读笔记</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">amb bootloader阅读笔记</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##一、amboot模块的编译<br>在/amboot/config/Makefile.amboot中：</p>
+<pre><code>AMBOOT_BLD_OBJS -&gt; bld
+AMBOOT_BST_OBJS -&gt; bst[start.S]
+SRC -&gt;
+</code></pre><p>##二、nand启动的过程</p>
+<p>先看文档《System User’s Guide for A5s.pdf》 P4 2 NAND Boot Flow，提到启动过程8个阶段：</p>
+<pre><code>{1}. The A5S hardware fetches 2KB code from address 0 (first page of the first block)
+to the FIO FIFO mapped to 0x00000000 in ARM to execute.
+{2}. The 2KB boot-strap initializes the DDR2 controller and DRAM device.
+{3}. The boot-strap relocates itself to DRAM and enables the FIO FIFO to be used
+normally for NAND transactions.
+{4}. The boot-strap, now running in DRAM, reads the partition table from the NAND,
+and loads the boot-loader into DRAM; then jumps to the boot-loader code when it
+has been completely loaded to the memory.
+{5}. The boot-loader initializes the MMU and page tables.
+{6}. The boot-loader loads the Linux Kernel image from the primary partition of
+NAND.
+{7}. The boot-loader loads the rootfs image from the LNX partition of NAND.(Optinal)
+{8}. The boot-loader jumps to the Linux Kernel code in memory and completes the
+boot-up process, in most case, it would be 0xC0208000.
+</code></pre><p>前4点对应bst的stage1和stage2（类似uboot），后4点对应bld, 我们可以从启动代码的分析中一一看到这个过程。</p>
+<p>启动流程：</p>
+<pre><code>reset[start.S] 对应{1}          -&gt;
+switch_core_freq[corefreq.S] 对应{2}       -&gt;
+memsetup5[memsetup5.S] 对应{2}       -&gt;
+relocate[start.S] 对应{3}           -&gt;
+start_post_relocate[postreloc.S] 对应{3}{4} -&gt;
+nand_load_bld[bstnand.S] 对应{4}      -&gt;
+_trampoline[trampoline.S] 对应{5}        -&gt;
+gpio_init[gpio.S]                        -&gt;
+led_init[led.S]                 -&gt;
+mmu_init[mmu.S] 对应{5}                  -&gt;
+_enable_dcache[armcache.S]         -&gt;
+main()[main.c] 对应{5}             -&gt;
+boot()[loader.c]               -&gt;
+nand_boot[loader.c]              -&gt;
+boot_from_dev[loader.c]    对应{6}{7}{8}      -&gt;
+fwprog_load_partition(PART_DSP)          -&gt;
+fwprog_load_partition(PART_RMD)对应{7}     -&gt;
+fwprog_load_partition(PART_ROM)         -&gt;
+fwprog_load_partition(PART_BAK)         -&gt;
+fwprog_load_partition(PART_SEC)         -&gt;
+fwprog_load_partition(PART_PRI)对应{6}     -&gt;
+jump_to_kernel(jump_addr)对应{8}     -&gt;
+</code></pre><ol>
+<li><p>启动入口stage1：</p>
+<pre><code>reset[start.S] -&gt;
+switch_core_freq[corefreq.S]      -&gt;
+memsetup5[memsetup5.S]          -&gt;
+relocate[start.S]          -&gt;
+
+start.S的reset标号入口（对应{1}），不是_start，在amboot_bst.lds.cpp中指定入口点：
+ENTRY(reset)
+amboot_bst.lds.cpp指定的入口点可能和编译时选择启动方式有关？
+
+在start.S的reset标号中调用switch_core_freq和初始化系统频率，调用memsetup5初始化DDR和DRAM总线控制器（对应{2}），然后执行copy_loop将stage2的代码拷贝到AMBOOT_BST_RAM_START_ADDR地址中，拷贝完成后跳转到AMBOOT_BST_RAM_START_ADDR地址继续运行stage2的代码（对应{3}）。
+bst中copy_loop完成后跳转到AMBOOT_BST_RAM_START_ADDR地址，在mem_map.h中定义为#define AMBOOT_BST_RAM_START (DRAM_START_ADDR + DRAM_SIZE - 0x00100000)
+即ram高地址最后1M的地址开始运行（里面是bld）。
+
+这个relocate过程在start.S中，即是：
+relocate:
+    /* Relocate the 2nd stage loader to load BLD */
+    ldr    r0, POSTRELOC_START_ADDR               //起始地址，定义为__postreloc_start，即.text+.data后的地址
+    ldr    r1, AMBOOT_BST_RAM_START_ADDR        //目标地址，定义为AMBOOT_BST_RAM_START，见下文
+    ldr    r2, POSTRELOC_END_ADDR            //源地址长度，其内容见下文，即AMBOOT_BST_RAM_START的长度
+
+/**
+* copy_loop:
+*
+* r0 - source address
+* r1 - target address
+* r2 - source end address
+*/
+copy_loop:
+    ldmia    r0!, {r3-r10}
+    stmia    r1!, {r3-r10}
+    cmp    r0, r2
+    ble    copy_loop
+
+    /* The 2nd stage loader is copied to DRAM, so jump to it */
+    ldr    r0, AMBOOT_BST_RAM_START_ADDR
+    mov    pc, r0
+    nop
+
+这个地址的内容在/amboot/src/bst/amboot_bst.lds.cpp中定义为：
+    .bst_2 AMBOOT_BST_RAM_START : AT (ADDR(.text) + SIZEOF(.text) + SIZEOF(.data)) {
+    __postreloc_ram_start = .;
+        postreloc*.o (.text)
+        bstnand*.o (.text)
+        bstonenand*.o (.text)
+        bstnor*.o (.text)
+        bstsnor*.o (.text)
+        bstemmc*.o (.text)
+    __postreloc_ram_end = .;
+    }
+    __postreloc_start = SIZEOF(.text) + SIZEOF(.data);
+    __postreloc_end = SIZEOF(.text) + SIZEOF(.data) +
+        (__postreloc_ram_end - __postreloc_ram_start);
+
+这个copy_loop的过程，即是把__postreloc_ram_start到__postreloc_ram_start间的代码(stage2)拷贝到AMBOOT_BST_RAM_START地址
+(DRAM_START_ADDR + DRAM_SIZE - 0x00100000 -&gt; ram最后1m的地址)
+
+这也是为什么在文档《System User&apos;s Guide for A5s.pdf》 P13 4.2.3 Update Rootfs with PBA partition 最后一句话提到“Please
+reserve at least 1MB memory for BSB and DSP, or system may not boot.”
+
+所以，stage1的代码是start.S corefreq.S memsetup5.S, stage2就是postreloc.S、bstnand.S
+</code></pre></li>
+<li><p>stage2启动bld的过程：</p>
+<pre><code>start_post_relocate[postreloc.S] -&gt;
+nand_load_bld[bstnand.S]     -&gt;
+_trampoline[trampoline.S]        -&gt;
+
+stage2从postreloc.S的start_post_relocate标号处开始运行，首先将FIO初始化为正常的ram（对应{3}），然后跳转到bstnand.S的nand_load_bld标号运行。
+从nand_load_bld标号开始，首先跳转到do_nand_bld标号运行,经过nand_load_page标号的过程，将分区表PTB加载到nand中（对应{4}），
+然后经过标号nand_load_block_loop -&gt; nand_load_page_loop -&gt; nand_check_block -&gt; nand_check_block_loop的过程将bld加载到AMBOOT_BLD_RAM_START地址处（对应{4}），即make menuconfig中配置的0xc0000000这个地址。
+
+PS：这是个虚拟地址（3G），说明这个bld是工作在虚拟地址空间的，换句话说，arm的mmu在bld下就已经工作了，在下面bld的代码中也看得到初始化mmu的部分。这和uboot不同，uboot是工作在实模式下的，从uboot直接用函数指针访问内核入口的物理地址去启动内核可以看出，在uboot中访问的都是实际物理地址，而且uboot里面也没有操作mmu的代码。
+
+start_post_relocate标号对应的代码：
+    /* Start loading BLD */
+    b    do_nand_bld
+
+    /* Jump to_BLD now that it has been loaded */
+nand_jump_to_bld:
+    ldr    r0, =AMBOOT_BLD_RAM_START
+    mov    pc, r0
+加载完bld就直接用mov指令把pc指针跳转到bld的_trampoline.S的trampoline标号开始运行（对应{4}），至此bst的stage1、stage2执行完成，转而执行bld。
+
+3、bld启动内核的过程
+
+_trampoline[trampoline.S]       -&gt;
+gpio_init[gpio.S]               -&gt;
+led_init[led.S]            -&gt;
+mmu_init[mmu.S]                 -&gt;
+_enable_dcache[armcache.S]    -&gt;
+main()[main.c]            -&gt;
+boot()[loader.c]        -&gt;
+nand_boot[loader.c]        -&gt;
+boot_from_dev[loader.c]        -&gt;
+fwprog_load_partition(PART_DSP) -&gt;
+fwprog_load_partition(PART_RMD) -&gt;
+fwprog_load_partition(PART_ROM)    -&gt;
+fwprog_load_partition(PART_BAK)    -&gt;
+fwprog_load_partition(PART_SEC)    -&gt;
+fwprog_load_partition(PART_PRI) -&gt;
+jump_to_kernel(jump_addr)    -&gt;
+
+在bst的stage2最后，代码跳转到AMBOOT_BLD_RAM_START这个地址开始运行，这个地址即是bld的入口地址，那么入口点的函数是什么呢？
+与uboot如出一辙，入口不是main()，也使用了弹簧床的概念,在AMboot_bld.lds.cpp中指定了bld的入口点为trampoline.S中的_trampoline标号：
+ENTRY(_trampoline)
+
+在_trampoline标号中初始化IRQ、FRQ，设置运行模式，初始化GPIO、led、mmu（对应{5}）、使能dcache，然后跳转到main.c的main()函数入口。
+main()函数先初始化系统时钟和FIO，然后是中断向量控制器(VIC)，读取存于.cmdlist段中的命令行参数（是否可在运行时修改？没看见有存储
+command的相关函数），初始化uart，读取启动设备，初始化nand，设置分区表page tables（对应{5}）。
+然后调用hal_init()加载并初始化HAL分区，设置DRAM和定时器，初始化usb，然后执行BSP阶段初始化一些视频显示的设置。
+最后main()函数调用loader.c的boot()函数来启动内核（对应{6}{7}{8}）
+
+loader.c的boot()调用nand_boot(),先读取分区表信息，然后调用boot_from_dev()，这个函数先调用fwprog_load_partition()把文件系统映像
+和内核映像拷贝到ram中（对应{6}{7}），在拷贝的过程中如果映像文件是压缩的，如ramdisk.gz、zImage，会先解压缩，注意不支持uImage（因
+为不是uboot，当然不支持uImage）。最后跳转到内核入口地址0xC0208000启动内核，至此整个bootloader启动过程执行完毕。
+</code></pre></li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/linux内核驱动与文件系统-amb-bootloader阅读笔记/" data-id="cio1njwqp005plvfyzf62ae0j" class="article-share-link">分享到</a><div class="tags"><a href="/tags/linux内核驱动与文件系统/">linux内核驱动与文件系统</a></div><div class="post-nav"><a href="/2016/05/11/linux内核驱动与文件系统-ambbuffer管理机制bsreader阅读心得/" class="pre">ambbuffer管理机制bsreader阅读心得</a><a href="/2016/05/11/linux内核驱动与文件系统-Framebuffer-阅读笔记/" class="next">Framebuffer 阅读笔记</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

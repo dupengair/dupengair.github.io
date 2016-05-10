@@ -1,0 +1,816 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>我的C++面试问题总结_A | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">我的C++面试问题总结_A</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">我的C++面试问题总结_A</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/Q-A/">Q&amp;A</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><pre><code>序号     出处    备注        答案
+1    《E》    10    可实现连续赋值，如 A = B = C;
+2    《C++ Strategies and Tactics》        返回一个常量引用
+3    《E》    21    函数返回的是heap上的local对象，这里同一条语句内调用了两次operator*，因而两次使用new，也就需要两次delete。但这里没有合理的办法来调用delete，第二次调用operator*返回的时候reference的指向已经发生变化，造成资源泄漏。
+4    《E》    21    Bug：
+                如上的函数调用可以转化为如下的形式：
+                    if( operator== ( operator*(a, b), operator*(c, d) ) )
+                    可以看到，这里两个operator*的调用完毕以后才会去调用operator==，而由于operator*内部返回的是一个local 
+                static对象，无论这两个operator*的调用孰先孰后，最终的返回的结果，都是operator*的实现内部那个local static对象的
+                最终值，因此，这里的==永远成立，operator==返回始终为真。
+
+                结论：
+                绝对不要返回一个local static对象而有可能同时需要多个这样的对象，尤其是操作符中
+5    《The C++ Template Library》     P10    不能，因为非类型参数不同的模板是两个不同的模板
+6    《The C++ Template Library》    P12     这样的class member template即不能是virtual， 也不能拥有缺省参数
+7    《E》    24    @3不正确，分析一下原因，将上面的表达式写成函数形式：
+                Rational result = oneEighth.operator*(oneHalf);        // OK!
+                result = oneHalf.operator*(2);                // OK! 隐式转换
+                result = 2.operator*(oneHalf);                // Bomb!
+
+                很明显，整数2不存在class，也就没有operator*()成员函数。
+                对于operator*()成员函数来说，2为左操作数，因此2并不在其参数列表中，也就无法进行隐式类型转换。虽然此时编译器会在global作用域内寻找这样形式的non-member函数：
+                const Rational operator* (const Rational&amp; rhs, const Rational&amp; rhs);
+
+                很可惜没有找到，所以报错。而对于第二个表达式，由于整数2经过隐式转换已经成了Rational对象，其运算过程可以解析如下：
+                const Rational temp(2);
+                result = oneHalf.operator*(temp);
+
+            @要解决这个问题，很明显要让operator*()成为一个non-member函数，这样所有的参数才会在参数列表中，能够进行类型转换：
+                const Rational operator* (const Rational&amp; rhs, const Rational&amp; rhs)
+                {
+                    return Rational( lhs.numerator() * rhs.numerator(),
+                             lhs.denominator() * rhs.denominator() );
+                }
+
+                result = oneHalf * 2;                // OK! 隐式转换
+                result = 2 * oneHalf;                // OK! 隐式转换
+
+            @结论是：如果需要为某个函数的所有参数进行类型转换，这个函数必须是个non-member。
+
+8    《E》    27    这里派生类对*this进行转型后，调用的并不是当前对象上的onResize()函数，而是一个进过转型动作建立的一个&quot;&quot;*this对象的base class&quot;&quot;的临时副本上的onResize() !
+                也就是说，如果Window::onResize()修改了对象内容，改动的是副本，当前对象其实没有被改动。
+                解决的办法是去掉转型动作：
+                class SpecialWindow: public Window {
+                public:
+                    virtural void onResize() {                
+                        Window::onResize();                //直接调用基类的实现
+                        ...                        
+                    }
+                    ...
+                }
+
+9    《E》    28    boundingBox返回一个临时的Rectangle对象，当语句执行完毕后临时对象被析构，pUpperLeft成一个dangling Handlers。    
+10    《E》    29    不具有异常安全性：
+                1、一旦new Image(imgSrc)导致异常，互斥锁将无法释放
+                2、同样，bgImage 也将成为一个悬垂指针
+                3、同样样， imageChanges状态由于事先已经增加，也将不正确
+                4、同样样样，此时系统即没有原来的状态，也丢失最新的状态，无法恢复
+
+                void PrettyMenu::changeBackgroud(std::istream&amp; imgSrc)
+                    {
+                        Lock ml(&amp;mutex);
+                        bgImage.reset(new Image(imgSrc));    //以智能指针管理对象
+                        ++imageChanges;                //事情发生后再改变状态
+                    }
+
+                异常安全性的两个条件
+                    1、不泄露任何资源， 比如内存、锁....
+                    2、不允许数据破坏， 一旦异常抛出，系统应该处于一个合理的状态，可以恢复之前的状态等
+11    《E》    30    side effects：
+                1. 编译器对inline函数的每一个调用都以函数本体替换，这样可能增加目标代码大小。inline造成的代码膨胀亦会导致额外的换页行为（paging），降低指令高速缓存的命中率（instruction cache hit rate），以及相伴而来的效率损失。
+                2. 无法调试，没有符号 
+                3. 无法随程序库的升级而升级，一旦程序库设计者决定改变，所有用到inline函数的客户端程度都要重新编译，如果是outline函数则只需要重新连接。      
+                正能量：
+                    如果inline函数的本体很小，编译器针对函数本体产生出的代码可能比针对函数调用产生出的代码更小，这样将函数inline确实可能导致较小的目标代码和较高的指令高速缓存命中率。                    
+                不能inline：
+                1. 递归
+                2. virtual 
+                3. 函数指针
+12    《The C++ Template Library》    P18    1 正确，2.3 错误， 因为explicit阻止以赋值语法进行带有转型操作的初始化。2.3 实际上都是将int隐式转换为Stack类型。
+13    《The C++ Template Library》    P19    当dynamic_cast的参数是引用时，如果转型失败，会抛出一个bad_cast异常
+14    《E》    37    @对象的动态类型（dynamic type）是指“目前所指对象的类型”，即动态类型可以表现出一个对象将会有什么样的行为。
+                @virtual函数为动态绑定，在调用时的实现方式由调用对象的动态类型决定，即pointer或reference所指的对象。
+                @缺省参数为静态绑定，意思是在调用一个定义于derived class内的virtual函数时，可能使用base class所指定的缺省参数
+15    《E》    39    
+                1. 对于private继承的class，编译器不会自动将derived class对象转换为base class对象（因为无法访问），这意味着不能使一个基类指针或引用指向一个private继承的派生类
+                2. 在派生类内部使用基类的接口
+                3. 无法阻止派生类重定义基类的virtual接口
+                4. 使用私有的嵌套类或指针成员代替
+16    《E》    42    如果C++解析器在template中遇到一个嵌套从属名称，它会假设这个不是类型，除非认为指定，所以默认情况下嵌套从属名称不是类型，所以上述代码无法编译通过。应改加上typename声明：
+                typename T::const_iterator iter(container.begin());
+17    《E》    43    最后这个派生类模板无法通过编译，原因在于编译器并不知道继承的基类模板会被实例化或者特化成什么样子，所以不会去基类模板中读取名称，即无法访问在基类模板中继承来的sendClear。    
+                派生类模板无法直接访问基类模板中的名称，是因为C++编译器知道基类模板有可能被特化，有可能特化版本无法提供和一般性模板相同的接口，因此派生类模板拒绝直接访问继承自基类模板中的名称。这是Object Oriented C++走进Template C++的不同。                    
+                解决这个问题，有三个办法:
+                    1、在派生类模板对base class函数调用前加上&quot;&quot;this-&gt;&quot;&quot;:
+                    template&lt;typename Company&gt;
+                    class LogMsgSender : public MsgSender&lt;Company&gt; {
+                    public:
+                        void sendClearMsg()
+                        {
+                            log 操作;
+                            this-&gt;sendClear();        //加上this-&gt;，告诉编译器sendClear被继承
+                        }
+                    };
+
+                    2、使用using声明式
+                    template&lt;typename Company&gt;
+                    class LogMsgSender : public MsgSender&lt;Company&gt; {
+                    public:
+                        using MsgSender&lt;Company&gt;::sendClear;        //告诉编译器base class中的sendClear可见
+                        void sendClearMsg()
+                        {
+                            log 操作;
+                            sendClear();        
+                        }
+                    };
+
+                    3、明确指出被调用的函数位于base class中
+                    template&lt;typename Company&gt;
+                    class LogMsgSender : public MsgSender&lt;Company&gt; {
+                    public:
+                        void sendClearMsg()
+                        {
+                            log 操作;
+                            MsgSender&lt;Company&gt;::sendClear();    //明确告诉编译器sendClear在base class中
+                        }
+                    };    
+
+                    第三个方法不做推荐，因为强制限定了方法在基类中，如果被调用的是virtual函数，将失去virtual绑定的行为。
+18    《E》44        非类型template参数，也会导致实例化，带来代码膨胀，可以用一个基类来避免：
+
+                    //支持n阶矩阵的template非类型参数由函数参数取代
+                    template&lt;typename T&gt;        
+                        class SquareMatrixBase {
+                        public:
+                            ……
+                            void invert(std::size_t n);    //以给定的矩阵尺寸进行求逆
+                        };
+
+                        //再给模板派生一个子类，这是一个实现继承，不是is-a：
+                        template&lt;typename T, std::size_t n&gt;
+                        class SquareMatrix : private SquareMatrixBase&lt;T&gt; {    
+                        private:
+                                        //使base class中的名称可见
+                            using SquareMatrixBase&lt;T&gt;::invert;    
+                        public:
+                            ……
+                            void invert() {            //inline 调用base class的invert
+                                this-&gt;invert(n); 
+                            }    
+                        };
+
+                    在以上面的形式实例化派生类SquareMatrix时，如果只是非类型参数n导致的实例化，只要类型T不变，基
+                    类只会被类型T实例化出一个类型, 因为只有类型T会导致基类的实例化。也就是说，对应给定类型T的派生类，无论n导致了多
+                    少个实例化，所有的派生类都共享唯一一个由类型实参T决定的基类SquareMatrixBase，因此共享这个基类中的invert方法，也
+                    就避免了代码膨胀。
+19    《E》    44    支持向上转型，需要构造函数能接受一个类的派生类，这与模板的实例化产生矛盾。因为实例化的时候生成一个既定的类，此时它不可能知道自己的派生类类型，只有当它被继承时才可能产生派生类类型。要解决这个问题，就需要构造一个与模板类型不同的构造函数，接受来自不同类型的参数，称之为泛化（generalized）拷贝构造函数。所以我们最终不是写一个构造函数，而是要写一个构造函数模板，作用是为class生成合适类型的构造函数，以支持隐式类型转换：
+                template&lt;typename T&gt;
+                    class SmartPtr {
+                    public:
+                        template&lt;typename U&gt;                //成员函数模板
+                        SmartPtr(const SmartPtr&lt;U&gt;&amp; other);        //通过作为参数的SmartPtr对象来构造
+                        ……
+                    };
+                通过上面泛化（generalized）拷贝构造函数的定义，已经可以支持隐式类型转换，但得到似乎比想要的多。由于对转换未加限定，上述的定义使得任意类型的SmartPtr都可以转换为当前类型，比如SmartPtr&lt;Top&gt;转换为SmartPtr&lt;Middle&gt;，这不是我们希望的，所以必须对这一成员函数模板（member function template）所创建的函数成员进行筛选。智能指针支持get()方法获取其所保持的原始指针，这就要在类中添加保持原始指针的成员，并且在构造函数中进行初始化，可以通过这样的初始化来约束构造函数带来的转换行为：
+                template&lt;typename T&gt;
+                    class SmartPtr {
+                    public:
+                        template&lt;typename U&gt;                
+                        SmartPtr(const SmartPtr&lt;U&gt;&amp; other)             
+                            : heldPtr(other.get()) { … }        //用原始指针来初始化，要求能够隐式类型转换
+                        T* get() const { return heldPtr; }
+                        ……
+                    private:
+                        T* heldPtr;                    //保存原始指针
+                    };    
+
+                    这里对heldPtr的初始化使用了作为拷贝构造函数参数的SmartPtr对象的原始指针，即存在U*-&gt;T*的隐式类型转换，只
+                有在原始指针可以转换的情况下，类型匹配才能成功，从而限制了无法转换的类型。
+
+20    《E》46        template在实例化过程中不进行隐式类型转换。我们原本希望这里的操作数2被实例化的Rational&lt;int&gt; 类构造函数隐式转换后，再实例化这个non-member的函数模板，但编译器不会这么做，而是用2的类型int和oneHalf的类型Rational&lt;int&gt;对这个函数模板进行实参推导。结果就显而易见啦，由于函数模板实参推导时不进行隐式类型转换，所以要求两个参数一致才能实例化。    
+                    template&lt;typename T&gt;
+                        class Rational {
+                        public:
+                            ……
+                            friend const Rational operator*             //在class template内声明friend并且定义
+                                (const Rational* lhs, const Rational* rhs);
+                            {
+                                return Rational( lhs.numerator() * rhs.numerator(),
+                                     lhs.denominator() * rhs.denominator() );    
+                            }
+                        };
+
+                    这里使用了friend声明，但目的却和传统用法不同，不是为了访问class的non-public成分。
+                        1、为了让函数的所有参数都可以进行类型转换，我们需要把函数定义为non-member函数（条款24）
+                        2、为了让这个函数随它的类型被实例化，需要把它声明在class内部
+                        3、能在class内部声明non-member函数的唯一办法就是声明一个friend成员
+
+21    《E》    51    返回一个合法指针
+22    《E》    51    operator new实际上不止一次尝试分配内存，并且在每次分配失败后调用new_handling函数。只有当指向new-handling函数的指针式null，operator new才抛出异常。
+23    《E》    51    
+                1、内存申请得到满足时，返回一个指向它的指针
+                2、不能满足时，有new-handler则调用，没有的话抛出一个bad_alloc异常
+                3、必须有对付0内存申请的准备
+                4、避免掩盖正常形式的new
+24    《E》    51    
+                1）让更多内存可用
+                2）安装另一个new-handler函数
+                3）卸载new-handler函数（设为null）
+                4）抛出bad_alloc异常
+                5）分配失败调用abort或exit退出
+25    《E》    52    产生了两个调用过程：
+                1、operator new，用来分配内存
+                2、Widget的default constructor
+
+                1、 分配原始内存时，如果系统内存不够，会调用new_handler，调用失败则抛出bad_alloc异常
+                2. 调用构造函数时，由于第一个调用已经成功分配了内存，程序必须把这些内存归还给系统，否则会memory leak。但此时new操作并没有返回，所以客户端程序没有能力操作分配的内存。这个处理交给了C++的运行期系统。C++运行期系统会调用上面operator new对应的operator delete版本。
+26    《E》    52    当调用operator new遭遇构造函数的异常时，C++运行期系统会去寻找其对应版本的operator delete来处理已经成功分配的内存，此时运行期系统如果找不到placement new 对应的 placement delete，就什么也不会做，之前分配的内存就再也无法收回。因此，如果定义了placement new，别忘记定义placement delete。
+27    《C++编程规范——101》        
+                        1、为了区分前置和后置形式，语言上规定后置式有一个int变量，在后置式被调用时，编译器默默的为int指定一个0值。
+                        2、操作符的前置和后置式返回不同的类型，前置返回reference，后置返回const。
+                        3、前缀式效率更高，少一次对象拷贝
+28    《ME》    6    
+                1、没有所谓的null references, references一定得代表某个对象，必须有初值
+                2. pointers可以被重新赋值，指向另一个对象，references总是指向它初始化的对象
+                3.某些操作符的实现需要使用references，如[]，需要能当做左值进行运算
+29    《ME》    3    
+                1、为了让编译器生成的代码能正确访问数组，编译器必须有能力决定数组中对象大小。当数组定义时，编译器会认为每个元素都是所定义的类型。所以array和arrray+i之间的距离一定是i*sizeof(数组类型)。当把derived对象组成数组传递给函数时，编译器不会识别为derived对象，仍然按所定义的对象计算大小，出现错误。
+                2、C++语言规范里说，通过base class指针删除一个由derived class objects构成的数组，其结果未定义
+                多态和指针算术不能混用，数组对象几乎总是涉及指针的算术运算，所以数组和多态不要混用。
+30    《ME》    4    
+                缺乏default constructors带来的限制
+                1、无法产生数组，一般来说没有任何方法可以为数组中的对象指定constructor自变量。
+                2、不适用于template-based container classes。因为对于这种class，被实例化的目标类型必须有一个default constructor。这是一个普遍的共同需求，因为这些container内几乎总是会产生一个以“template”类型参数为类型的数组。
+                3、对于Virtual base classes来说，如果其缺乏default constructors，将不是一个好的设计，因为其构造函数的参数必须要有派生层次最深的class提供。于是要求所有的derived class都了解其设计。
+
+                解决缺乏default constructor的情况下无法创建数组：
+                1、使用non-heap数组，在定义数组时就初始化每一个元素
+                2、更一般化的做法是使用指针数组，而不是对象数组
+31    《ME》    5    
+                1. 隐式类型转换符，自己转其它类型
+                2. 单自变量构造函数（能声明拥有单一参数，也可能拥有多个参数，并且除了第一个参数外都有默认值），其它类型转自己
+32    《ME》    5    C++ Standard规定，任何一个转换程序，都不能内含一个以上的用户定制转换行为。可以利用这条规则，让对象的构造行为合法化，并且不运行隐式转换行为发生。
+将上述Array类的构造行为改写如下:
+                  template&lt;class T&gt;
+                  class Array {
+                  public:
+                   //以一个嵌套类实现
+                   class ArraySize {  
+                   public:
+                    ArraySize(int numElement) : theSize(numElement) {}
+                    int size() const { return theSize; }
+                   private:
+                    int theSize;
+                   };
+
+                   Array(ArraySize size);
+                  }；
+
+                  这里把ArraySize嵌套进Array里，强调一个事实：永远与Array类搭配使用。此时，如果出现如下的表达式：
+
+                   Array&lt;int&gt; a(10);
+                   Array&lt;int&gt; b(10);
+
+                   if ( a == b[i] )
+                   Array&lt;int&gt; c = 10;  //现在无法通过编译了
+                  要想将b[i]转为Array，需要通过int-&gt;ArraySize-&gt;Array的转换过程，这已经超过了一次的用户定制转换行为，所以编译器会阻止隐式类型转换的发生。
+
+                  而对于正常的构造过程：
+                  Array&lt;int&gt; a(10);
+
+                  编译器只需要将通过int-&gt;ArraySize的转换过程即可产生一个临时的ArraySize对象，用来构造Array类，达到上述目的。
+
+33    《ME》    6    等价于i.operator++(0).operator++(0); 它有2点坏处：
+                  1) 和内置类型的行为不一致。设计class的一条无上宝典就是，一旦有疑虑，看内置类型的行为，内置int类型不允许连续两次使用后置的increment操作符。
+                  2) 即使能两次使用，其行为也不是预期。因为第二个operator++改变的是第一个返回的对象，而不是原始对象，原始对象i只被++操作了一次
+
+34    《The C++ Template Library》    P37    一个算式如果明确指出类型，产生出来的pair将有绝对明确的类型。
+                                        std::pair&lt;int, float&gt;(42, 72.77); //int, float
+                                        std::make_pair(42, 72.77); //int, double(浮点数默认为double)
+35    《The C++ Template Library》    P43    当函数执行时，资源所有权会被转移到参数p，而当函数退出时，参数p被析构释放资源，导致原来的拥有者ptr丢失资源。
+                                        所以*ptr=43;会产生runtime error.
+36    《The C++ Template Library》    P43    通过reference获得auto_ptr无法预知拥有权是否被转交，这是十分糟糕的设计，应全力避免
+37    《ME》    7    
+                1. 短路表达式&amp;&amp;、||
+                重载会失去短路表达式的语义，因为函数调用的语义需要评估所有的参数
+                2、逗号表达式
+                重载无法保证参数评估的顺序，逗号表达式要求从左至右进行评估
+
+38    《ME》    8    区别：
+                    1. new operator
+                    a. 包含2个过程：调用operator new分配原始内存，并在所分配的内存上建立对象。
+                    b. 不可重载
+                    2. operator new
+                    分配一段原始内存，并且只负责内存分配
+                    重载时第一参数必须为size_t
+                    3. placement new
+                    负载在指定的内存地址构造对象
+
+                    sting *ps = new string(&quot;&quot;Memory Management&quot;&quot;);
+                        等价于：
+                    void* memory = operator new(sizeof(string));        //取得原始内存
+                    string *ps = new (memory) string(&quot;&quot;Memory Management&quot;&quot;);        //初始化内存中的对象并返回对象地址
+
+                    运用：
+                        1、如果想要对象产生于heap，请使用new operator。
+                        2、如果只打算分配内存，请使用operator new
+                        3、如果打算在heap object产生时自己决定内存分配方式，请编写一个自己的operator new。
+                        4、如果打算在自己分配的内存中构造对象，请使用placement new
+
+38    《ME》10        如果AudioClip执行期间发生异常，theImage无法析构，因为此时还不是完整对象，析构函数无法运行。只有被完全构造好的对象，析构函数才会运行。
+                    改正1：在构造函数内部捕获异常
+                    BookEntry::BookEndtry(const stirng&amp; name):theName(0)
+                        {
+                            try {
+                                if(name != &quot;&quot;&quot;&quot;)
+                                    theImage = new Image(name);
+                                if(name != &quot;&quot;&quot;&quot;)
+                                    theAudioClip = new AudioClip(name);
+                            }
+                            catch (...) {
+                                cleanup();        
+                                throw;
+                            }        
+                        }
+
+                        ~BookEntry::BookEndtry()
+                        {
+                            cleanup();
+                        }
+
+                    改正2： 以对象指针管理资源
+                    class BookEntry {
+                        public:
+                            ...
+                        private:
+                            ...
+                            cosnt auto_ptr&lt;Image&gt; theImage;
+                            const auto_ptr&lt;AudioClip&gt; theAudioClip;
+                        };    
+
+                        BookEntry::BookEndtry(const stirng&amp; name):theName(0)，
+                                theImage(name != &quot;&quot;&quot;&quot; ? new Image(name) : 0),
+                                theAudioClip(name != &quot;&quot;&quot;&quot; ? new AudioClip(name) : 0)
+                        {
+                            ...
+                        }
+39    《ME》    11    当一个destructor本身是因某个exception被调用的，terminate函数便会被自动调用        
+40    《ME》    12    
+                1) 前者会重新抛出当前的异常，不论是什么类型，如SpecialWidget
+                2) 后者抛出一个新异常，类型总是Widget
+
+                    所以应尽量按照前者的方式重新抛出异常，不要改变原来的异常
+41    《ME》    12    一般而言、异常捕捉时不进行类型转换，仅有两种转换发生：
+                    1) 继承关系中的类型转换，即多态。针对base 的exception可以捕捉derived 类型。
+                    2) 可以从一个有类型的pointer 转换为一个void的pointer
+42    《ME》    13    
+                    by value:
+                    1）对象复制两次
+                    2）无法以多态的方式捕获，会引起slicing
+                    by pointer:
+                    1）无对象复制
+                    2）因此必须保证exception objects离开抛出异常函数时仍然存在，只有Global对象和Static对象能满足要求。堆对象在catch中无法判断其是否可释放。
+                    3）标准异常都是对象，不是对象指针，无法以by pointer的方式捕获
+                    by reference:
+                    1）对象只复制一次，类似函数传参
+                    2）可以捕获标准异常对象
+                    3）可以多态的方式捕获异常，是最佳选择
+43    《ME》    14    没有任何一个方法可以知道一个template的类型参数可能抛出什么exceptions，所以不要为template提供exception specification
+44    《ME》    14    在unexpected函数中将其转成已知类型，C++允许以不同类型的exceptions取代非预期的exceptions
+                    class UnexpectedException();
+
+                    void convertUnexpected()
+                    {
+                        throw UnexpectedException();
+                    }
+
+                    set_unexpected(convertUnexpected);
+
+                    只要被违反的exception specification内含UnexpectedException，exception就能继续传播并继续下去。但如果exception specification未包含UnexpectedException，terminate就会被调用，像从未取代unexpected一样。：
+
+45    《ME》    14    如果非预期函数的替代者重新抛出当前的exception，该exception会被标准类型bad_exception替代
+                    void convertUnexpected()
+                    {
+                        throw ;
+                    }
+
+                    set_unexpected(convertUnexpected);    
+                    此时任何非预期的exception都会被一个bad_exception替代，并且传播下去。
+46    《ME》    14    
+                1、局部性校验导致编译器只校验函数本身exception specification，不校验其内部调用的其它函数
+                2、这会造成，当一个较高层次的调用者已经准备好处理发生的exception时，unexpected函数却被调用。
+47    《The C++ Template Library》    P44    关键词const意味着不能更改auto_ptr的拥有权，但可以修改所指向的对象。即const auto_ptr的语法类似于常量指针 T* const P，而不是指针常量const T* p
+48    《ME》    22    一般而言，复合操作符比对应的独身版本效率高，因为独身版本必须返回一个新对象，程序必须负担这个临时对象的构造和析构成本。而复合版本则是直接将结果写入左端自变量，所以不需要产生衣蛾临时对象来放置返回值。    
+                    Rational&amp; operator-=(const Rational&amp; rhs);    
+                    const Rational operator+(const Rational&amp; rhs, const Rational&amp; lhs)
+49    《ME》    25    当derived class重新定义base class的一个虚函数时，不再需要一定声明与原版本相同的返回类型。如果函数的返回类型是一个指针或者reference，指向baseclass，那么derived class的函数可以返回一个指针或者reference指向该base class 的一个derived class。
+50    《E》    9    输出“this is base Class ctor”，因为派生类对象构造时，还不是一个完整的对象，此时多态机制在构造函数中不起作用，所以调用的是基类虚函数
+51    《ME》    25    不能，因为第一个参数引用IO操作符做左值：
+                    ostream operator&lt;&lt;(ostream&amp; io, …)
+52    《The C++ Template Library》    P71    C中NULL定义为(void *)0,在C++中这是不对的，C++中NULL定义为一个整型，否则无法将NULL、赋值给一个指针，因为C++没有定义从(void *)到其它类型的转型操作。
+53    《ME》    26    不同：
+                    1、函数static 在第一次函数调用才初始化构造，class static即使从未使用也会构造。
+                    2、函数static第一次调用时，在函数定义处初始化。class static与global static相同，不同编译单元的构造顺序不固定。    
+                    由于函数static初始化时机明确，并且不调用就不会初始化。所以函数static更优。
+54    《ME》    26    constructor 为private
+55    《E》    17    存在内存泄漏的危险：
+                函数参数的构造顺序由编译器决定，很有可能先执行operator new分配内存，然后执行priority()函数，再调用Widget的构造函数在new返回的地址上构造对象，当priority()函数产生异常时会导致new分配的内存无法释放，造成泄漏。
+
+                应以独立语句用newed对象初始化智能指针：
+                boost::shared_ptr&lt;Widget&gt; Wptr(new Widget);  //先初始化智能指针
+                processWidget(Wptr, priority());   //这时就不存在资源泄漏的危险了
+56    《The C++ Template Library》    P87    不能，因为关联容器无法像顺序容器那样指定新元素位置
+57    《The C++ Template Library》    P94    后者要求迭代器是随机存储迭代器，支持&lt;操作，只适用于vector、deque、string等提供的迭代器，前者适用于所有迭代器，前者更普遍适用。
+58    《The C++ Template Library》    P99    输出 max(25, 35) = 34
+                                        因为STL的算法都是半开区间，不包含最后一个元素。所以如果要比较25和35对应的元素，应该*max_element(pos25, ++pos35) 
+                                        注意，因为是list容器，所以只能++pos35，如果是随机存储容器还可以pos35+1
+59    《ME》    28    由于printWidget采用by value传参，pw的所有权被转移，函数调用后成了空指针。应该将printWidget()函数改为by const references 传参。
+60    《The C++ Template Library》    P114    输出 1 2 4 5 6 6 ，可以看到容器大小没有变化，但元素值被更改。这里反映了STL算法和数据分离的设计思想，迭代器反映的是容器中某一位置的抽象概念，与容器类型无关，任何以迭代器访问容器元素的算法，都不得通过迭代器调用容器提供的成员函数。要实现删除容器元素只能通过容器自身的erase()操作：
+                                            coll.erase(remove(coll.begin(), coll.end(), 3), coll.end());
+61    《The C++ Template Library》    P134    STL容器元素要求：
+                                            1、有（性能优化的）copy构造函数，保证副本与原本完全一致，因为所有的容器内部都会保存元素副本。
+                                            2、有assignment操作符
+                                            3、可被析构
+                                            4、对序列式容器——default构造函数必须可用，可以创建有默认值的非空的容器
+                                            5、对关联式容器——元素必须定义排序准则，默认是operator&lt;，由仿函数less&lt;&gt;调用
+62    《The C++ Template Library》    P150    reserve()只能扩张容量，可以通过交换vector内容来间接缩小容量：
+                                            std::vector&lt;T&gt;(v).swap(v);
+63    《The C++ Template Library》    P202    由于key为const不能直接改变，只能先添加value with new key，再删除old key：
+                                            map1[new key] = map1[old key]; map1.erase(old key);
+64    《The C++ Template Library》    P205    从map中移除元素的正确做法：
+                                            for(std::map&lt;T&gt;::iterator iter = map1.begin(); iter != map1.end();)
+                                            {
+                                                 if(iter-&gt;second == value)
+                                                       map1.erase(pos++);
+                                                 else
+                                                       ++pos;
+                                            }
+65    《The C++ Template Library》    P207    下标操作先调用default构造函数生成元素，然后再将value赋值，效率不如insert
+66    《The C++ Template Library》    P341    key为常量:
+                                            coll.insert(std::pair&lt;const std::string, float&gt;(&quot;&quot;otto&quot;&quot;, 1));
+67    《The C++ Template Library》    P259    因为vector的迭代器通常被实现为指针，而C++不允许修改基本类型的临时对象，如果为自定义类型就没问题。应该使用辅助对象：
+                                            ......
+                                            if(coil.size() &gt; 1)
+                                            {
+                                               std::vector&lt;int&gt;::iterator beg = coil.begin();
+                                               sort(++beg, coil.end());
+                                            }
+68    《C++ template》    P13    模板不进行自动类型推导，所有类型必须正确匹配，可以通过对实参进行强制类型转换，或者显示指定参数类型解决:
+                            1. max(static_cast&lt;double&gt;(4), 4.2);
+                            2. max&lt;double&gt;(4, 4.2);
+69    《C++ template》    P38    浮点数、类对象、内部链接对象（如字符串文字、指向内部链接的指针）
+70    《C++ template》    P53    输出：
+                            ref type(T const&amp; x) : char[6]
+                            nonref type(T x) : const char*    
+                            字符串作为函数模板的实参时，如果实参是引用参数，类型为字符串数组，如果是非引用类型，会出现数组到指针类型的转换，类型为指向字符串首地址的指针。
+71    《E》    5    
+                1.类中有const或者reference成员，无法被bitwise copy。
+                2.基类的赋值运算符为private
+72    《C++ template》    P112    
+                            Creator&lt;void&gt; obj1; // ok
+                            Creator&lt;void&gt; obj2; // error: appear()被第二次生成，两个不同的实例化过程生成了两个完全相同的定义。
+因此，在模板内部定义的友元函数，一般必须包含模板的模板参数，否则这个模板就只能被实例化一次。
+
+73    《C++ template》    P120    
+                            ::f(int) called
+                            N::f(N::E) called
+
+                            第一个为受限名称，不使用ADL，所以调用全局的，第二个为非受限名称，通过ADL在命名空间N中找到匹配的N::f()
+74    《C++ template》    P121    
+                            f();         //无参数，无法ADL，调用无效
+                            f(*p);       //ADL， 因为*p 的类型为C&lt;int&gt;，将导致一个C&lt;int&gt;实例化
+75    《C++ template》    P126    
+                            1、4、6 必须
+                            7 可有可无，不依赖模板参数
+                            2 3 在继承列表和初始化列表中，5 不是受限名称， 8 不在模板中
+76    《C++ template》    P130    ADL查找的名称，不能是带实参的模板：
+                                void g(N::X* xp)
+                                        {
+                                        N::select&lt;3&gt;(xp);
+                                        }
+77    《C++ template》    P131    对于模板中的非依赖型基类，其派生类中的非受限名称会受限在这个基类中查找:    
+                                d2.strange = p;   //错误，类型不匹配，strange类型为int，不是int*
+78    《Inside C++ Object Model》    P130    取data member的地址，头尾的data member地址不同：
+                                            &amp; Point::x;
+79    《C++ template》    P132   
+                            &amp;A::x;   //1.取一个data member的地址，得到其在class中的offset，类型为char A::*
+                            &amp;A::y;   //2.取static data member的地址，直接得到其内存地址，类型为char *
+                            &amp;a.x;    //3.取绑定于object上的data member的地址，得到其内存地址，类型为char *
+80    《C++ template》    P138    声明指向模板类型的指针或引用不需要模板定义，如果期望知道模板大小或者访问模板成员，就需要知道整个模板的定义：
+                                A&lt;int&gt;* pa = NULL;                    //1.不需要定义，只需要声明
+                                pa = new A&lt;int&gt;;                      //2.需要定义
+
+                                void func(A&lt;int&gt;&amp; rfa) {              //3.不需要定义，只需要声明
+                                    rfa.f();                          //43.需要定义
+                                }
+81    《C++ template》    P144    对函数模板的实例化，POI在使用模板之后最近的名字空间中。
+对于类模板的实例化，POI在使用它之前最近的名字空间中。    
+                                函数模板func&lt;T&gt;的实例化POI点为(4)
+                                类模板A&lt;T&gt;的实例化POI点为(1)
+82    《C++ template》    P145    对于二次POI，非依赖型名称与主POI规则相同，依赖型名称放在在主POI之前
+                                3为主POI，位置在2，可以是2a，或者2b，还要看二次POI的结果：
+                                1为非依赖名称，POI与主POI规则相同，在(1)
+                                2为依赖名称，POI在主POI之前，即为2a，所以主POI的位置为2b
+83    《C++ template》    P52 P164    对字符串要尤其小心，如果为引用参数，类型会带有字符串长度，容易引起错误，一般采用非引用参数：
+                                    template&lt;typename T&gt;  
+                                    inline const T&amp; max( const T&amp; a, const T&amp; b) {    //引用参数，直接取所引用的类型
+                                        return a &gt; b ? a : b;
+                                    }
+
+                                    max(&quot;&quot;abc&quot;&quot;, &quot;&quot;def&quot;&quot;);      //正确，T为char const[3]
+                                    max(&quot;&quot;abc&quot;&quot;, &quot;&quot;abcd&quot;&quot;);     //错误，&quot;&quot;abc&quot;&quot;的类型为char const[3]，&quot;&quot;abcd&quot;&quot;的类型为char const[4]
+
+                                    最好将定义改为：
+                                    inline T&amp; max(T a, T b)；
+                                    max(&quot;&quot;abc&quot;&quot;, &quot;&quot;abcd&quot;&quot;);      //正确，T为char*
+84    《C++ template》    P164    对于非引用参数（T&amp;），演绎类型T时忽略const和valitile关键字，如果是数组或者函数，发生decay转型成对应的指针类型
+对于引用参数，则直接去引用的类型
+                                template&lt;typename T&gt; void f(T);    //非引用参数，decay并忽略const和valitile关键
+                                template&lt;typename T&gt; void g(T&amp;);   //引用参数，直接取所引用的类型
+                                double x[20];
+                                const int y = 1;
+
+                                f(x);                              //非引用参数，decay，T=double *
+                                g(x);                              //引用参数，直接取类型，T=double[20]
+                                f(y);                              //非引用参数，忽略const，T=int
+                                g(y);                              //引用参数，直接取类型，T=const int
+                                f(1);                              //非引用参数，忽略const，T=int
+                                g(1);                              //引用参数，直接取类型，T=const int出错，右值表达式不能具有const 类型
+85    《C++ template》    P166    对于复杂参数，推导的过程从最顶层开始匹配：
+                                f1(p1);    //1 T=int**
+                                f2(p2);    //2 T=bool, N=2
+                                f3(&amp;p3::f);//3 T1=void，T2=p3，T3=double
+86    《C++ template》    P168    模板参数匹配接受3种类型的转换：
+                                1. non-const - &gt; const
+                                2. array -&gt; pointer
+                                3. derived -&gt; base
+87    《C++ template》    P169    只能运用于函数模板
+88    《C++ template》    P172    在外围作用域中插入的这个友元函数，只能通过ADL才可见，因此函数参数必须和包含友元函数的类有具体关联
+                                f(b);               //1 正确
+                                f(a);               //2 错误，a与类B没有关联，无法ADL
+89    《C++ template》    P179    模板实例化时选择类型参数替换后具有最佳匹配的。
+                                cout &lt;&lt; f&lt;int*&gt;((int*)0) &lt;&lt;endl;               //实例化模板1
+                                cout &lt;&lt; f&lt;int&gt;((int*)0) &lt;&lt;endl;                //实例化模板2
+90    《C++ template》    P185    函数模板和非模板函数可以同时重载，实际的函数调用会优先选择非函数模板
+                                f(1);       //输出non-template，优先匹配非模板
+91    《C++ template》    P186    函数模板重载：名字相同，形参数目或类型不同，或名字相同的普通非模板函数
+                                函数模板特化：指定一个或多个函数模板的模板形参实际类型，不会引入新的模板
+                                函数模板不能偏特化，类模板不能重载
+92    《C++ template》    P187    如果模板有缺省模板实参，特化时对缺省实参的替换可选
+                                A&lt;int&gt; a1;            //实例化原模板定义
+                                A&lt;char&gt; a2;           //实例化模板特化
+                                A&lt;char, int&gt; a3;      //实例化模板特化
+                                A&lt;char, char&gt; a4;     //实例化原模板定义
+93    《C++ template》    P189    当模板实例化和全局特化在不同的编译单元时，非常危险，道理同上，此时编译器不报错：
+                                //file1
+                                char buffer[A&lt;void&gt;::MAX];                    //实例化，数组大小为10
+
+                                //file2
+                                for(int i=0; i &lt;  A&lt;void&gt;::MAX; ++i)          //采用特化定义，与原数组大小不符，内存越界！
+
+94    《C++ template》    P232    运行期多态的优点：
+                                代码小、
+                                可完全编译，发布时不需要源文件（二进制库和头文件）
+                                编译期多态的优点：
+                                不需要公共基类表达接口
+                                代码效率高（没有指针的间接调用，非虚函数内联的可能性大）
+                                对特定类型只需要提供部分接口
+                                更好的类型安全性（编译期对绑定做检查）
+95    《C++ template》    P360    Y y(x);       // 1.显式类型转换
+                                Z z = x;      // 2.隐式类型转换
+96    《ME》    12    两个catch子句乍看之下非常相似，唯一的差异就是前者重新抛出当前的exception，后者抛出当前exception的副本。两者的差异在于：
+                  1) 前者会重新抛出当前的异常，不论是什么类型，如SpecialWidget
+                  2) 后者抛出一个新异常，类型总是Widget
+
+                   所以应尽量按照前者的方式重新抛出异常，不要改变原来的异常
+97    《C++编程规范101条》    43    C++重载解析在可访问性检查之前进行名字查找，所以main()函数中调用的最佳匹配为2,而2为private，所以会产生无法访问private的错误
+98    《C++ primier》    P112 4.2.5    cstr的类型不是const string*(指向const string的指针)，而是string *const(指向string的const指针)。这里的typedef不能直接文本扩展，因为声明const pstr时，const修饰的是整个pstr类型，而不是string，所以是一个const指针而不是指向常量的普通指针
+99    《C++编程规范101条》    45    如果在构造函数中new，出现异常时，编译器会寻找对应的delete，以插入try{}catch{}代码，如果没有定义对应的delete，则编译器不会插入，当异常发生时，new的对象无法析构
+100    《C++编程规范101条》    58    1处对vector成员的访问会调用上面N空间中的+函数，从而输出“error”，因为Vector内部访问成员须通过v.begin()+T的操作，而这个+操作，根据ADL会查找到N空间，N中的+操作比std中的+更加匹配，所以调用。
+                                避免这类问题的发生，应将类型X和其操作符放到不同的名字空间中，以避免ADL带来的副作用。此类问题往往难以发现
+101    《C++ template》    P419    通过定义缺省函数调用实参，结合作为模板类型实参和函数调用实参的仿函数：
+                                template&lt;typename F&gt; void mysort(int x, int y, F cmp = F()) {
+                                    if(cmp(x, y)) // 使用函数对象来比较x，y
+                                    … 
+                                }
+                                bool my_less(int&amp; x, int&amp; y) {}
+
+                                my_sort&lt;std::less&lt;&gt; &gt;(x, y);
+                                my_sort(x, y, std::less&lt;&gt;());
+                                my_sort(x, y, my_less); 
+
+102    《C++ template》    P106    用户定义和派生类到基类的不允许，唯一的隐式类型转换只能是实参加上const或者volatile，从数组名到指针
+103    《C++ template》    P108    实例化用到标准库的list模板，这个模板的第二个参数是默认参数，在实参匹配过程中，模板实参的默认参数是不予考虑的，实参匹配只考虑在模板形参声明中出现的参数，所以要修改模板的声明，体现模板实参的默认参数：
+                                template &lt;typename T1, typename T2, template&lt;typename T, typename = std::allotcator&lt;T&gt; &gt; class Container&gt; class Relation { … };
+104    《C++0x漫谈之concept》——刘未鹏        绑定到#1，因为g是个非依赖型模板名称，C++解析模板名称采取二段式查找，对于非依赖型模板名，直接用最先找到的，#1优先匹配、
+105    《C++ template》    P110    
+                            #1正确, 非受限名称声明作为友元可以是定义
+                            #2错误，受限名称声明作为友元不可以为定义
+                            #3错误，类定义中只能声明模板作为友元，或者特化一个模板为友元，不能直接定义模板
+                            #4正确, 模板声明作为友元只能是声明
+
+106    《C++ template》    P112    在类模板的定义中定义友元函数，由于模板实例化时友元函数才被定义，实例化多次，同一个函数会产生多个定义，造成重复定义的编译错误
+                                eator&lt;void&gt; obj1; // ok
+                                Creator&lt;double&gt; obj2; // error: appear()被第二次生成，两个不同的实例化过程生成了两个完全相同的定义
+                                在模板内部定义的友元函数，一般必须包含模板的模板参数，否则这个模板就只能被实例化一次。
+                                template&lt;typename T&gt;
+                                class Creator {
+                                    friend void appear(Creator&lt;T&gt;*) {}  //每个T生成一个不同的友元函数，这是个普通函数
+                                }
+                                Creator&lt;void&gt; obj1; // 生成void appear(Creator&lt;void&gt;*)
+                                Creator&lt;double&gt; obj2; //生成void appear(Creator&lt;double&gt;*)
+107    《C++ template》    P121    
+                            #1出错，f()没有关联类名或名字空间，无法通过ADL查找，所以其声明在外围不可见
+                            #2正确，这个调用关联了模板名，产生ADL查找，所以声明可见
+108    《C++ template》    P131    对于模板中的非依赖型基类，其派生类中的非受限名称会首先在这个基类中查找：    
+                                template &lt;typename T&gt;
+                                class D2: public Base&lt;double&gt; {           //非依赖型基类，类型已经确定
+                                    public:
+                                        void f() { basefield = 7; }
+                                        T strange;                      // T 取自基类int，而不是派生类
+                                };
+
+                                void g(D2&lt;int*&gt;&amp; d2, int* p)
+                                {
+                                    d2.strange = p;                     //错误，类型不匹配，strange类型为int，不是int*
+                                }
+109    《POSA》2    P210    办法有2：
+                            1、提前初始化
+                            2、双检测定界加锁
+                            class Singleton {
+                            private:
+                                static Singleton *volatile instance_;         // #1
+                                static pthread_mutex_t mtx;
+                                …
+                            public:
+                                static Singletion *instance() {
+                                    if(instance_ == nullptr) {                // #2
+                                        Lock(mtx);                            // #3
+                                        if(instance_ == nullptr)              // #4
+                                            instance_ = new Singleton; 
+                                    }
+                                }
+                            };
+                            1、为避免两个判断被编译器优化，使用volatile
+                            2、第一次判断，适用于大部分情况，基于实例只会创建一次，避免性能问题
+                            3、定界加锁，线程安全
+                            4、防止第一次初始出现同步问题，只会较少情况下遇到
+110    《The C++ Template Library》第二版    P100    unique_ptr 不支持以赋值语法初始化，必须直接初始化：
+                                                    std::unique_ptr&lt;int&gt; up(new int);  // OK
+111    《The C++ Template Library》第二版    P101    unique_ptr不可拷贝或者复制，转移只能使用move语义
+                                                    std::unique_ptr&lt;int&gt; up1（std::move(up)）;
+112    《The C++ Template Library》第二版    P113    
+                                                1) C++11不在支持auto_ptr，因为其正常的copy和assignment操作被设计成具有move语义，容易误用，特别是做实
+
+                                                参的时候，正常的传参会导致对象在函数调用后被删除
+                                                 void int_print(auto_ptr&lt;int&gt; p) {
+                                                  cout &lt;&lt; p.get() &lt;&lt; endl;
+                                                 }
+                                                 std::auto_ptr&lt;int&gt; p(new int);
+                                                 *p = 1;
+                                                 int_print(p);  // Warning! p will be deleted after this call
+                                                 *p = 2;   // Error!
+                                                2) unique_ptr 不会发生这个问题，因为转移语义必需通过std::move()传递实参
+113    《ME》    19    
+                1、调用函数时只有以by value方式传递参数，或是当对象被传递给一个reference-to-const参数时，转换才会发生(即此时参数不可修改，所以可产生临时变量)，如果对象被传递给一个reference-to-non-const参数，转换并不会发生
+                 如：
+                 void uppercast(string&amp; str);
+                 char subtleBook[] = &quot;&quot;effective c++&quot;&quot;;
+                 uppercast(subtleBook);   // wrong!
+                 当程序员期望“非临时对象”被修改，此时如果编译器对reference-to-non-const对象进行隐式类型转换，会允许临时对象被修改，这种修改是没有意义的。所以C++禁止为reference-to-non-const参数产生临时对象。reference-to-const参数因为本身不可修改，所以不存在问题。
+                2、函数返回时
+
+114    《ME》    21    C++规定，每个“重载操作符”必须获得至少一个“用户定义类型”的自变量
+115    《ME》    22    临时对象是不可见的——不会在代码中出现，只要产生了一个non-heap object而没为它命名，便产生了一个临时对象。通常产生于两种情况：调用函数时参数的隐式类型转换和函数返回对象时
+                    临时对象比命名对象命名对象更好，比如可以进行返回值优化：
+                     比较：
+                     template&lt;class T&gt;
+                     const T operator+(const T&amp; rhs, const T&amp; lhs)
+                     {
+                      return T(lhs) += rhs;    // 临时对象
+                     } 
+
+                     和
+                     template&lt;class T&gt;
+                     const T operator+(const T&amp; rhs, const T&amp; lhs)
+                     {
+                      T result(lhs)；     // 命名对象
+                      return result += rhs;
+                     }
+
+                     第二个template内含了一个命名对象result，意味着返回值优化可能无法实施，而第一个总是适用。
+                     第一个template可能要在函数内消耗一个临时对象，然而，自古以来匿名对象比命名对象更容易消除，所以当面对临时对象和命名对象的选择时，最好选择临时对象。它绝不会比其命名版本消耗更多成本
+116            这里的elem只是当前被处理元素的拷贝，要改变容器元素本身的值，需要声明为reference：
+            for(auto&amp; elem : coll)
+117    《The C++ Template Library》    P270    可以在常量时间内访问任意元素，容器提供随机访问迭代器意味适用于任何算法
+118    《The C++ Template Library》    P275    引起vector迭代器失效的两种情况：
+                                            1) 在较小索引上安插或移除元素 
+                                            2) 由于容量变化引起的内存重新分配
+119    《The C++ Template Library》    P316    关联式容器因为自动排序，所以不能直接改变元素值，必需先删除旧元素，再插入新元素，效率比序列式低一些
+120    《The C++ Template Library》    P316    定义排序准则的方式：
+                                            1) 以template参数定义：
+                                             此时排序准则就是类型的一部分，类型系统会确保只有排序准则相同的容器才能被合并。第二参数是排序准则的类型，容器构造函数会调用改类型的default构造函数，来生成函数对象
+                                            2) 以构造函数参数定义：
+                                             可以运行期指定排序准则，同一个类型可以运用不同的排序准则，而排序准则的初始值或者状态也可能不同
+
+                                            排序准则也被用来检验元素相等性，默认准则——函数less&lt;&gt;
+                                             if(! (elem1&lt;elem2 || elem2&lt;elem1))
+                                            好处：
+                                             1) 只需要一个实参
+                                             2) 不必针对元素相等性提供operator ==
+121    《The C++ Template Library》    P14    
+                                        (1) nullptr是个新关键字，拥有类型std::nullptr_t，定义于&lt;cstddef&gt;，能被自动转换为各种pointer类型，而非整型。
+                                        (2) 这个新特性主要为了避免null pointer被解释为一个整型
+                                         f(0);  // call f(int)
+                                         f(NULL); // call f(int)
+                                         f(nullptr); // call f(void*)
+122    《The C++ Template Library》    P658    
+                                        * 索引值必需小于string的字符个数，否则抛出out_of_range异常 
+                                        * 字符数量可以为任意值，大于剩余数量时为剩余所有字符，string::npos为剩余所有字符，所以：
+                                        \\ 1.可能返回所有字符
+                                        \\ 2. 可能抛出异常
+123    《The C++ Template Library》    P666    只有单实参的const char*版本才把&apos;\0&apos;视为字符串结束标志，其它情况下只视为普通字符
+                                           s1.length(); // 4
+                                           s2.length(); // 5
+                                           s3.length(); // 5
+124    《The C++ Template Library》    P667    不能以单一字符初始化字符串，因为只存在const char*到string的自动类型转换，不存在char到string的转换      
+                                           string s(&apos;x&apos;);  // error
+                                           string s(1, &apos;x&apos;); // ok, have constructor
+125    《The C++ Template Library》    P669    有效期在下次调用non-const成员函数后终止
+                                             foo(p);   //ok
+                                             s += &quot;&quot;efg&quot;&quot;;  
+                                             foo(p);   //err, p is invalid
+126    《The C++ Template Library》    P672    operator的non const版本返回字符串的ref，一旦发生重分配，ref会失效
+                                            string s=&quot;&quot;abcd&quot;&quot;;
+                                            char* p = &amp;s[2];
+                                            char&amp; q = s[3];
+                                            *p = &apos;e&apos;; // OK
+                                            q = &apos;f&apos;; // OK
+                                            s += &quot;&quot;efg&quot;&quot;; // reallocation 
+                                            *p = &apos;e&apos;; // err
+                                            q = &apos;f&apos;; // err
+127    《The C++ Template Library》    P41    
+                                        #include&lt;cstdlib&gt; //将标识符声明于namespace std
+                                        #include&lt;stdlib.h&gt; //将标识符同时声明于全局范围内和namespace内，类似于使用了using directive
+128    《The C++ Template Library》    P78    为了避免隐式类型转换，接受单一参数的构造函数被声明为explicit，所以不能进行赋值。
+                                           shared_ptr&lt;string&gt; pStr(new string(&quot;&quot;hello&quot;&quot;));  // OK
+129    《The C++ Template Library》    P79    使用`make_shared()`更快，更安全，因为它使用一次分配（直接生成`shared_ptr`对象）而不是二次分配（一次原始对象，一次`shared_ptr`对象）
+                                        shared_ptr&lt;string&gt; pStr = make_shared&lt;string&gt;(&quot;&quot;hello&quot;&quot;);  // 一次分配，直接生成shared_ptr对象
+                                        shared_ptr&lt;string&gt; pStr(new string(&quot;&quot;hello&quot;&quot;));    // 二次分配，一次原始对象，一次shared_ptr对象
+130    《The C++ Template Library》    P80    可以先声明shared pointer然后进行赋值，不能对default构造的shared pointer使用assignment操作，只能通过reset方法
+                                        shared_ptr&lt;string&gt; pStr;
+                                        pStr.reset(new string(&quot;&quot;hello&quot;&quot;)); // OK
+131    《The C++ Template Library》    P485    结果：1, 2, 4, 5, 7, 8 因为Elem在remove_if内部实际被调用了两次，这里使用函数对象时保存了状态，这在算法中用作predicate是不对的，如果要达到目的应该：
+                                            list&lt;int&gt;::iterator pos = remove_if(coll.begin(), coll.end(), 
+                                                                [&amp;count](int) {
+                                                                    return ++count == 3;
+                                                                });
+                                             coll.erase(pos, coll.end());        // 1, 2, 4, 5, 6, 7, 8 
+
+132    《The C++ Template Library》    P499    
+                                        Lambda：用于传递行为，定义离调用近，方便阅读;可以自由调用全局函数以及成员函数;实现简单;需要外部传递状态;无类型
+                                        函数对象：有状态;有类型，可做template参数     
+133    《The C++ Template Library》    P668    不要用NULL取代nullptr或者char*参数，因为NULL为整型，如果调用它的操作被重载为接受整型，NULL会被解释为数值0
+                                            Std::string s(NULL);   //字符串&quot;&quot;0
+                                            Std::string s(nullptr); //空字符串 
+134    《E》    3    
+                1.const出现在*左边，被指物为常量，const出现在*右边，指针为常量
+
+                int a = 10;
+                const int * p = &amp;a;   //p指向的a为常量，不能修改被指物的值  
+                *p = 5;     //error!
+                p = &amp;b;     //ok
+
+                int * const p = &amp;a;   //p指针自身为常量，不能修改指针的指向  
+                *p = 5;     //ok
+                p = &amp;b;     //error!
+
+                2.声明迭代器为const等价于声明一个为const的指针（T* const），不能指向不同的被指物，但指向物的内容可以修改。
+
+                std::vector&lt;int&gt;vec;
+                const std::vector&lt;int&gt;::interator iter = vec.begin();   //等价于 T* const
+                ++iter;     //error!
+                *iter = 10; //ok
+
+                3.要想声明一个指向常量（const T*）类型的迭代器，要用
+
+                const_iterator
+                std::vector&lt;int&gt;::const_iterator iter = vec.begin();
+                ++iter;     //ok
+                *iter = 10; //error!
+
+135    《E》    4    因为成员在进入构造函数体之前，已经完成构造。
+                    如果成员变量是const或references，一定要初始化，不能被赋值。
+136    《ME》    22    返回值优化，不产生临时对象，在return语句中完成操作
+137    《ES》    16    通过交换容器来缩减容量
+138    《ES》    20    
+                    1. cout &lt;&lt; **i &lt;&lt; endl;  // 输出的才是字符串
+                    2. 比较的是元素类型(指针值而非指针内容)，需要自定义比较函数
+                    struct StringPtrLess: public binary_function&lt;const string*, const string*, bool&gt; 
+                      {
+                       bool operator()(const string *ps1, const string *ps2) const {
+                        return *ps1 &lt; *ps2;
+                       }
+                      };
+
+                      set&lt;string*, StringPtrLess&gt; ssp;
+139    《ES》    37    double sum = accumulate(ld.begin(), Id.end(), 0.0); 
+                    如果初始值是int 0，所以accumulate内部就会使用一个int来保存它计算的值。那个int最后变成accumulate的返回值，而且它用来初始化和变量。这代码可以编译和运行，但和的值可能不对。不是保存真的double的list的和，它可能保存了所有的double加起来的结果，但每次加法后把结果转换为一个int
+140    《ES》    43    导致了未定义的结果。每次调用deque::insert，都将导致所有指向deque内部的迭代器无效，包括上面的insertLocation。在第一次调用insert后，insertLocation就无效了
+                    // 每次调用insert后都重新读取insertLocation以保证迭代器有效，然后递增它
+                    for (size_t i = 0; i &lt; numDoubles; ++i) { 
+                        insertLocation = d.insert(insertLocation, data[i] + 41); 
+                        ++insertLocation; 
+                    }
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/Q-A-我的C-面试问题总结-A/" data-id="cio1njwqk005dlvfywwbmabx8" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Q-A/">Q&amp;A</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《Effective-C-》-三十四、区分接口继承和实现继承/" class="pre">三十四、区分接口继承和实现继承</a><a href="/2016/05/11/Sip协议-sip协议库tid-did-tid-分析/" class="next">sip协议库tid.did.tid 分析</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

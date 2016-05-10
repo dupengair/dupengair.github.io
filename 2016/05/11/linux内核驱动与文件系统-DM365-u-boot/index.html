@@ -1,0 +1,1025 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>DM365_u-boot | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">DM365_u-boot</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">DM365_u-boot</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><pre><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt; u-boot连接脚本分析: &gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+
+.text    代码段
+.rodata  只读数据段
+.data     读写数据段
+.got     u-boot自定义数据段
+.u_boot_cmd   u-boot命令存储段
+.bss     bss段
+
+&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt; NAND 启动模式解析 &gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+
+- NAND Mode
+  -不支持完整固件，只将UBL的stage2拷贝至AIM
+  -支持最大4K页面
+  -magic number出错检测，最多可尝试24次
+  -支持30K UBL（32K IRAM 中的另外2K 做为RBL stack）
+  -可选择在RBL中使用DMA、I-cache
+  -只支持8-bit Nand
+  -使用4-bit 硬件ECC
+  -支持要求在读周期低电平片选的Nand
+
+上电-&gt;运行ROM中固化的RBL(ROM Boot Loader) --&gt; 从nand中拷贝UBL到IRAM --&gt; 跳转到IRAM中的UBL入口(0x0020)
+
+--&gt; 将NAND中的用户程序拷贝到DDR2 --&gt;在DDR2中运行用户程序
+
+在UBL中： [selfcopy.c]selfcopy() -&gt; [boot.c]boot() -&gt; [ubl.c]main() -&gt; [ubl.c]LOCAL_boot() -&gt; [nandboot.c]NANDBOOT_copy() -&gt; APPEntry
+
+UBL.cmd中指定：
+EMIFStart  = 0x02000000;
+MIFSize    = 0x02000000;
+IRAMStart  = 0x00000000;
+IRAMSize   = 0x00008000;
+
+DRAMStart  = 0x00010000;
+DRAMSize   = 0x00008000;
+DDRStart   = 0x80000000;
+DDRSize    = 0x10000000;
+
+STACKStart = DRAMStart + DRAMSize;
+
+__selfcopysrc = EMIFStart;
+__selfcopydest = DRAMStart + 0x00000020;
+
+
+UBL经CCS烧写在片外nand起始地址处block0-5，即地址为EMIFStart；
+u-boot的magic number烧写在block8-A，data写在block B-14
+
+上电后RBL会自动从EMIFA EM_CS2 memory space(0x02000000)，即EMIFStart处执行；
+UBL启动时先经[selfcopy.c]selfcopy()从EMIFStart拷贝至内部data RAM起始地址+0x20处，即DRAMStart + 0x00000020，然后执行[boot.c]boot()
+
+
+Memory Map:
+0x0000 0000-0x0000 3FFF 16K ARM RAM0(Instruction) | Internal RAM
+0x0000 4000-0x0000 7FFF 16K ARM RAM1(Instruction) | Internal RAM
+0x0000 8000 0x0000 BFFF 16K ARM ROM(Instruction)  | Internal ROM
+0x0000 C000 0x0000 FFFF 16K Reserved
+0x0001 0000 0x0001 3FFF 16K ARM RAM0 (Data)
+0x0001 4000 0x0001 7FFF 16K ARM RAM1 (Data)
+0x0001 8000 0x0001 BFFF 16K ARM ROM
+
+AIM(ARM Internal RAM)地址空间分配：
+
+| IVT(8*4byte) : 0x00-0x20 | UBL的内容(30K) : 0x0020-0x7800(0x781C之前含UBL入口地址) | RBL stack(2K) : 0x7800-0x7ffb | UBL块号写入地址(32byte) : 0x7ffc-0x8000 |
+                        个
+                     启动地址
+
+
+首先，读取NAND的ID，可以从RBL的设备信息表中得到一些重要信息，然后，RBL在block1 page0处开始搜索UBL描述符。若没有找到正确的UBL，会继续搜索下面的块，一直到block24结束。当找到UBL标识之后，对应的块号(从1到24)被写到ARM内部RAM(指令RAM)的最后32位(0x7ffc-0x8000)，假设通过JTAG通过读取这32位，你能够确定RBL是在哪个块中找到了一个正确的UBL标识。如果搜索完24个块后没有找到正确的UBL标识，RBL会尝试从SD卡启动。
+
+找到正确的UBL之后，读取并且处理UBL描述符，这个描述符提供了加载和控制跳转到UBL的必要信息。然后UBL被读取并且处理。RBL首先可能会使能一些更快的EMIF组合和基于UBL描述符中信息的指令cache操作。通过UBL描述符可以知道在拷贝UBL期间是否使用了DMA。一旦用户指定的启动状态被设置，RBL就复制UBL到ARM内部RAM，并且从地址0x0000 0020处启动。
+
+NOTE：真正的拷贝实际上是从ARM内部数据RAM区0x10020-0x1781F的低30KB的空间。
+
+将UBL读取到ARM IRAM的时候，NAND RBL使用4位的ECC来检测是否发生读错误。若发生了错误，则通过ECC纠正算法来纠正错误。通过冗余(24 blocks)和出错恢复来保证防止读错误。
+
+
+
+NOTE：ARM IRAM 的起始32个字节是ARM系统的中断向量表(IVT)(8个向量，每个4字节)，复制的UBL从这32个字节的IVT之后开始启动。
+
+在UBL descriptor中，不同的NAND启动模式可以设置不同的MAGIC IDs
+
+
+
+NAND启动详细流程：
+
+1、初始化RAM1的高2K栈空间(0x7800-0x7fff)。不要使用IRAM的最后32个字节(0x7ffc-0x8000)，因为它被用来存写入UBL的块号。
+
+2、禁止所有中断，IRQ和FIQ。
+
+3、外部引脚DEEPSLEEPZ/GIO0在芯片为NAND模式启动复位时必须被置高。
+
+4、读NAND的设备ID，获得参数。
+
+5、根据NAND flash的参数初始化NAND区域。
+
+6、搜索UBL设定块号，通常在CIS/IDI page(一般为block 0, page 0)。
+
+7、UBL描述符由以下参数组成(所有UBL参数位宽都是32位)：
+
+    -入口点地址：加载UBL之后的绝对入口点，必须在0x0020-0x781C之间。
+
+    -UBL占用的NAND的页数：必须是相邻的页，可以跨越多个块，总字节数必须小于等于30KB。
+
+    -UBL的起始块：可能与UBL描述符在同一个块。
+
+    -UBL的起始页：不可能与UBL指示符在同一页，因为加载的都是完整的页。
+
+8、使能硬件ECC错误检测，复制UBL从NAND flash到IRAM，如果检测到一个4位ECC的读错误，UBL将通过ECC纠正算法来纠正错误。如果是由其他的错误导致读失败的，指示符会继续在下一个新的块中搜索直到找到UBL描述符，一直搜索到block 24。没有的话就从SD卡启动。
+
+9、在UBL入口处把控制权移交给UBL。
+
+10、NAND的安全启动模式是在PLL旁通模式中完成的，它不使用快速EMIF，DMA或者I-Cache。在其他模式下，使用以上的一种组合。例如，在UBL_MAGIC_PLL_DMA_IC_FAST模式下激活其他四个设置，它因该是最快的NAND启动模式。
+
+
+
+
+
+
+
+&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt; u-boot启动源代码流程浅析，汇编段有点晕^_^：&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+
+stage1、2 : start.S -&gt; start_armboot() -&gt; main_loop()
+boot kernel : do_bootm() -&gt; boot_get_kernel() -&gt; image_get_kernel() -&gt; do_bootm_linux()
+
+/****************************
+*                           *
+*        start.S            *
+*                           *
+****************************/
+
+========================================================================》
+.globl _start            /*定义一个外部可以引用的变量*/
+_start:                  /*_start的地址在链接时指定为TEXT_BASE的值，_start存储的值，即 b reset机器码值*/      
+    b    reset
+
+-----------------------------------------------------------------------
+
+start是整个u-boot程序的入口点，即链接后，该处是整个程序的第一条指令。程序的入口点是由链接脚本中“ENTRY(_start) SECTIONS{. = 0x00000000;”所指定。globl _start 定义一个外部可以引用的变量，在其它源代码文档中，可以直指引用_start这个变量。_start相当于一个变量，_start处存储的值即 b reset机器码值。
+
+========================================================================》
+
+    ldr    pc, _undefined_instruction
+    ldr    pc, _software_interrupt
+    ldr    pc, _prefetch_abort
+    ldr    pc, _data_abort
+    ldr    pc, _not_used
+    ldr    pc, _irq
+    ldr    pc, _fiq
+
+_undefined_instruction:
+    .word undefined_instruction
+_software_interrupt:
+    .word software_interrupt
+_prefetch_abort:
+    .word prefetch_abort
+_data_abort:
+    .word data_abort
+_not_used:
+    .word not_used
+_irq:
+    .word irq
+_fiq:
+    .word fiq
+
+-----------------------------------------------------------------------
+
+处理中断向量表
+
+========================================================================》
+
+    /*用0xdeadbeef 填充内存，以word 形式对齐*/
+    .balignl 16,0xdeadbeef       /* deadbeef 一般用来表示没用的或是已经被释放掉的内存*/
+
+-----------------------------------------------------------------------
+
+.align伪操作用于表示对齐方式：通过添加填充字节使当前位置满足一定的对齐方式。
+.balign的作用同.align，
+.align {alignment} {,fill} {,max}
+其中：alignment用于指定对齐方式，可能的取值为2的次幂，缺省为4。fill是填充内容，
+缺省用0填充。max是填充字节数最大值，如果填充字节数超过max,就不进行对齐.
+例如： .align 4, 指定对齐方式为字对齐
+deadbeef一般用来表示没用的或是已经被释放掉的内存
+
+========================================================================》
+
+_TEXT_BASE:                    /*定义程序运行的基地址*/
+    .word    TEXT_BASE
+
+-----------------------------------------------------------------------
+
+TEXT_BASE:此处定义一汇编语言标签，更好的理解就是：告诉编译器，为_TEXT_BASE分配存储空间，该空间的名字就叫_TEXT_BASE,该空间中存储的值就是由.word后面确定的TEXT_BASE。相当于C语言中 long _TEXT_BASE=TEXT_BASE; TEXT_BASE = 0x81080000定义在 /board/davinci/dm365_evm/config.mk 文件中。该值的作用是告诉链接器，本程序运行的基地址为TEXT_BASE。(U-boot编译后，烧在FLASH的第一个块中，CPU复位上电后，PC寄存器为0x0000，程序从地址0x0000处执行，而U-BOOT的最起始代码，即本文件中从_start开始的代码是与地址不相关的，这段代码放在任何空间执行的结果都是一样?)
+
+
+========================================================================》
+
+
+
+.globl _armboot_start              /* 告诉编译器，向外面输出变量_armboot_start */
+_armboot_start:                    /* _armboot_start变量在此处定义，具体地址要到链接时才能确定 */
+    .word _start               /* _armboot_start变量空间放的数据为_start标签的值,在汇编语言中，标签代表的是所在行的地址。*/
+
+-----------------------------------------------------------------------
+
+定义外部可以引用的变量_armboot_start,即相当于C long _armboot_start=&amp;_start; _armboot_start值是TEXT_BASE = 0x81080000
+
+========================================================================》
+
+/*
+* These are defined in the board-specific linker script.
+*/
+.globl _bss_start
+_bss_start:
+    .word __bss_start           /*__bss_start的值由lds链接脚本在链接时确定为bss段起始地址*/
+
+.globl _bss_end
+_bss_end:
+    .word _end                  /*_end的值由lds链接脚本在链接时确定为bss段结束地址*/
+
+在/board/davici/dm365_evm/u-boot.lds文件中
+. = ALIGN(4);
+     __bss_start = .;
+     .bss : { *(.bss) }
+     _end = .;
+
+-----------------------------------------------------------------------
+
+上面的__bss_start=.; 表示__bss_start值就是当前位置的值。当前位置是多少呢？从下面一句.bss:{*(.ss)}知道。紧接该位置后面马上就是放bss段数据了。所以，当然就是bss段的起始地址。_end就是bss段的结束地址。start.S就是以这个段的起始地址来计算要搬运u-boot大小的代码的。即，这个段前面的所有数据都将被搬到TEXT_BASE处。然后跑到start_armboot处，即Ｃ语言的入口代码。
+
+========================================================================》
+
+/*
+* the actual reset code
+*/
+
+reset:
+    /*
+     * set the cpu to SVC32 mode
+     */
+    mrs    r0,cpsr                             /*将CPSR 装入 R0*/
+    bic    r0,r0,#0x1f                         /*清零r0  低5 位*/
+    orr    r0,r0,#0xd3                /*R0 置1 (11010011)*/
+    msr    cpsr,r0                             /*置CPSR*/
+
+-----------------------------------------------------------------------
+
+    上面几行进入SVC模式，通过装入CPSR到r0，修改相应位后再载入到CPSR。
+        CSPR bit[04:00]   M4:M0 = 10011 (0x0013)   模式位：管理模式
+                            (10000 - 0x0010 用户模式、
+                             10001 - 0x0011 快速中断、
+                                                         10010 - 0x0012 中断模式、
+                             10011 - 0x0013 管理模式、
+                             10111 - 0x0017 未定义、
+                                                         11111 - 0x001F 系统模式)
+             bit[05]      T = 0   指令状态位： 0 - ARM , 1 - Thumb
+             bit[06]      F = 1   FIQ禁止：    1 - 禁止, 1 - 允许
+             bit[07]      I = 1   IRQ禁止：    1 - 禁止, 1 - 允许
+
+========================================================================》
+
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+    bl    cpu_init_crit
+#endif
+
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+cpu_init_crit:
+    /*
+     * flush v4 I/D caches    清空cache
+     */
+    mov    r0, #0
+    mcr    p15, 0, r0, c7, c7, 0    /* flush v3/v4 cache */
+    mcr    p15, 0, r0, c8, c7, 0    /* flush v4 TLB */
+
+    /*
+     * disable MMU stuff and caches 关闭mmu、cache
+     */
+    mrc    p15, 0, r0, c1, c0, 0
+    bic    r0, r0, #0x00002300    /* clear bits 13, 9:8 (--V- --RS) */
+    bic    r0, r0, #0x00000087    /* clear bits 7, 2:0 (B--- -CAM) */
+    orr    r0, r0, #0x00000002    /* set bit 2 (A) Align */
+    orr    r0, r0, #0x00001000    /* set bit 12 (I) I-Cache */
+    mcr    p15, 0, r0, c1, c0, 0
+
+    /*
+     * Go setup Memory and board specific bits prior to relocation.   调用lowlevel_init
+     */
+     /*暂存子程序返回地址，因为bl指令调用lowlevel_init时会改变lr中保存的当前cpu_init_crit子程序返回地址*/
+    mov    ip, lr        /* perserve link reg across call */  
+
+    bl    lowlevel_init    /* go setup pll,mux,memory */
+
+    /*cpu_init_crit子程序返回，当前pc指向将要执行的relocate*/
+    mov    lr, ip        /* restore link */
+    mov    pc, lr        /* back to my caller */         
+#endif /* CONFIG_SKIP_LOWLEVEL_INIT */
+
+-----------------------------------------------------------------------
+
+    清空cache
+    关闭mmu、cache
+    调用lowlevel_init
+
+========================================================================》
+
+.globl    lowlevel_init
+lowlevel_init:
+
+    /* Go back if we are running from RAM or NAND. */
+#ifdef CFG_PCI_BOOT
+    mov    pc, lr                                /*PCI启动，程序直接返回*/
+#endif /* CFG_PCI_BOOT */
+
+    /*-------------------------------------------------------*
+     * Mask all IRQs by setting all bits in the EINT default *  设置中断屏蔽寄存器相应位，关闭中断
+     *-------------------------------------------------------*/
+    /*------------------------------------------------------*
+     * Enable L1 &amp; L2 Memories in Fast mode                 *
+     *------------------------------------------------------*/
+    /*------------------------------------------------------*
+     * DDR2 PLL Initialization                *
+     *------------------------------------------------------*/
+    /*------------------------------------------------------*
+     * Issue Soft Reset to DDR Module            *
+     *------------------------------------------------------*/
+    /*------------------------------------------------------*
+     * Program DDR2 MMRs for 162MHz Setting            *
+     *------------------------------------------------------*/
+    /*------------------------------------------------------*
+     * Issue Soft Reset to DDR Module            *
+     *------------------------------------------------------*/
+    /*------------------------------------------------------*
+     * Turn DDR2 Controller Clocks On            *
+     *------------------------------------------------------*/
+    /*------------------------------------------------------*
+     * System PLL Initialization                *
+     *------------------------------------------------------*/
+    /*------------------------------------------------------*
+     * AEMIF configuration for NOR Flash (double check)     *
+     *------------------------------------------------------*/
+    /*--------------------------------------*
+     * VTP manual Calibration               *
+     *--------------------------------------*/
+    /*
+     * Call board-specific lowlevel init.
+     * That MUST be present and THAT returns
+     * back to arch calling code with &quot;mov pc, lr.&quot;
+     */
+    b    dv_board_init
+
+
+.globl    dv_board_init
+dv_board_init:
+    mov    pc, lr                   /*程序返回到cpu_init_crit*/
+
+-----------------------------------------------------------------------
+
+    屏蔽外部中断
+    Put the GEM in reset   
+    Enable L1 &amp; L2 Memories in Fast mode    
+    DDR2 PLL Initialization
+    Issue Soft Reset to DDR Module   
+    Program DDR2 MMRs for 162MHz Setting   
+    Issue Soft Reset to DDR Module
+    Turn DDR2 Controller Clocks On   
+    System PLL Initialization   
+    AEMIF configuration for NOR Flash (double check)   
+    VTP manual Calibration   
+
+========================================================================》
+
+#ifndef CONFIG_SKIP_RELOCATE_UBOOT
+relocate:                /* relocate U-Boot to RAM        */
+
+    /* 将_start标签处运行时的地址值装进r0，假设运行到该指令时pc寄存器的值是X,
+    start标签相对此本指令有Y的偏移，则r0=X+Y(Y可能是负值).     针对该程序来说，
+    当被装载到0x0000处运行时，r0就是0；而装载到TEXT_BASE处运行时，则r0=TEXT_BASE，   
+    即此段在flash中执行时r0 = _start = 0，当此段在RAM中执行时r0 = _start =_TEXT_BASE*/   
+
+    adr    r0, _start        /* r0 &lt;- current position of code   */    
+
+    /* _TEXT_BASE在\board\davinci\dm365_evm\config.mk 中指定的值为TEXT_BASE = 0x81080000，与地址无关，所以用ldr*/
+    ldr    r1, _TEXT_BASE        /* test if we run from flash or RAM */
+
+    cmp     r0, r1                  /* don&apos;t reloc during debug         */
+
+    /*_start  = _TEXT_BASE, 在RAM 中运行, 则直接初始化堆栈，否则计算.text代码段位置，准备从FLASH搬入RAM中*/
+    beq     stack_setup
+
+    /* r2 中为_armboot_start变量的值，即_start变量的地址。为什么不能直接引用_start？因为_start存储的是b reset 指令的机器码*/
+    ldr    r2, _armboot_start   
+    /* r3 中为_bss_start变量的值，即__bss_start变量的地址*/
+    ldr    r3, _bss_start         
+    /* _bss_start - _armboot_start = __bss_start 的地址 - _start 的地址 = .text 代码段大小*/
+    sub    r2, r3, r2        /* r2 &lt;- size of armboot            */
+    /* _start + .text 代码段大小 = .text 代码段结束地址 (怎么正好又等于__bss_start, 那直接ldr r2, _bss_start不就行了吗？)*/
+    add    r2, r0, r2        /* r2 &lt;- source end address         */
+
+-------------------------------------------------------------------------
+
+    比较_start(在/board/davici/dm365_evm/u-boot.lds中指定入口地址)和_TEXT_BASE(在/board/davici/dm365_evm/congig.mk中指定)的值:
+
+
+
+    当程序被装载到RAM中_TEXT_BASE处时,此段在RAM中执行, 则_start = _TEXT_BASE，此时直接初始化堆栈。
+    而当U-boot编译后，烧在FLASH的第一个块中，程序从flash中开始运行，则CPU复位上电后，PC寄存器为0x0000。此时r0 = _start = 0
+    则：
+        通过_bss_start-_armboot_start得到.text代码段长度，
+        起始段_start+.text代码段长度（即.bss段）
+
+========================================================================》
+
+copy_loop:
+    /*加载r0指向的地址中的数据，即_start地址开始的内容，每次传送后地址+4*/
+    ldmia    r0!, {r3-r10}        /* copy from source address [r0]    */
+    /*将数据保存至r1指向的地址中，即TEXT_BASE指向的RAM地址*/
+    stmia    r1!, {r3-r10}        /* copy to   target address [r1]    */
+    /*r0是否等于代码段结束地址*/
+    cmp    r0, r2            /* until source end addreee [r2]    */
+    /*小于等于则跳转，继续拷贝*/
+    ble    copy_loop
+#endif    /* CONFIG_SKIP_RELOCATE_UBOOT */
+
+-------------------------------------------------------------------------
+
+    将r0地址处的代码复制到r1处，即从_start搬到TEXT_BASE处
+
+========================================================================》
+
+stack_setup:
+    ldr    r0, _TEXT_BASE        /* upper 128 KiB: relocated uboot   */
+
+    /*大小为CFG_MALLOC_LEN的内存预留给由malloc函数*/
+    sub    r0, r0, #CFG_MALLOC_LEN    /* malloc area                      */
+
+    /*为global_data结构体预留的空间*/
+    sub    r0, r0, #CFG_GBL_DATA_SIZE /* bdinfo                        */
+
+#ifdef CONFIG_USE_IRQ
+    /*然后为IRQ及FIQ中断预留空间*/
+    sub    r0, r0, #(CONFIG_STACKSIZE_IRQ+CONFIG_STACKSIZE_FIQ)
+#endif
+
+    sub    sp, r0, #12        /* leave 3 words for abort-stack    */
+
+------------------------------------------------------------------------
+
+    为什么要sub，堆栈是向下增长的？
+
+========================================================================》
+
+clear_bss:
+    ldr    r0, _bss_start        /* find start of bss segment        */
+    ldr    r1, _bss_end        /* stop here                        */
+    mov    r2, #0x00000000        /* clear                            */
+
+    /*将r0指向的地址用r2填充*/
+clbss_l:str    r2, [r0]        /* clear loop...                    */
+    add    r0, r0, #4
+    cmp    r0, r1
+    ble    clbss_l
+
+    bl coloured_LED_init
+    bl red_LED_on
+
+    /*跳转至C入口函数start_armboot()*/
+    ldr    pc, _start_armboot
+
+_start_armboot:
+    .word start_armboot
+
+------------------------------------------------------------------------
+
+    清零bss段，跳转至C入口，stage1完成
+
+========================================================================》
+
+
+/****************************
+*                           *
+* void start_armboot (void) *
+*                           *
+****************************/
+
+========================================================================》
+
+void start_armboot (void)
+{
+    init_fnc_t **init_fnc_ptr;
+    char *s;
+#if !defined(CFG_NO_FLASH) || defined (CONFIG_VFD) || defined(CONFIG_LCD)
+    ulong size;
+#endif
+#if defined(CONFIG_VFD) || defined(CONFIG_LCD)
+    unsigned long addr;
+#endif
+
+    /* Pointer is writable since we allocated a register for it */
+    gd = (gd_t*)(_armboot_start - CFG_MALLOC_LEN - sizeof(gd_t));         /*取得全局变量的地址*/
+    /* compiler optimization barrier needed for GCC &gt;= 3.4 */
+    __asm__ __volatile__(&quot;&quot;: : :&quot;memory&quot;);
+
+    memset ((void*)gd, 0, sizeof (gd_t));                      /*初始化全局变量*/
+    gd-&gt;bd = (bd_t*)((char*)gd - sizeof(bd_t));
+    memset (gd-&gt;bd, 0, sizeof (bd_t));
+
+------------------------------------------------------------------------
+
+    Stage2 开始，先初始化全局变量
+
+========================================================================》
+
+    monitor_flash_len = _bss_start - _armboot_start;            /* 代码段地址长度*/
+
+    /*顺序执行init_sequence 中的初始化函数*/
+    for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) {
+        if ((*init_fnc_ptr)() != 0) {
+            hang ();
+        }
+    }
+
+------------------------------------------------------------------------
+init_fnc_t 结构体定义初始化函数的执行顺序：
+
+    init_fnc_t *init_sequence[] = {
+    cpu_init,        /* CPU IRQ、 FIQ堆栈设置 */
+#if defined(CONFIG_SKIP_RELOCATE_UBOOT)
+    reloc_init,        /* 设置代码装载完成标志，须在cpu_init完成后尽快执行 */
+#endif
+    board_init,        /* 设置主板参数、内核启动地址参数、启动定时器timer34 */
+    interrupt_init,        /* 启动定时器timer34，与异常处理有什么关系？*/
+    env_init,        /* bootloader 环境变量存储空间初始化 */
+    init_baudrate,        /* 取得bootloader 环境变量中串口波特率的设置 */
+    serial_init,        /* 串口初始化 */
+    console_init_f,        /* 取得控制台标志设置 */
+    display_banner,        /* 显示初始化信息：版本号，代码段、bss段地址 */
+#if defined(CONFIG_DISPLAY_CPUINFO)
+    print_cpuinfo,        /* 显示cpu信息 */
+#endif
+#if defined(CONFIG_DISPLAY_BOARDINFO)
+    checkboard,        /* 无定义 */
+#endif
+#if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
+    init_func_i2c,          /*显示I2C Ready信息*/
+#endif
+    dram_init,        /*配置ram 基地址、大小初始化 */
+    display_dram_config,    /*显示ram大小 */
+    NULL,
+};
+
+========================================================================》
+
+#ifndef CFG_NO_FLASH
+    /* configure available FLASH banks */       
+    size = flash_init ();                 /* 读取 flash 大小、厂商、版本号等信息*/
+    display_flash_config (size);             /* 显示信息*/
+#endif /* CFG_NO_FLASH */
+
+#ifdef CONFIG_VFD
+#    ifndef PAGE_SIZE
+#      define PAGE_SIZE 4096
+#    endif
+    /*
+     * reserve memory for VFD display (always full pages)
+     */
+    /* bss_end is defined in the board-specific linker script */
+    addr = (_bss_end + (PAGE_SIZE - 1)) &amp; ~(PAGE_SIZE - 1);
+    size = vfd_setmem (addr);
+    gd-&gt;fb_base = addr;
+#endif /* CONFIG_VFD */
+
+#ifdef CONFIG_LCD
+    /* board init may have inited fb_base */
+    if (!gd-&gt;fb_base) {
+#        ifndef PAGE_SIZE
+#          define PAGE_SIZE 4096
+#        endif
+        /*
+         * reserve memory for LCD display (always full pages)
+         */
+        /* bss_end is defined in the board-specific linker script */
+        addr = (_bss_end + (PAGE_SIZE - 1)) &amp; ~(PAGE_SIZE - 1);
+        size = lcd_setmem (addr);
+        gd-&gt;fb_base = addr;
+    }
+#endif /* CONFIG_LCD */
+
+------------------------------------------------------------------------
+
+    读取flash信息并显示、VFD、LCD初始化设置，DM365没有用到
+
+========================================================================》
+
+#if defined(CONFIG_CMD_NAND)
+    puts (&quot;NAND:  &quot;);
+    nand_init();        /* go init the NAND */
+#endif
+
+#if defined(CONFIG_CMD_ONENAND)
+    onenand_init();
+#endif
+
+------------------------------------------------------------------------
+
+   初始化nand flash，显示&quot;NAND XXMB&quot;信息
+   nand_init()
+   -&gt;nand_init_chip()
+     -&gt;board_nand_init()        /* 硬件ECC */
+       nand_scan()
+       -&gt;nand_scan_ident()         /* 读取id、cell、page info、厂商信息*/
+         nand_scan_tail()            /* 初始化BBT*/
+
+========================================================================》
+
+    /* initialize environment */
+    env_relocate ();
+
+------------------------------------------------------------------------
+
+       将环境变量从nand中读取到ram 中
+
+========================================================================》
+
+    /* IP Address */
+    gd-&gt;bd-&gt;bi_ip_addr = getenv_IPaddr (&quot;ipaddr&quot;);                      /*读取环境变量中存储的IP 地址*/
+
+    /* MAC Address */
+    {
+        int i;
+        ulong reg;
+        char *s, *e;
+        char tmp[64];
+
+        i = getenv_r (&quot;ethaddr&quot;, tmp, sizeof (tmp));                /*读取环境变量中存储的MAC 地址*/
+        s = (i &gt; 0) ? tmp : NULL;
+
+        for (reg = 0; reg &lt; 6; ++reg) {
+            gd-&gt;bd-&gt;bi_enetaddr[reg] = s ? simple_strtoul (s, &amp;e, 16) : 0;
+            if (s)
+                s = (*e) ? e + 1 : e;
+        }
+
+#ifdef CONFIG_HAS_ETH1
+        i = getenv_r (&quot;eth1addr&quot;, tmp, sizeof (tmp));
+        s = (i &gt; 0) ? tmp : NULL;
+
+        for (reg = 0; reg &lt; 6; ++reg) {
+            gd-&gt;bd-&gt;bi_enet1addr[reg] = s ? simple_strtoul (s, &amp;e, 16) : 0;
+            if (s)
+                s = (*e) ? e + 1 : e;
+        }
+#endif
+    }
+
+------------------------------------------------------------------------
+
+    读取环境变量中存储的IP地址、MAC地址
+
+========================================================================》
+
+    devices_init ();    /* get the devices list going. */
+
+------------------------------------------------------------------------
+
+    顺序初始化,将dev注册到全局链表list中：I2C--&gt;(LCD--&gt;Video--&gt;keyboard--&gt;logbuff--&gt;)
+system(初始化用作console的串口信息*)--&gt;(devices(系统其它串口初始化)--&gt;usb-&gt;net console)
+
+    *源程序中配置 #define CONFIG_CONS_INDEX    1  /*UART0做console口*/
+
+========================================================================》
+
+    jumptable_init ();    /* 初始化跳转表 */
+
+    console_init_r ();    /* fully init console as a device */
+
+------------------------------------------------------------------------
+
+    完整初始化控制台设备,将设备的读写接口挂在控制台的读写接口即标准I/O上，以实现对不同设备的适配,即由console_setfile()将dev挂入stdio_devices[file]数组
+
+========================================================================》
+
+#if defined(CONFIG_MISC_INIT_R)
+    /* miscellaneous platform dependent initialisations */
+    misc_init_r ();        /*初始化其它设备:网卡*/
+#endif
+
+------------------------------------------------------------------------
+
+    misc_init_r():先从EEPROM中读取MAC地址，失败再从环境变量中读取。
+        -&gt;调用eth_hw_init()-&gt;调用davinci_eth_hw_init():检测物理网卡，
+    读取硬件ID(为什么要读取两次？)、输出网卡信息     
+
+========================================================================》
+
+    /* enable exceptions */
+    enable_interrupts ();       /*使能外部中断，365的u-boot不使用*/
+
+------------------------------------------------------------------------
+
+    当board.h中定义外部中断时才会使能，否则什么也不做，365在u-boot中不使用IRQ、FIQ   
+
+========================================================================》
+
+#ifdef CONFIG_DRIVER_TI_EMAC
+extern void davinci_eth_set_mac_addr (const u_int8_t *addr);
+    if (getenv (&quot;ethaddr&quot;)) {
+        davinci_eth_set_mac_addr(gd-&gt;bd-&gt;bi_enetaddr);
+    }
+#endif
+
+------------------------------------------------------------------------
+
+    读取环境变量设定的MAC地址，将其设定为board的MAC   
+
+========================================================================》
+
+#if defined(CONFIG_CMD_NET)
+    if ((s = getenv (&quot;bootfile&quot;)) != NULL) {
+        copy_filename (BootFile, s, sizeof (BootFile));
+    }
+#endif
+
+------------------------------------------------------------------------
+
+    读取bootfile？啥东东？ 
+
+========================================================================》
+
+#ifdef BOARD_LATE_INIT
+    board_late_init ();                /* 开发板设置，没有定义*/
+#endif
+#if defined(CONFIG_CMD_NET)
+#if defined(CONFIG_NET_MULTI)
+    puts (&quot;Net:   &quot;);
+#endif
+    eth_initialize(gd-&gt;bd);                /* eth.c中有两处int eth_initialize(bd_t *bis)定义？*/                                       
+#if defined(CONFIG_RESET_PHY_R)
+    debug (&quot;Reset Ethernet PHY\n&quot;);
+    reset_phy();
+#endif
+#endif
+
+------------------------------------------------------------------------
+
+    进行ether的MII和PHY进行初始化。eth.c中有两处int eth_initialize(bd_t *bis)定义？
+
+========================================================================》
+
+/* main_loop() can return to retry autoboot, if so just run it again. */
+    for (;;) {
+        main_loop ();                /*主循环函数处理执行用户命令 -- common/main.c*/
+    }
+
+------------------------------------------------------------------------
+
+    main_loop()总是试图自动启动，循环不断执行
+
+========================================================================》
+
+
+/****************************
+*                           *
+*   void main_loop (void)   *
+*                           *
+****************************/
+
+========================================================================》
+
+#ifdef CONFIG_VERSION_VARIABLE
+    {
+        extern char version_string[];
+
+        setenv (&quot;ver&quot;, version_string);  /* set version variable */
+    }
+#endif /* CONFIG_VERSION_VARIABLE */
+
+------------------------------------------------------------------------
+
+    貌似设置当前的环境变量中的u-boot版本号，version_string的定义看不懂
+
+const char version_string[] =
+    U_BOOT_VERSION&quot; (&quot; __DATE__ &quot; - &quot; __TIME__ &quot;)&quot;CONFIG_IDENT_STRING;        /*???看不懂*/
+
+========================================================================》
+
+#if defined(CONFIG_BOOTDELAY) &amp;&amp; (CONFIG_BOOTDELAY &gt;= 0)
+    s = getenv (&quot;bootdelay&quot;);                  /*获取环境变量中关于dalay时间的参数*/
+    bootdelay = s ? (int)simple_strtol(s, NULL, 10) : CONFIG_BOOTDELAY;
+        s = getenv (&quot;bootcmd&quot;);                  /*获取环境变量中关于启动命令设置的参数*/
+
+
+    if (bootdelay &gt;= 0 &amp;&amp; s &amp;&amp; !abortboot (bootdelay)) {
+
+        run_command (s, 0);
+
+    }
+
+#endif    /* CONFIG_BOOTDELAY */
+
+
+------------------------------------------------------------------------
+
+    停留时间，等待按键转入命令行模式，没有按键stag2结束，run_command()中执行bootcmd命令
+
+========================================================================》
+
+    for (;;) {
+        len = readline (CFG_PROMPT);            /* 显示命令提示符, 读取用户输入到console_buffer*/
+
+        flag = 0;    /* assume no special flags for now */
+        if (len &gt; 0)
+            strcpy (lastcommand, console_buffer);          /* 拷贝命令至 lastcommand*/
+        else if (len == 0)
+            flag |= CMD_FLAG_REPEAT;
+
+        if (len == -1)
+            puts (&quot;&lt;INTERRUPT&gt;\n&quot;);
+        else
+            rc = run_command (lastcommand, flag);        /* 解析命令 */
+
+        if (rc &lt;= 0) {
+            /* invalid command or not repeatable, forget it */
+            lastcommand[0] = 0;
+        }
+    }
+
+------------------------------------------------------------------------
+
+        在readline() 中由getc最终调用设备读接口[stdio_devices[file]-&gt;getc ()]，和此前控制台适配好的设备通信
+    有键按下时，进入命令提示符状态下等待命令输入，解析并执行，Find_cmd中，从__u_boot_cmd_start开始查找对应命令结构体变量。
+    各种命令在command.h中通过U_BOOT_CMD宏被定义到.u_boot_cmd段中，链接器自动搜集命令到.u_boot_cmd段所在的__u_boot_cmd_start和__u_boot_cmd_end 区间中，区间地址定义在board/davinci/dm365/u-boot.lds中；
+
+========================================================================》
+
+&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt; u-boot 环境变量env初始化过程 &gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+
+1、env的数据结构
+
+在include/environment.h中定义了表示env的数据结构
+typedef    struct environment_s
+{
+    uint32_t    crc;        /* CRC32 over data bytes    */
+#ifdef CFG_REDUNDAND_ENVIRONMENT
+    unsigned char    flags;        /* active/obsolete flags    */
+#endif
+    unsigned char    data[ENV_SIZE]; /* Environment data        */
+} env_t;
+
+    1) crc是u-boot在保存env 的时候加上去的校验头，在第一次启动时一般 crc校验会出错，因为这时 Flash中的数据无效。
+    2) data字段保存实际的环境变量。在environment.c中可以看到，u-boot 的 env 按 name=value”\0”的方式存储，在所有env的最后以”\0\0”表示整个 env 的结束。新的name=value对总是被添加到 env 数据块的末尾，当删除一个name=value对时，后面的环境变量将前移，对一个已经存在的环境变量的修改实际上先删除再插入。
+    3)  env 从 flash 等存储设备重定位到 RAM 中，在 env_xxx.c 中定义了 env_ptr （env_t *env_ptr = (env_t *)(&amp;environment[0]);） , 它指向 env 在RAM中的位置。u-boot在重定位 env后对环境变量的操作都是针对 env_ptr。
+
+2、env的初始化过程
+
+start_armboot()（Board.c）-&gt; init_sequence[]（Board.c）-&gt; env_init()（Env_nand.c）-&gt; env_relocate ()（Env_common.c）-&gt; void env_relocate_spec (void)（Env_nand.c）-&gt; readenv()（Env_common.c）、crc32（Crc32.c）
+
+/***************************
+*                          *
+*    int env_init(void)    *
+*                          *
+***************************/
+
+========================================================================》
+
+    gd-&gt;env_addr  = (ulong)&amp;default_environment[0];        /*先使gd-&gt;env_addr指向默认的环境变量*/
+    gd-&gt;env_valid = 1;                    /*env 有效位置1*/
+
+========================================================================》
+
+/********************************
+*                               *
+*   void env_relocate (void)    *
+*                               *
+********************************/
+
+========================================================================》
+
+    env_ptr = (env_t *)malloc (CFG_ENV_SIZE);    /*为环境变量分配buffer*/
+    if (gd-&gt;env_valid == 0) {
+
+        set_default_env();
+    }
+    else {
+        env_relocate_spec ();            //在env_init()中gd-&gt;env_valid 已经置1
+    }
+
+========================================================================》
+
+/********************************
+*                               *
+* void env_relocate_spec (void) *
+*                               *
+********************************/
+
+========================================================================》
+
+#if !defined(ENV_IS_EMBEDDED)
+    int ret;
+
+    ret = readenv(CFG_ENV_OFFSET, (u_char *) env_ptr);        /* 从nand中CFG_ENV_OFFSET设定的偏移地址读取环境变量 */
+
+    if (ret)
+        return use_default();                    /*  读取失败则使用默认环境变量*/
+
+    if (crc32(0, env_ptr-&gt;data, ENV_SIZE) != env_ptr-&gt;crc)
+        return use_default();                    /*  校验失败则使用默认环境变量*/
+
+#endif /* ! ENV_IS_EMBEDDED */
+
+========================================================================》
+
+/********************************************
+*                                           *
+* int readenv (size_t offset, u_char * buf) *
+*                                           *
+********************************************/
+
+========================================================================》
+
+int readenv (size_t offset, u_char * buf)
+{
+    size_t end = offset + CFG_ENV_RANGE;                /*读取到CFG_ENV_OFFSET + CFG_ENV_SIZE 为止*/
+    size_t amount_loaded = 0;
+    size_t blocksize, len;
+
+    u_char *char_ptr;
+
+    blocksize = nand_info[0].erasesize;
+    len = min(blocksize, CFG_ENV_SIZE);                    /* 环境变量小于一个block 大小，则至少读取一个block*/
+
+    while (amount_loaded &lt; CFG_ENV_SIZE &amp;&amp; offset &lt; end) {
+        if (nand_block_isbad(&amp;nand_info[0], offset)) {            /*为坏block 时跳过*/
+            offset += blocksize;
+        } else {
+            char_ptr = &amp;buf[amount_loaded];
+            if (nand_read(&amp;nand_info[0], offset, &amp;len, char_ptr))        /* 读取过程*/
+                return 1;
+            offset += blocksize;
+            amount_loaded += len;
+        }
+    }
+    if (amount_loaded != CFG_ENV_SIZE)                /*读取范围与环境变量设定大小不一致则返回失败*/
+        return 1;
+
+    return 0;
+}
+
+========================================================================》
+
+3、env的保存过程
+
+saveenv()（Env_nand.c）-&gt; writeenv()（Env_nand.c）
+
+/***************************
+*                          *
+*    int saveenv(void)     *
+*                          *
+***************************/
+
+========================================================================》
+
+    size_t total;
+    int ret = 0;
+    nand_erase_options_t nand_erase_options;
+
+    nand_erase_options.length = CFG_ENV_RANGE;
+    nand_erase_options.quiet = 0;
+    nand_erase_options.jffs2 = 0;
+    nand_erase_options.scrub = 0;
+    nand_erase_options.offset = CFG_ENV_OFFSET;
+
+    if (CFG_ENV_RANGE &lt; CFG_ENV_SIZE)
+        return 1;
+    puts (&quot;Erasing Nand...\n&quot;);
+    if (nand_erase_opts(&amp;nand_info[0], &amp;nand_erase_options))        /*擦除环境变量*/
+        return 1;
+
+    puts (&quot;Writing to Nand... &quot;);
+    total = CFG_ENV_SIZE;
+    if (writeenv(CFG_ENV_OFFSET, (u_char *) env_ptr)) {            /* 从RAM 写入到NAND*/
+        puts(&quot;FAILED!\n&quot;);
+        return 1;
+    }
+
+    puts (&quot;done\n&quot;);
+    return ret;
+
+
+========================================================================》
+
+/*********************************************
+*                                            *
+* int writeenv (size_t offset, u_char * buf) *
+*                                            *
+*********************************************/
+
+========================================================================》
+
+    size_t end = offset + CFG_ENV_RANGE;
+    size_t amount_saved = 0;
+    size_t blocksize, len;
+
+    u_char *char_ptr;
+
+    blocksize = nand_info[0].erasesize;
+    len = min(blocksize, CFG_ENV_SIZE);
+
+    while (amount_saved &lt; CFG_ENV_SIZE &amp;&amp; offset &lt; end) {
+        if (nand_block_isbad(&amp;nand_info[0], offset)) {
+            offset += blocksize;
+        } else {
+            char_ptr = &amp;buf[amount_saved];
+            if (nand_write(&amp;nand_info[0], offset, &amp;len,
+                    char_ptr))
+                return 1;
+            offset += blocksize;
+            amount_saved += len;
+        }
+    }
+    if (amount_saved != CFG_ENV_SIZE)
+        return 1;
+
+    return 0;
+
+========================================================================》
+杜鹏 2010.9
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/linux内核驱动与文件系统-DM365-u-boot/" data-id="cio1njwqr005wlvfy01f7xwod" class="article-share-link">分享到</a><div class="tags"><a href="/tags/linux内核驱动与文件系统/">linux内核驱动与文件系统</a></div><div class="post-nav"><a href="/2016/05/11/linux内核驱动与文件系统-amb命令/" class="pre">amb命令</a><a href="/2016/05/11/linux内核驱动与文件系统-ambbuffer管理机制bsreader阅读心得/" class="next">ambbuffer管理机制bsreader阅读心得</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

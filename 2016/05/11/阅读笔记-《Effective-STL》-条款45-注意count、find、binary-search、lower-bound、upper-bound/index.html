@@ -1,0 +1,218 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>条款45 注意count、find、binary_search、lower_bound、upper_bound | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">条款45 注意count、find、binary_search、lower_bound、upper_bound</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">条款45 注意count、find、binary_search、lower_bound、upper_bound</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##一、选择搜索算法</p>
+<ul>
+<li>要选择搜索策略，必须依赖于你的迭代器是否定义了一个<strong>有序区间</strong><ul>
+<li>如果是，你就可以通过<code>binary_search、lower_bound、upper_bound</code>和<code>equal_range</code>来加速（<strong>通常是对数时间</strong>——参见条款34）搜索</li>
+<li>如果没有，你就只能用<strong>线性时间</strong>的算法<code>count、count_if、find</code>和<code>find_if</code></li>
+</ul>
+</li>
+</ul>
+<p>##二、无序区间：count或着find</p>
+<ol>
+<li><p>区别</p>
+<ul>
+<li>count回答的问题是：“是否存在这个值，如果有，那么存在几份拷贝？”</li>
+<li>find回答的问题是：“是否存在，如果有，那么它在哪儿？”</li>
+</ul>
+</li>
+<li><p>一种惯用法：把count用来作为是否存在的检查</p>
+<pre><code>list&lt;Widget&gt; lw; // Widget的list
+Widget w; // 特定的Widget值
+...
+
+if (count(lw.begin(), lw.end(), w)) {
+    ... // w在lw中
+} else {
+    ... // 不在
+}
+</code></pre></li>
+<li><p>对于检查存在性，find效率更优</p>
+<ul>
+<li><p>如果使用find，必须检查find的返回值和list的end迭代器是否相等</p>
+<p>  if (find(lw.begin(), lw.end(), w) != lw.end()) {</p>
+<pre><code>... // 找到了
+</code></pre><p>  } else {</p>
+<pre><code>... // 没找到
+</code></pre><p>  }</p>
+</li>
+<li><p>但find效率较高，因为当找到匹配的值后find就停止了，而count必须继续搜索，直到区间的结尾以寻找其他匹配的值</p>
+</li>
+</ul>
+</li>
+</ol>
+<p>##三、有序区间</p>
+<ol>
+<li>对于有序区间，count和find是线性时间的，但有序区间的搜索算法(<code>binary_search、lower_bound、upper_bound</code>和<code>equal_range</code>) 是对数时间的</li>
+<li>从无序区间迁移到有序区间导致了另一个迁移：从使用相等来判断两个值是否相同到使用等价来判断</li>
+<li><p>要测试在有序区间中是否存在一个值，使用<code>binary_search</code></p>
+<ul>
+<li><code>binary_search</code>只返回一个bool：这个值是否找到了</li>
+<li><p><code>binary_search</code>回答这个问题：“它在吗？”</p>
+<pre><code>vector&lt;Widget&gt; vw; 
+... 
+sort(vw.begin(), vw.end()); // 把数据排序
+Widget w; // 要找的值
+...
+
+if (binary_search(vw.begin(), vw.end(), w)) {
+    ... // w在vw中
+} else {
+    ... // 不在
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>要在有序区间中定位一个值，使用<code>用lower_bound</code></p>
+<ul>
+<li><code>lower_bound</code>返回一个迭代器，如果找到，指向这个值的第一个拷贝，如果没找到，则指向可以插入这个值的位置</li>
+<li><code>lower_bound</code>回答这个问题：“它在吗？如果是，第一个拷贝在哪里？如果不是，它将在哪里？”</li>
+<li><p>find一样，必须测试<code>lower_bound</code>的结果，来看看它是否指向要寻找的值，但又不像find，不能只是检测<code>lower_bound</code>的返回值是否等于end迭代器。取而代之的是，必须检测<code>lower_bound</code>所标示出的对象是不是你需要的值</p>
+<ul>
+<li><p>错误的用法：</p>
+<pre><code>vector&lt;Widget&gt;::iterator i = lower_bound(vw.begin(), vw.end(), w);
+
+//保证i指向一个对象；也就保证了这个对象有正确的值。这是个bug！
+if (i != vw.end() &amp;&amp; *i == w) { 
+    ... // 找到这个值，i指向第一个等于该值的对象
+} else {                
+    ... // 没找到
+}    
+</code></pre><ul>
+<li><code>if (i != vw.end() &amp;&amp; *i == w)</code>是一个相等的测试，但<code>lower_bound</code>搜索用的是等价    </li>
+<li>要完全完成，就必须检测<code>lower_bound</code>返回的迭代器指向的对象的值是否和你要寻找的值等价</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>更简单的方法是：使用<code>equal_range</code></p>
+</li>
+</ul>
+</li>
+</ol>
+<ol>
+<li><p>要在有序区间中寻找一个值，使用<code>equal_range</code></p>
+<ul>
+<li><code>equal_range</code>返回一对迭代器，第一个等于<code>lower_bound</code>返回的迭代器，第二个等于<code>upper_bound</code>返回的（也就是，等价于要搜索值区间的末迭代器的下一个）</li>
+<li><p>对于equal_range的返回值，有两个重要的地方</p>
+<ul>
+<li><p>第一，如果这两个迭代器相同：</p>
+<ul>
+<li>意味着对象的区间是空的，说明没有找到</li>
+<li><p>这个结果是用equal_range来回答“它在吗？”</p>
+<pre><code>vector&lt;Widget&gt; vw;
+sort(vw.begin(), vw.end());
+typedef vector&lt;Widget&gt;::iterator VWIter; 
+typedef pair&lt;VWIter, VWIter&gt; VWIterPair;
+
+VWIterPair p = equal_range(vw.begin(), vw.end(), w);
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>            if (p.first != p.second) {
+                ... // 找到了，p.first指向第一个而p.second指向最后一个的下一个
+            } else {
+                ... // 没找到，p.first和p.second都指向搜索值的插入位置 
+            } 
+
++ 第二个，`equal_range`返回的东西是两个迭代器：
+    - 对它们作distance就等于区间中对象的数目，也就是等价于要寻找的值的对象。
+    - `equal_range`不光完成了搜索有序区间的任务，而且完成了计数
+
+            VWIterPair p = equal_range(vw.begin(), vw.end(), w);
+            cout &lt;&lt; &quot;There are &quot; &lt;&lt; distance(p.first, p.second)&lt;&lt; &quot; elements in vw equivalent to w.&quot;;
+</code></pre><ol>
+<li><p>在区间中寻找一个位置</p>
+<ul>
+<li><p>使用<code>lower_bound</code>找到<strong>第一个符合条件的位置</strong></p>
+<pre><code>Timestamp ageLimit;
+...            
+vt.erase(vt.begin(), lower_bound(vt.begin(), vt.end(), ageLimit)); 
+</code></pre><ul>
+<li>从vt中排除所有排在ageLimit的值 前面的对象</li>
+</ul>
+</li>
+<li><p>使用<code>upper_bound</code>找到<strong>最后一个符合条件的位置之后的那个位置</strong></p>
+<pre><code>vt.erase(vt.begin(), upper_bound(vt.begin(),  vt.end(), ageLimit)); 
+</code></pre><ul>
+<li>从vt中除去所有排在ageLimit的值前面或者等价的对象</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>在插入元素时，要保证原来的有序区间继续有效，即有序的等价关系不变</p>
+<ul>
+<li><p>使用<code>upper_bound</code>，保持原有序区间不变的情况下插入</p>
+<pre><code>class Person {
+    public:
+        ...
+        const string&amp; name() const;
+        ...
+};
+
+struct PersonNameLess: public binary_function&lt;Person, Person, bool&gt; { 
+    bool operator()(const Person&amp; lhs, const Person&amp; rhs) const
+    {
+        return lhs.name() &lt; rhs.name();
+    }
+};
+
+list&lt;Person&gt; lp;
+...
+lp.sort(PersonNameLess()); // 使用PersonNameLess排序lp
+
+Person newPerson;
+...
+// 在lp中排在newPerson之前或者等价的最后一个对象后面插入newPerson
+lp.insert(upper_bound(lp.begin(), lp.end(), newPerson, PersonNameLess()), newPerson); 
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<p>##四、关联容器</p>
+<ol>
+<li>对标准关联容器（set、multiset、map和multimap）来说是不同的，因为它们提供了搜索的成员函数，它们往往是比用STL算法更好的选择</li>
+<li><p>对<code>binary_search</code>的策略不同，因为这个算法没有提供对应的成员函数。要测试在set或map中是否存在某个值，使用count的惯用方法来对成员进行检测</p>
+<pre><code>set&lt;Widget&gt; s; // 建立set，放入数据
+...
+Widget w; // w仍然是保存要搜索的值
+...
+if (s.count(w)) {
+    ... // 存在和w等价的值
+} else {
+    ... // 不存在这样的值
+}
+</code></pre><ul>
+<li>要测试某个值在multiset或multimap中是否存在，find往往比count好，因为一旦找到等于期望值的单个对象，find就可以停下了，而count，在最遭的情况下，必须检测容器里的每一个对象</li>
+<li>对于set和map，这不是问题，因为set不允许重复的值，而map不允许重复的键</li>
+</ul>
+</li>
+</ol>
+<p>##五、总结</p>
+<pre><code>                使用算法                      使用的成员函数
+                ---------------------         -------------------------------------
+你想知道的        在无序区间      在有序区间          在set或map上        在multiset或multimap上
+---------       ---------    ---------       ------------    --------------------
+期望值是否存在？     find         binary_search     count             find
+--------------
+期望值是否存在？    find         equal_range     find             find或lower_bound
+如果有，第一个等
+于这个值的对象在
+哪里？
+--------------
+第一个不在期望值    find_if     lower_bound     lower_bound     lower_bound
+之前的对象在哪
+里？
+--------------
+第一个在期望值之    find_if     upper_bound     upper_bound     upper_bound
+后的对象在哪里？
+--------------
+有多少对象等于期    count         equal_range，    count             count
+望值？                         然后distance
+--------------
+等于期望值的所有    find(迭代)    equal_range        equal_range     equal_range
+对象在哪里？
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《Effective-STL》-条款45-注意count、find、binary-search、lower-bound、upper-bound/" data-id="cio1njx2900mylvfyzhd79q9g" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《Effective-STL》/">《Effective STL》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《Linux性能优化大师》-第一章-深入理解Linux操作系统/" class="pre">第一章 深入理解Linux操作系统</a><a href="/2016/05/11/阅读笔记-《Effective-STL》-条款41-了解使用ptr-fun、mem-fun和mem-fun-ref的原因/" class="next">条款41 了解使用ptr_fun、mem_fun和mem_fun_ref的原因</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

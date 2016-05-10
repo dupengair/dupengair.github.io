@@ -1,0 +1,289 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第五章 通用工具(2) —— 智能指针 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第五章 通用工具(2) —— 智能指针</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第五章 通用工具(2) —— 智能指针</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##Smart Pointer</p>
+<ul>
+<li>使用pointer的理由，是需要在通常的作用域边界外拥有ref语义。</li>
+<li>只提供一个smart pointer class是不够的</li>
+<li>shared_ptr实现共享式拥有，适合复杂环境</li>
+<li>unique_ptr实现独占式拥有，强调避免资源泄漏</li>
+<li>C++11不再使用<code>auto_ptr</code></li>
+</ul>
+<p>##一、shared_ptr<br><strong>如果对象是new出来，默认清理工作由delete完成，可以定义自己的析构策略</strong></p>
+<ol>
+<li><p>使用</p>
+<ul>
+<li><p>为了避免隐式类型转换，接受单一参数的构造函数被声明为explicit，所以不能进行赋值。</p>
+<pre><code>shared_ptr&lt;string&gt; pStr = new string(&quot;hello&quot;);        // Error
+shared_ptr&lt;string&gt; pStr(new string(&quot;hello&quot;));        // OK
+</code></pre></li>
+<li><p>使用<code>make_shared()</code>更快，更安全，因为它使用一次分配（直接生成<code>shared_ptr</code>对象）而不是二次分配（一次原始对象，一次<code>shared_ptr</code>对象）</p>
+<pre><code>shared_ptr&lt;string&gt; pStr = make_shared&lt;string&gt;(&quot;hello&quot;);        // 一次分配，直接生成shared_ptr对象
+shared_ptr&lt;string&gt; pStr(new string(&quot;hello&quot;));                // 二次分配，一次原始对象，一次shared_ptr对象
+</code></pre></li>
+<li><p>可以先声明shared pointer然后进行赋值，不能对default构造的shared pointer使用assignment操作，只能通过reset方法</p>
+<pre><code>shared_ptr&lt;string&gt; pStr;
+pStr = new string(&quot;hello&quot;);            // Error
+pStr.reset(new string(&quot;hello&quot;));    // OK
+</code></pre></li>
+</ul>
+</li>
+<li><p>析构策略</p>
+<ul>
+<li><p>可以定义deleter，对于array来说，这是必须的</p>
+<pre><code>std::shared_ptr&lt;int&gt; p(new int[10], [](int* p) {
+    delete[] p;
+    });
+</code></pre></li>
+<li><p>可以使用为unique_ptr提供的辅助函数</p>
+<pre><code>std::shared_ptr(new int[10], std::defualt_delete&lt;int[]&gt;());
+</code></pre></li>
+<li><p>对于unique_ptr，必须明确给出deleter</p>
+<pre><code>std::unique_ptr(new int[10]);        // Error
+std::unique_ptr(new int[10], std::defualt_delete&lt;int[]&gt;());
+</code></pre></li>
+<li><p><code>shared_ptr</code>不提供operator[]，<code>unique_ptr</code>有一个针对array的偏特化版本，提供operator[]取代operator *和operator-&gt;，因为<code>unique_ptr</code>在弹性和效能上进行了优化</p>
+</li>
+<li><p>注意传入的deleter不能抛出异常</p>
+</li>
+<li><p>比起定制的deleter，更好的处理方式是定义一个class，在构造时分配内存，析构时销毁内存，通过<code>shared_ptr</code>来管理这个class对象，这样可以获得更加直观的接口</p>
+</li>
+</ul>
+</li>
+</ol>
+<p>##二、weak_ptr</p>
+<ol>
+<li><p>仅仅使用<code>shared_ptr</code>，存在2个问题</p>
+<ul>
+<li>循环引用</li>
+<li>无法实现引用本身的生命比指向的对象更长的语义（存在一个空引用）</li>
+</ul>
+</li>
+<li><p><code>weak_ptr</code>只接受一个<code>shared_ptr</code>的构造函数，一旦这个<code>shared_ptr</code>失去拥有权，weak_ptr会成空</p>
+</li>
+<li><p>只能通过lock建立一个新的<code>shared_ptr</code>访问对象，如果失去对象的拥有权，会产生一个empty的<code>shared_ptr</code>，这是*和-&gt;的行为未定义</p>
+<ul>
+<li>可以通过lock检查是否还拥有<code>shared_ptr</code></li>
+<li>占有对象时不让<code>shared_ptr</code>释放</li>
+</ul>
+</li>
+<li><p><code>weak_ptr</code>只提供少量的操作，用来创建、复制、赋值以及转换为一个<code>shared_ptr</code>，或进行检查，操作原始指针都必需通过lock方法转成<code>shared_ptr</code></p>
+</li>
+<li><p>判断指针是否有效：</p>
+<ul>
+<li>expired，比<code>use_count</code>速度更快</li>
+<li>用<code>shared_ptr</code>构造函数将<code>weak_ptr</code>转换为一个<code>shard_ptr</code></li>
+<li>调用<code>use_count</code>，返回0表示不共享，这个接口效率不高，建议调试使用</li>
+</ul>
+</li>
+<li><p>不能同时使用普通指针和智能指针管理同一个对象</p>
+</li>
+<li><p><code>shared_from_this</code>：建立源自this的<code>shared_ptr</code>，通常用在需要在方法中直接返回当前类的<code>shared_ptr</code>时</p>
+<ul>
+<li><p>不能从普通对象<code>shared_from_this</code></p>
+<pre><code>shared_ptr&lt;Person&gt; sp = make_shared&lt;Person&gt;(&quot;Nico&quot;);
+shared_ptr&lt;Person&gt; sp2 = sp-&gt;shared_from_this();        // OK
+Persion p1(&quot;Nico&quot;);
+shared_ptr&lt;Person&gt; sp3 = p1.shared_from_this();            // Error!
+</code></pre></li>
+<li><p>不能在构造函数内部调用<code>shared_from_this()</code>，因为此时<code>weak_ptr</code>还没初始化</p>
+</li>
+<li><p><strong>补充：重要！</strong></p>
+<ul>
+<li><p><code>shared_from_this()</code>在一个类中需要传递类对象本身<code>shared_ptr</code>的地方使用<code>shared_from_this</code>函数来获得指向自身的<code>shared_ptr</code>，它是<code>enable_shared_from_this&lt;T&gt;</code>的成员函数，返回<code>shared_ptr&lt;T&gt;</code>。<br>首先需要注意的是：这个函数仅在<code>shared_ptr&lt;T&gt;</code>的构造函数被调用之后才能使用。原因是<code>enable_shared_from_this::weak_ptr</code>并不在<code>enable_shared_from_this&lt;T&gt;</code>构造函数中设置，而是在<code>shared_ptr&lt;T&gt;</code>的构造函数中设置。 </p>
+<pre><code>01.class D:public boost::enable_shared_from_this&lt;D&gt;  
+02.{  
+03.public:  
+04.    void func()  
+05.    {  
+06.        boost::shared_ptr&lt;D&gt; p=shared_from_this();  
+07.    }  
+08.};  
+09.void main()  
+10.{  
+11.    D d;  
+12.    d.func();      // Error，子类对象d没有经过shared_ptr构造，没有初始化weak_ptr
+13.}  
+
+01.void main()  
+02.{  
+03.    boost::shared_ptr&lt;D&gt; d(new D);  
+04.    d-&gt;func();  
+05.}  
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>- 要使`shared_from_this`产生的`shared_ptr`可用，需要执行3个动作：
+    &gt; 首先调用基类`enable_shared_from_this&lt;&gt;`的构造函数；
+    &gt; 
+    &gt; 其次调用子类的构造函数；
+    &gt; 
+    &gt; 最后在实际使用时，调用`shared_from_this`时要保证调用者本身已经是一个`shard_ptr`，才能使this生成的`shared_ptr`可用。
+
+- 是第3个动作通过一个已有的`shared_ptr`设置了`enable_shared_from_this&lt;D&gt;`的`weak_ptr`，而不是第1个动作。这个地方是很违背c++常理和逻辑的，必须小心。 
+
+- 结论是：不要在构造函数中使用`shared_from_this`；其次，如果要使用`shared_ptr`，则应该在所有地方均使用，不能使用原始对象这种方式，也决不要传递裸指针
+</code></pre><ol>
+<li><p><code>shared_ptr</code>与<code>weak_ptr</code></p>
+<ul>
+<li><p><code>shared_ptr</code></p>
+<ul>
+<li>一个empty <code>shared_ptr</code>并不能分享对象拥有权，<code>use_count</code>返回0</li>
+<li>比较操作符比较的是内部原始指针指向的对象</li>
+<li>不提供release操作以放弃拥有权，并将对象控制权交给调用者</li>
+<li><p><code>make_shared&lt;&gt;</code>比直接构造速度更快，因为只进行了一次内存分配，直接构造会分配两次，一次针对原始对象，一次对<code>shared_ptr</code>本身</p>
+<pre><code>shared_ptr&lt;X&gt;(new X);    // 需要二次分配，慢
+make_shared&lt;X&gt;();        // 一次分配，快
+</code></pre></li>
+<li><p>cast可以得到不同类型的<code>shared_pointer</code>，不能使用一般的cast操作符，其结果是未定义的</p>
+</li>
+<li><p>aliasing构造函数允许在指向一个对象的同时持有另一个<code>shared_ptr</code>，通常用在指向一个一个已经被<code>shared_ptr</code>管理的对象的属性时，同时持有这个对象的<code>shared_ptr</code>，以防止这个对象被delete</p>
+<pre><code>struct A {};
+struct B { A a; };
+shared_ptr&lt;B&gt; pb(new B);
+shared_ptr&lt;A&gt; pa(pb, &amp;pb-&gt;a);
+</code></pre></li>
+</ul>
+</li>
+<li><p>weak_ptr</p>
+<ul>
+<li>不共享对象，<code>use_count</code>返回<code>shared_ptr</code>的共享次数</li>
+<li>default构造函数生成empty的<code>weak_ptr</code>，此时expired为true</li>
+<li>lock时生成一个<code>shared_ptr</code>才可操作原始对象，此期间共享次数+1</li>
+</ul>
+</li>
+<li><p>线程安全的接口</p>
+<pre><code>atomic_
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<p>##三、unique_ptr</p>
+<ol>
+<li><p>使用</p>
+<ul>
+<li>指向的对象只有一个拥有者，实现独占式拥有</li>
+<li>不提供++等算术操作</li>
+<li><p>不支持以赋值语法初始化，必须直接初始化</p>
+<pre><code>std::unique_ptr&lt;int&gt; up = new int; // ERROR
+std::unique_ptr&lt;int&gt; up(new int);  // OK
+</code></pre></li>
+<li><p>不可拷贝，不提供copy构造函数和赋值操作符</p>
+</li>
+</ul>
+</li>
+<li><p>转移所有权</p>
+<ul>
+<li><p>unique_ptr不可拷贝或者复制，转移只能使用move语义，如果被move赋值的指针原来拥有对象，会先调用delete删除掉原来的对象</p>
+<pre><code>std::unique_ptr&lt;int&gt; up(new int);
+std::unique_ptr&lt;int&gt; up1(up);            // ERROR
+std::unique_ptr&lt;int&gt; up1(std::move(up));    // OK
+</code></pre></li>
+<li><p>做函数参数时，需要std::move显示转换为右值，否则因为不支持copy会有编译错误</p>
+<pre><code>void add(std::unique_ptr&lt;int&gt; up);
+add(std::move(up));
+</code></pre></li>
+<li><p>做函数返回值时，不用move，此时编译器会自动尝试加上move</p>
+</li>
+</ul>
+</li>
+<li><p>资源管理</p>
+<ul>
+<li>对象构造期间发生异常，只有完全构造好的成分，其析构函数才会被调用，因此构造期间有多次资源分配，如果使用原始指针，很容易造成资源泄漏</li>
+<li>使用智能指针接管资源，可以减轻析构函数的负担，同时避免因构造期间抛出异常而造成资源泄漏</li>
+<li>可以避免资源拷贝</li>
+</ul>
+</li>
+<li><p>使用Array</p>
+<ul>
+<li><p>Array的释放使用delete[]，所以不能使用普通形式管理</p>
+<pre><code>std::unique&lt;std::string&gt; up(new std::string[10]);    // ERROR
+</code></pre></li>
+<li><p>C++标准库提供了一个偏特化版本的<code>unique_ptr</code>来处理Array，在所有权转移时调用delete[]</p>
+<pre><code>std::unique&lt;std::string[]&gt; up(new std::string[10]);    // OK
+</code></pre></li>
+<li><p>这个版本不提供*和-&gt;，通过下标操作符[]来访问数组</p>
+<pre><code>std::cout &lt;&lt; *up &lt;&lt; std::endl;        // ERROR
+std::cout &lt;&lt; up[0] &lt;&lt; std::endl;    // OK
+</code></pre></li>
+<li><p>注意C++数组不能使用多态的方式操作，不可以接受派生类型作为初值</p>
+</li>
+</ul>
+</li>
+<li><p>deleter</p>
+<ul>
+<li><p>普通和Array偏特化的声明，注意默认的template实参会自动用于偏特化版本</p>
+<pre><code>template&lt;typename T, typename D = default_delete&lt;T&gt;&gt; class unique_ptr;    // 普通版本
+template&lt;typename T, typename D&gt; class unique_ptr&lt;T[], D&gt;;    // 偏特化版本
+</code></pre></li>
+<li><p>如果普通delete和delete[]都不能满足，就要定义自己的deleter，此时必须指明deleter类型作为第二个template实参（在<code>shared_ptr</code>中不需要）</p>
+<pre><code>MyDeleter;    // 函数对象
+std::unique_ptr&lt;ClassA, MyDeleter&gt; up(new ClassA());
+</code></pre></li>
+<li><p>如果用lambda形式定义deleter，需要声明类型为<code>void(*)(T*)</code>或<code>std::function&lt;void(T*)&gt;</code>，或者使用decltype</p>
+<pre><code>std::unique_ptr&lt;int, void(*)(int*)&gt; up(new, int[10], [](int* p) { 
+    ... delete[] p; 
+    });
+std::unique_ptr&lt;int, std::function&lt;void(int*)&gt;&gt; up(new, int[10], [](int* p) { 
+    ... delete[] p;         
+    });    
+auto l = [](int* p) {
+    ... delete[] p;         
+    });    
+std::unique_ptr&lt;int, decltype(l)&gt; up(new, int[10], l);
+</code></pre></li>
+<li><p>采用alias template来避免每次建立指针时都需要指明deleter类型</p>
+<pre><code>template &lt;typename T&gt;
+using uniquePtr = std::unique_ptr&lt;T, void(*)(T*)&gt;;    // alias template
+uniquePtr&lt;int&gt; up(new int[10], [](int* p) {
+    ... delete[] p;         
+    });    
+</code></pre></li>
+</ul>
+</li>
+<li><p>细节</p>
+<ul>
+<li><code>unique_ptr</code>的主要目的是确保在pointer寿命结束时，相应对象被删除以保证资源被清理干净，这有助于异常安全性</li>
+<li>相比<code>shared_pointer</code>，它能保证最小的时间开销和空间开销</li>
+<li>如果一个<code>unique_ptr</code>为空，表示未拥有对象，此时get()返回nullptr</li>
+<li>为了最大可能的优化性能和开销，应该使用function object或是lambda作为deleter</li>
+</ul>
+</li>
+</ol>
+<p>##四、auto_ptr</p>
+<ol>
+<li><p>C++11不在支持<code>auto_ptr</code>，因为其正常的copy和assignment操作被设计成具有move语义，容易误用，特别是做实参的时候，正常的传参会导致对象在函数调用后被删除</p>
+<pre><code>void int_print(auto_ptr&lt;int&gt; p) {
+    cout &lt;&lt; p.get() &lt;&lt; endl;
+}
+std::auto_ptr&lt;int&gt; p(new int);
+*p = 1;
+int_print(p);        // Warning! p will be deleted after this call
+*p = 2;                // Error!
+</code></pre></li>
+<li><p><code>unique_ptr</code> 不会发生这个问题，因为转移语义必需通过<code>std::move()</code>传递实参</p>
+</li>
+</ol>
+<p>##五、总结</p>
+<ol>
+<li><p>C++11的smart pointer提供两个概念：</p>
+<blockquote>
+<p>共享所有权：shared_ptr</p>
+<p>独占所有权：unique_ptr</p>
+</blockquote>
+</li>
+<li><p>同时提供这两个pointer的原因，是为了针对不同的应用场合提高性能</p>
+<ul>
+<li><code>shared_ptr</code>是以非侵入式的非直观的方法完成的，意味着所管理的对象不需要任何条件，所以可以被用于任何类型，无论是自定义还是内置类型，代价是对象内部复杂，需要额外的辅助数据成员进行管理，因此无法进行很多优化动作</li>
+<li><code>unique_pointer</code>不需要这样的额外开销，它们的智能建立在特殊的构造和拷贝语义上，如果deleter是无状态或数据项为空，其所消费的内存和运行期额外开销应该和native pointer相同。</li>
+</ul>
+</li>
+<li><p>使用</p>
+<ul>
+<li>绝对不要混用普通指针与智能指针管理同一对象</li>
+<li><code>unique_ptr</code>管理array的偏特化版本，弹性高而性能低</li>
+</ul>
+</li>
+</ol>
+<p>2015-9-6<br>杜鹏</p>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《The-C-Standard-Library-第二版》-第五章-通用工具-2-——-智能指针/" data-id="cio1njx6500ualvfyvtzz3566" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《The-C-Standard-Library-第二版》-第六章-标准模板库-1-——-容器/" class="pre">第六章 标准模板库(1) —— 容器</a><a href="/2016/05/11/阅读笔记-《The-C-Standard-Library-第二版》-第八章-容器使用细节/" class="next">第八章 容器使用细节</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

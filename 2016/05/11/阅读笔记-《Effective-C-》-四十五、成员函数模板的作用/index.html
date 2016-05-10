@@ -1,0 +1,117 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>四十五、成员函数模板的作用 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">四十五、成员函数模板的作用</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">四十五、成员函数模板的作用</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p><strong>智能指针（smart pointers）是指行为像指针的对象，可以提供指针没有的机能。STL容器的迭代器几乎总是智能指针。我们以智能指针为例，讨论成员函数模板的神奇作用。</strong></p>
+<p>##一、隐式转换（implicit conversions）</p>
+<ol>
+<li><p>智能指针的一大特点是对隐式转换的支持，如：</p>
+<pre><code>class Top { …… };
+class Middle : public Top { …… };
+class Bottom : public Middle { …… };
+
+Top* pt1 = new Middle;            //将Middle*隐式转换为Top*
+Top* pt2 = new Bottom;            //将Bottom*隐式转换为Top*    
+const Top* pct2 = pt1;            //将Top*隐式转换为const Top*
+</code></pre></li>
+</ol>
+<p>##二、在智能指针的定义中支持隐式转换<br>    定义一个智能指针的类模板：</p>
+<pre><code>template&lt;typename T&gt;
+class SmartPtr {
+public:
+    explicit SmartPtr(T* realPtr);                    //以内置原始指针完成初始化
+    ……
+};
+
+我们希望能够这样：
+
+SmartPtr&lt;Top&gt; pt1 = SmartPtr&lt;Middle&gt;(new Middle);    //将SmartPtr&lt;Middle&gt;转换为SmartPtr&lt;Top&gt;
+SmartPtr&lt;Top&gt; pt2 = SmartPtr&lt;Bottom&gt;(new Bottom);    //将SmartPtr&lt;Bottom&gt;转换为SmartPtr&lt;Top&gt;
+const SmartPtr&lt;Top&gt;pct2 = pt1;                        //将SmartPtr&lt;Top&gt;转换为SmartPtr&lt;const Top&gt;
+</code></pre><ul>
+<li>但是，同一个template的不同实例化之间并不存在什么关系，所以对编译器来说<code>SmartPtr&lt;Middle&gt;和SmartPtr&lt;Top&gt;</code>是完全不同的class，如果要实现这样的转换，需要代码级的支持。</li>
+</ul>
+<p>##三、构造函数</p>
+<ol>
+<li>要支持向上转型，需要构造函数能接受一个类的派生类，这与模板的实例化产生矛盾。因为实例化的时候生成一个既定的类，此时它不可能知道自己的派生类类型，只有当它被继承时才可能产生派生类类型。</li>
+<li>要解决这个问题，就需要构造一个与模板类型不同的构造函数，接受来自不同类型的参数，称之为泛化（generalized）拷贝构造函数。</li>
+<li><p>所以我们最终不是写一个构造函数，而是要写一个构造函数模板，作用是为class生成合适类型的构造函数，以支持隐式类型转换：</p>
+<pre><code>template&lt;typename T&gt;
+class SmartPtr {
+public:
+    template&lt;typename U&gt;                    //成员函数模板
+    SmartPtr(const SmartPtr&lt;U&gt;&amp; other);        //通过作为参数的SmartPtr对象来构造
+    ……
+};
+</code></pre></li>
+<li><p>这个构造函数未被声明为explicit，是因为原始指针之间的类型转换就是隐式转换，如derived class pointer转为base class pointer，所以这里应符合其行为。</p>
+</li>
+</ol>
+<p>##四、类型匹配</p>
+<ol>
+<li><p>通过上面泛化（generalized）拷贝构造函数的定义，已经可以支持隐式类型转换，但得到似乎比想要的多。由于对转换未加限定，上述的定义使得任意类型的SmartPtr都可以转换为当前类型，比如SmartPtr<top>转换为SmartPtr<middle>，这不是我们希望的，所以必须对这一成员函数模板（member function template）所创建的函数成员进行筛选。</middle></top></p>
+</li>
+<li><p>智能指针支持get()方法获取其所保持的原始指针，这就要在类中添加保持原始指针的成员，并且在构造函数中进行初始化，可以通过这样的初始化来约束构造函数带来的转换行为：</p>
+<pre><code>template&lt;typename T&gt;
+class SmartPtr {
+public:
+    template&lt;typename U&gt;                
+    SmartPtr(const SmartPtr&lt;U&gt;&amp; other)             
+        : heldPtr(other.get()) { … }        //用原始指针来初始化，要求能够隐式类型转换
+    T* get() const { return heldPtr; }
+    ……
+private:
+    T* heldPtr;                                //保存原始指针
+};    
+</code></pre></li>
+<li><p>这里对heldPtr的初始化使用了作为拷贝构造函数参数的SmartPtr对象的原始指针，即存在<code>U*-&gt;T*</code>的隐式类型转换，只有在原始指针可以转换的情况下，类型匹配才能成功，从而限制了无法转换的类型。</p>
+</li>
+</ol>
+<p>##五、赋值操作<br>    tr1::shared_ptr的定义如下：</p>
+<pre><code>template&lt;typename T&gt;
+class SmartPtr {
+public:
+    template&lt;typename Y&gt;                    //构造任何兼容内置指针类型
+        explicit shared_ptr(Y* p);
+    template&lt;typename Y&gt;                    //泛化（generalized）拷贝构造函数    
+        shared_ptr(shared_ptr&lt;Y&gt; const&amp; r);
+    template&lt;typename Y&gt;                    //weak_ptr类型
+        explicit shared_ptr(weak_ptr&lt;T&gt; const&amp; r);    
+    template&lt;typename Y&gt;                    //auto_ptr类型
+        explicit shared_ptr(auto_ptr&lt;Y&gt;&amp; r);        
+    template&lt;typename Y&gt;                    //赋值给任何兼容的shared_ptr类型    
+        shared_ptr&amp; operator=(shared_ptr&lt;Y&gt; const&amp; r);
+    template&lt;typename Y&gt;                    //赋值给auto_ptr类型    
+        shared_ptr&amp; operator=(auto_ptr&lt;Y&gt;&amp; r);
+    ……
+};
+</code></pre><ol>
+<li>泛化拷贝构造函数没有explicit，这是为了从一个<code>shared_ptr</code>类型到另一个<code>shared_ptr</code>类型的隐式类型转换。</li>
+<li>其它构造函数都有explicit，意味着不能从其它类型隐式转换到<code>shared_ptr</code>类型。</li>
+<li><code>auto_ptr</code>类型的参数没有const，是因为对一个<code>auto_ptr</code>的复制操作是破坏性的。</li>
+</ol>
+<p>##六、合成成员函数</p>
+<ol>
+<li>当我们没有自行定义时，编译器会为我们合成4个成员函数</li>
+<li>当SmartPtr模板中的T和Y相同时，泛化拷贝构造函数被实例化为正常的拷贝构造函数。但不相同时总是会生成一个non-template的拷贝构造函数。</li>
+<li><p>上事实说明，要同时声明泛化拷贝构造函数和正常的拷贝构造函数。赋值（assignment）操作符也一样。</p>
+<pre><code>template&lt;typename T&gt;
+class SmartPtr {
+public:
+    shared_ptr(shared_ptr const&amp; r);                //copy构造函数
+
+    template&lt;typename Y&gt;                            //泛化（generalized）拷贝构造函数    
+    shared_ptr(shared_ptr&lt;Y&gt; const&amp; r);
+
+    shared_ptr&amp; operator=(shared_ptr&lt;Y&gt; const&amp; r);    //普通的赋值操作符
+
+    template&lt;typename Y&gt;                            //泛化的赋值操作符    
+    shared_ptr&amp; operator=(shared_ptr&lt;Y&gt; const&amp; r);    
+    ……
+};
+</code></pre></li>
+</ol>
+<p>##七、总结</p>
+<ol>
+<li>使用成员函数模板生成兼容素有（可兼容）类型的函数。</li>
+<li>要同时声明泛化和正常的拷贝构造函数、赋值（assignment）操作符。</li>
+</ol>
+<pre><code>杜鹏
+2012-01-17
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《Effective-C-》-四十五、成员函数模板的作用/" data-id="cio1njwzi00h1lvfy7c6o23wh" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《Effective-C-》/">《Effective C++》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《Effective-C-》-四十三、处理模板基类中的名称/" class="pre">四十三、处理模板基类中的名称</a><a href="/2016/05/11/阅读笔记-《Effective-C-》-四十九、new-hanlder使用须知/" class="next">四十九、new-hanlder使用须知</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

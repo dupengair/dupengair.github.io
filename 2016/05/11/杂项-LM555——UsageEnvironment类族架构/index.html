@@ -1,0 +1,280 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>LM555——UsageEnvironment类族架构 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">LM555——UsageEnvironment类族架构</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">LM555——UsageEnvironment类族架构</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/杂项/">杂项</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##一、UsageEnvironment类族有两个类系——UsageEnvironment和TaskScheduler, 都是单继承的派生关系：</p>
+<ol>
+<li><p>UsageEnvironment类系的派生关系：</p>
+<pre><code>UsageEnvironment -&gt; BasicUsageEnvironment0 -&gt; BasicUsageEnvironment
+</code></pre></li>
+<li><p>TaskScheduler类系的派生关系：</p>
+<pre><code>TaskScheduler -&gt; BasicTaskScheduler0 -&gt; BasicTaskScheduler
+</code></pre></li>
+</ol>
+<p>##二、UsageEnvironment类系<br>   这个类系主要是为了控制输出信息。</p>
+<ol>
+<li><p>UsageEnvironment基类（抽象类）</p>
+<pre><code>class UsageEnvironment {
+public:
+  void reclaim();
+
+  // task scheduler:
+  TaskScheduler&amp; taskScheduler() const {return fScheduler;}
+
+  // result message handling:
+  typedef char const* MsgString;
+
+  virtual MsgString getResultMsg() const = 0;
+  virtual void setResultMsg(MsgString msg) = 0;
+  virtual void setResultMsg(MsgString msg1, MsgString msg2) = 0;
+  virtual void setResultMsg(MsgString msg1, MsgString msg2, MsgString msg3) = 0;
+  virtual void setResultErrMsg(MsgString msg, int err = 0) = 0;
+  virtual void appendToResultMsg(MsgString msg) = 0;
+  virtual void reportBackgroundError() = 0;
+
+  virtual void internalError();
+
+  // &apos;errno&apos;
+  virtual int getErrno() const = 0;
+
+  // &apos;console&apos; output:
+  virtual UsageEnvironment&amp; operator&lt;&lt;(char const* str) = 0;
+  virtual UsageEnvironment&amp; operator&lt;&lt;(int i) = 0;
+  virtual UsageEnvironment&amp; operator&lt;&lt;(unsigned u) = 0;
+  virtual UsageEnvironment&amp; operator&lt;&lt;(double d) = 0;
+  virtual UsageEnvironment&amp; operator&lt;&lt;(void* p) = 0;
+
+  // a pointer to additional, optional, client-specific state
+  void* liveMediaPriv;
+  void* groupsockPriv;
+
+protected:
+  UsageEnvironment(TaskScheduler&amp; scheduler); // abstract base class
+  virtual ~UsageEnvironment();
+private:
+  TaskScheduler&amp; fScheduler;
+};
+
+    下面是对这个类成员主要在派生类中起作用，放到下面解释，这里可以关注下fScheduler成员和构造函数：
+
+  /*这里的成员变量是一个对TaskScheduler类对象的引用，在类的构造函数里用一个TaskScheduler类对象来初始化这个应用，为什么是引用，而不直接组合类呢？这是因为对UsageEnvironment类来说，外部TaskScheduler对象实现它的调度器功能，在作者看来这只是UsageEnvironment的一部分，没了它UsageEnvironment还是存在，只是缺少一个功能，UsageEnvironment类不依赖于这个对象而存在(换句话说两者生命周期不一样)，所以引用一个TaskScheduler对象，在初始化时进行绑定就行了。*/
+  TaskScheduler&amp; fScheduler;
+</code></pre></li>
+</ol>
+<ol>
+<li><p>BasicUsageEnvironment0派生类（抽象类）</p>
+<pre><code>class BasicUsageEnvironment0: public UsageEnvironment {
+public:
+  // redefined virtual functions:
+  virtual MsgString getResultMsg() const;
+  virtual void setResultMsg(MsgString msg);
+  virtual void setResultMsg(MsgString msg1, MsgString msg2);
+  virtual void setResultMsg(MsgString msg1, MsgString msg2, MsgString msg3);
+  virtual void setResultErrMsg(MsgString msg, int err = 0);
+  virtual void appendToResultMsg(MsgString msg);
+  virtual void reportBackgroundError();
+
+protected:
+  BasicUsageEnvironment0(TaskScheduler&amp; taskScheduler);
+  virtual ~BasicUsageEnvironment0();
+
+private:
+  void reset();
+
+  char fResultMsgBuffer[RESULT_MSG_BUFFER_MAX];
+  unsigned fCurBufferSize;
+  unsigned fBufferMaxSize;
+};
+</code></pre></li>
+</ol>
+<pre><code>  这个派生类没有重载getErrn()和5个输出流操作符&lt;&lt;，仍然为一个抽象类，只实例化了基类的message handling系列虚函数，说明这个派生类的功能是用来进行基类的message处理。这是对基类的功能分割，对于基类的消息处理来说，可能有多种不同的消息方式，可以派生多个BasicUsageEnvironmentX子类去处理，通过基类指针的多态方式去调用。而对于特定message处理的错误返回和输出流控制，则可以有多种不同的处理方式，这就是对BasicUsageEnvironmentX子类的派生，这时才完成的抽象基类的最后实例化。下面可以看到这个类实现了singleton的设计模式，其思想正是一个纯粹的强制性多态，不允许通过派生类的具名对象去调用方法。
+
+  下面是对这个类每个成员的解释：
+//msg缓冲区
+char fResultMsgBuffer[RESULT_MSG_BUFFER_MAX];
+
+//当前缓冲区指针，指向第一个空位置
+unsigned fCurBufferSize;
+
+//缓冲区最大值，构造函数中初始化为RESULT_MSG_BUFFER_MAX
+unsigned fBufferMaxSize;
+
+//构造函数，调用基类构造函数初始化继承的基类数据成员 TaskScheduler&amp; fScheduler;
+BasicUsageEnvironment0(TaskScheduler&amp; taskScheduler);
+
+//返回msg缓冲区
+virtual MsgString getResultMsg() const;
+
+//msg为单独字符串时，先调用reset()清零fResultMsgBuffer，再调用appendToResultMsg()将msg添加到缓冲区
+virtual void setResultMsg(MsgString msg);
+
+//msg为两个字符串时，先调用单参数的setResultMsg()更新msg缓冲区(存在msg1)，再将msg2添加到缓冲区中
+virtual void setResultMsg(MsgString msg1, MsgString msg2);
+
+//msg为三个字符串时，先调用双参数的setResultMsg()更新msg缓冲区(存在msg1、msg2)，再将msg3添加到缓冲区中
+virtual void setResultMsg(MsgString msg1, MsgString msg2, MsgString msg3);
+
+//Linux下为调用setResultMsg()
+virtual void setResultErrMsg(MsgString msg, int err = 0);
+
+//添加msg到fResultMsgBuffer，同时刷新已用buffer值fCurBufferSize
+virtual void appendToResultMsg(MsgString msg);
+
+//将msg缓冲区输出到标准错误stderr
+virtual void reportBackgroundError();
+
+//重设msg输出缓冲区fResultMsgBuffer，清零已用buffer值fCurBufferSize
+void reset();
+</code></pre><ol>
+<li><p>BasicUsageEnvironment派生类</p>
+<pre><code>class BasicUsageEnvironment: public BasicUsageEnvironment0 {
+public:
+  static BasicUsageEnvironment* createNew(TaskScheduler&amp; taskScheduler);
+
+  // redefined virtual functions:
+  virtual int getErrno() const;
+
+  virtual UsageEnvironment&amp; operator&lt;&lt;(char const* str);
+  virtual UsageEnvironment&amp; operator&lt;&lt;(int i);
+  virtual UsageEnvironment&amp; operator&lt;&lt;(unsigned u);
+  virtual UsageEnvironment&amp; operator&lt;&lt;(double d);
+  virtual UsageEnvironment&amp; operator&lt;&lt;(void* p);
+
+protected:
+  BasicUsageEnvironment(TaskScheduler&amp; taskScheduler);
+      // called only by &quot;createNew()&quot; (or subclass constructors)
+  virtual ~BasicUsageEnvironment();
+};
+    这个最终的派生类实现了对具体消息的错误返回和输出流控制，同时提供了建立对象的createNew()方法，由于构造函数定义为保护模式，所以这个类只能建立无名对象，同时通过这个静态成员函数为整个类服务。由于Env这个类是配置整个程序运行的环境设置，和进程内部的任务调度，所以只需要在程序开始时，对类的一个实例进行配置，在整个程序生命周期内维护一个环境配置，因此采用Singleton的设计模式是最合适的，应用程序只存在一份运行环境，并且是公共的，不属于任何私有对象。不过这里不是严格意义的上Singleton，因为没有通过静态成员对实例限制为唯一的，不知道为什么没有这么做。
+
+    下面是对这个类每个成员的解释：
+  //用于创建一个这个类的无名对象(new方法)，这里定义成静态成员函数是为了给整个类使用，而不是给一个具体对象用。在运用中，应用程序只需要调用一次建立一个应用程序范围内的全局对象，来初始化应用程序的运行环境。
+  static BasicUsageEnvironment* createNew(TaskScheduler&amp; taskScheduler);
+
+  //返回错误号
+  virtual int getErrno() const;
+
+  //重载输出流操作符，在输出到ostream的同时，调用fprintf将所有信息输出至stderr
+  virtual UsageEnvironment&amp; operator&lt;&lt;(char const* str);
+  virtual UsageEnvironment&amp; operator&lt;&lt;(int i);
+  virtual UsageEnvironment&amp; operator&lt;&lt;(unsigned u);
+  virtual UsageEnvironment&amp; operator&lt;&lt;(double d);
+  virtual UsageEnvironment&amp; operator&lt;&lt;(void* p);
+</code></pre></li>
+</ol>
+<p>##三、TaskScheduler类系<br>   这个类系实现了协议栈的二级调度。</p>
+<ol>
+<li><p>TaskScheduler基类（抽象类）</p>
+<pre><code>class TaskScheduler {
+public:
+  virtual ~TaskScheduler();
+
+  virtual TaskToken scheduleDelayedTask(int64_t microseconds, TaskFunc* proc, void* clientData) = 0;
+  virtual void unscheduleDelayedTask(TaskToken&amp; prevTask) = 0;
+  virtual void rescheduleDelayedTask(TaskToken&amp; task, int64_t microseconds, TaskFunc* proc, void* clientData);
+  typedef void BackgroundHandlerProc(void* clientData, int mask);
+    #define SOCKET_READABLE    (1&lt;&lt;1)
+    #define SOCKET_WRITABLE    (1&lt;&lt;2)
+    #define SOCKET_EXCEPTION   (1&lt;&lt;3)
+  virtual void setBackgroundHandling(int socketNum, int conditionSet, BackgroundHandlerProc* handlerProc, void* clientData) = 0;
+  void disableBackgroundHandling(int socketNum) { setBackgroundHandling(socketNum, 0, NULL, NULL); }
+  virtual void moveSocketHandling(int oldSocketNum, int newSocketNum) = 0;
+  virtual void doEventLoop(char* watchVariable = NULL) = 0;
+  virtual EventTriggerId createEventTrigger(TaskFunc* eventHandlerProc) = 0;
+  virtual void deleteEventTrigger(EventTriggerId eventTriggerId) = 0;
+  virtual void triggerEvent(EventTriggerId eventTriggerId, void* clientData = NULL) = 0;
+  void turnOnBackgroundReadHandling(int socketNum, BackgroundHandlerProc* handlerProc, void* clientData) {
+    setBackgroundHandling(socketNum, SOCKET_READABLE, handlerProc, clientData);
+  }
+  void turnOffBackgroundReadHandling(int socketNum) { disableBackgroundHandling(socketNum); }
+  virtual void internalError(); // used to &apos;handle&apos; a &apos;should not occur&apos;-type error condition within the library.
+
+protected:
+  TaskScheduler(); // abstract base class
+};
+    可以看到，抽象基类定义的任务调度类方法成员主要有三类，一类是任务调度的方法成员——Task Shedule，一类是后台处理socket——xxxxBackgroundxxxxHandling，一类是事件处理——Event，包括事件触发控制和事件循环。
+    基类中实现了rescheduleDelayedTask()方法和internalError()方法，即对TaskScheduler类来说，内部错误的处理方式为about()终止，重新调度延迟任务（rescheduleDelayedTask）的方式为先停止对该task的调度任务（unscheduleDelayedTask），然后直接进行手动调度（scheduleDelayedTask）。这两个方法在基类中实现，统一了所有子类的处理方式，但具体的处理细节，随子类的不同而不同。
+    在基类中只定义了派生类共有的方法，没有定义成员变量，把方法的实现完全留到派生类完成。
+</code></pre></li>
+</ol>
+<ol>
+<li><p>BasicTaskScheduler0派生类（抽象类）</p>
+<pre><code>class BasicTaskScheduler0: public TaskScheduler {
+public:
+  virtual ~BasicTaskScheduler0();
+  virtual void SingleStep(unsigned maxDelayTime = 0) = 0;
+
+public:
+  virtual TaskToken scheduleDelayedTask(int64_t microseconds, TaskFunc* proc, void* clientData);
+  virtual void unscheduleDelayedTask(TaskToken&amp; prevTask);
+
+  virtual void doEventLoop(char* watchVariable);
+  virtual EventTriggerId createEventTrigger(TaskFunc* eventHandlerProc);
+  virtual void deleteEventTrigger(EventTriggerId eventTriggerId);
+  virtual void triggerEvent(EventTriggerId eventTriggerId, void* clientData = NULL);
+
+protected:
+  BasicTaskScheduler0();
+
+protected:
+  DelayQueue fDelayQueue;
+  HandlerSet* fHandlers;
+  int fLastHandledSocketNum;
+
+  EventTriggerId fTriggersAwaitingHandling, fLastUsedTriggerMask;
+  TaskFunc* fTriggeredEventHandlers[MAX_NUM_EVENT_TRIGGERS];
+  void* fTriggeredEventClientDatas[MAX_NUM_EVENT_TRIGGERS];
+  unsigned fLastUsedTriggerNum;
+};
+
+这个派生类也是个抽象类，主要实现了基类方法的任务调度schedule task系列方法和事件处理event系列方法，这里才出现了数据成员，能看到这个类实例化的调度方法里组合了DelayQueue类。最为重要的SingleStep()虚函数仍然未实现，最上层的调度控制留给最终的派生类来完成。下面是对这个类每个成员的解释：
+//构造函数，其中将事件处理方法集fTriggeredEventHandlers[]和客户端数据集fTriggeredEventClientDatas[]初始化为空，并且new了一个HandlerSet类的无名对象，由fHandlers指向这个对象，在析构函数中会delete这个对象
+BasicTaskScheduler0()；
+
+//析构函数，deletedelete成员fHandlers指向的上面构造函数创建的HandlerSet类的无名对象
+~BasicTaskScheduler0()
+
+//任务调度函数，这个函数用要调用的任务属性（microseconds，TaskFunc，clientData）生成一个新的alarmHandler加入到fDelayQueue中，返回一个token。这里的AlarmHandler类将handleTimeout()方法从DelayQueueEntry类中继承为一个虚函数，但声明为private的，这个类的handleTimeout()方法就不再会被继承。handleTimeout()方法的调用在DelayQueueEntry类的另一个派生类DelayQueue的handleAlarm()函数里，DelayQueue类被组合在BasicTaskScheduler类中,而AlarmHandler类又被组合在DelayQueue类中,在BasicTaskScheduler类的方法SingleStep中调用
+virtual TaskToken scheduleDelayedTask(int64_t microseconds, TaskFunc* proc, void* clientData);
+
+//从fDelayQueue中取出alarmHandler，delete掉
+virtual void unscheduleDelayedTask(TaskToken&amp; prevTask);
+
+//一个while(1)死循环调用SingleStep()，处理sockets和定时器事件，通过watchVariable变量退出
+virtual void doEventLoop(char* watchVariable);
+
+//在fLastUsedTriggerNum+1的基础上寻找fTriggeredEventHandlers[]为空的数组成员 ，将eventHandlerProc函数赋值到该成员，并且将对应序号的fTriggeredEventClientDatas[]成员置为NULL，同时更新fLastUsedTriggerMask、fLastUsedTriggerNum（每添加一个trigger，就将除fTriggersAwaitingHandling以外的所有成员更新一遍）。在DeviceSource的构造函数中被调用，即构造一个DeviceSource对象，添加一个EventTrigger。注意函数体里面操作的mask，是从最高位开始使用的，可使用的低位为空。
+virtual EventTriggerId createEventTrigger(TaskFunc* eventHandlerProc);
+
+//首先将eventTriggerId位从fTriggersAwaitingHandling中清除，然后从fTriggeredEventHandlers[]中删除eventTriggerId对应的eventHandlerProc，上面函数的逆过程，里面有个小优化，当eventTriggerId=fLastUsedTriggerMask的时候，即删除的是最近一次添加的，就直接删除对应项。否则有可能mask在异常置位的情况下，不止一位为1，就用for循环去找，删除所有mask位为1的项，这里的eventTriggerId即是mask。同样，在在DeviceSource的析构函数中被调用。
+virtual void deleteEventTrigger(EventTriggerId eventTriggerId);
+
+//将clientData赋值给eventTriggerId的mask对应的TriggeredEventClientDatas[]成员，然后将fTriggersAwaitingHandling中的eventTriggerId位置位，程序注释说将置位放在最后是为了避免多线程环境下的竞争条件。将fTriggersAwaitingHandling置位的fTriggeredEventHandlers[]会在SingleStep()中被调用。
+virtual void triggerEvent(EventTriggerId eventTriggerId, void* clientData = NULL);
+</code></pre></li>
+</ol>
+<ol>
+<li><p>BasicTaskScheduler</p>
+<pre><code>class BasicTaskScheduler: public BasicTaskScheduler0 {
+public:
+  static BasicTaskScheduler* createNew();
+  virtual ~BasicTaskScheduler();
+
+protected:
+  BasicTaskScheduler();
+
+protected:
+  virtual void SingleStep(unsigned maxDelayTime);
+  virtual void setBackgroundHandling(int socketNum, int conditionSet, BackgroundHandlerProc* handlerProc, void* clientData);
+  virtual void moveSocketHandling(int oldSocketNum, int newSocketNum);
+
+protected:
+  int fMaxNumSockets;
+  fd_set fReadSet;
+  fd_set fWriteSet;
+  fd_set fExceptionSet;
+};
+
+和env类系一样，这个派生类才最终完成了TaskScheduler类系的实例化，即实现了剩下的socket后台处理方法。也是一样由于是控制全局运行环境的类，本类采用不完整的单例模式设计，用一个实例化的对象来控制全局。
+
+//调用基类接口scheduleDelayedTask，将本地静态函数BasicTaskScheduler()加入到基类成员fDelayQueue队列中
+BasicTaskScheduler();
+</code></pre></li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/杂项-LM555——UsageEnvironment类族架构/" data-id="cio1njwrv008klvfyz9j7p482" class="article-share-link">分享到</a><div class="tags"><a href="/tags/杂项/">杂项</a></div><div class="post-nav"><a href="/2016/05/11/杂项-Linux学习经验/" class="pre">Linux学习经验</a><a href="/2016/05/11/杂项-DM365datasheet阅读笔记/" class="next">DM365datasheet阅读笔记</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

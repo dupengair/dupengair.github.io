@@ -1,0 +1,165 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第三章 套接字编程简介 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第三章 套接字编程简介</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第三章 套接字编程简介</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##一、套接字地址结构</p>
+<ol>
+<li>可以在两个方向上传递：内核 &lt;-&gt; 进程</li>
+<li>套接字地址结构总是以引用的方式传递void *</li>
+<li><p>IPv4 套接字地址结构 </p>
+<pre><code>#include &lt;netinet/in.h&gt;
+struct sockaddr_in {
+    uint8_t        sin_len;        /* length of structure(14) */
+    sa_family_t    sin_family;    /* unsigned short, AF_INET */
+    in_port_t      sin_port;    /* uint16_t */
+    struct in_addr sin_addr;    /* uint32_t */
+    char           sin_zero[8];    /* unused, should always be 0 */
+};
+
+struct in_addr {
+    in_addr_t     s_addr;        /* IPv4 uint32_t */
+};
+</code></pre></li>
+<li><p>通用套接字地址结构 </p>
+<pre><code>#include &lt;sys/socket.h&gt;
+struct sockaddr {
+    uint8_t        sa_len;
+    sa_family_t    sa_family;
+    char        sa_data[14];
+};
+</code></pre><ul>
+<li>用于对指向特定于协议的套接字地址结构指针进行强制类型转换</li>
+</ul>
+</li>
+<li><p>IPv6 套接字地址结构</p>
+<pre><code>#include &lt;netinet/in.h&gt;
+struct sockaddr_in6 {
+    uint8_t         sin6_len;    /* uint8_t, length of structure(28) */
+    sa_family_t     sin6_family;    /* unsigned short, AF_INET6 */
+    in_port_t       sin6_port;    /* uint16_t */
+
+    uint32_t        sin6_flowinfo    /* flow infomation L20, undefined H12 */
+    struct in6_addr sin6_addr;    
+    uint32_t    sin6_scope_id;    /* set of interfaces for a scope */
+};
+
+struct in6_addr {
+    uint8_t     s6_addr[16];    /* IPv4 uint32_t */
+};
+</code></pre></li>
+<li><p>新的通用套接字地址结构 </p>
+<pre><code>#include &lt;netinet/in.h&gt;
+struct sockaddr_storage {
+    uint8_t        ss_len;
+    sa_family_t    ss_family;
+};
+</code></pre><ul>
+<li>满足任何对齐要求</li>
+<li>足够大，支持任何套接字地址结构</li>
+<li>其它字段对用户透明，要访问必需强制转换</li>
+</ul>
+</li>
+<li><p>套接字比较</p>
+<pre><code>IPv4            IPv6            UNIX            数据链路            存储
+-----------------------------------------------------------------------------------
+sockaddr_in{}    sockaddr_in6{}    sockaddr_un{}    sockaddr_dl{}    sockaddr_storage{}    
+-------------   --------------  -------------   -------------   -------------------
+len|AF_INET        len|AF_INET6    len|AF_LOCAL    len|AF_LINK        len|AF_XXX
+-------------   --------------  -------------   -------------   -------------------
+16bit Port        16bit Port         路径名           接口索引         用户透明
+-------------   -------------- （最多104Byte）   -------------   
+IPv4 addr        flow label                        类型
+                                                名字长度
+                                                地址长度 
+                                                选择符长度
+32bit             32bit                              32bit 
+-------------   --------------                  -------------
+未用             128bit IPv6 addr               接口名称
+                                                链路层地址
+                ----------------             
+                32bit 范围ID
+-------------   ---------------  ------------   --------------   ------------------
+16Byte固定长度   128Byte固定长度   可变长度        可变长度              系统最大长度
+</code></pre></li>
+</ol>
+<p>##二、值-结果参数</p>
+<ol>
+<li>参数的传递方式取决于调用函数对结构体的传递方向</li>
+<li><p>进程-&gt;内核：指向结构体的指针 + 大小（整型）</p>
+<ul>
+<li>因为内核要知道需要从用户层拷贝多少数据，所以需要传入大小</li>
+<li><p>bind、connect、sendto</p>
+<pre><code>struct sockaddr_in cli;
+connect(sockfd, (sockaddr*)&amp;cli, sizeof(cli));
+</code></pre></li>
+</ul>
+</li>
+<li><p>内核-&gt;进程：指向结构体的指针 + 指向大小的指针</p>
+<ul>
+<li>内核需要返回大小到用户层，以便用户知道拷贝的数据量</li>
+<li><p>accept、recvfrom、getsockname、getpeername</p>
+<pre><code>struct sockaddr_in serv;
+socklen_t len;
+accept(sockfd, (sockaddr*)&amp;serv, &amp;len);
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<p>##三、大端和小端</p>
+<ol>
+<li><p>表示字节值的哪一端存储在起始地址</p>
+<pre><code>little-endian    MSB    LSB
+big-endian        LSB    MSB
+mem addr        H   L
+</code></pre></li>
+<li><p>转换函数</p>
+<pre><code>#include &lt;netinet/in.h&gt;
+uint16_t htons(uint16_t value16);
+uint32_t htonl(uint32_t value32);
+uint16_t ntohs(uint16_t value16);
+uint32_t ntohl(uint32_t value32);
+</code></pre></li>
+</ol>
+<p>##四、字节处理</p>
+<ol>
+<li>当dst与src字符串重叠时，bcopy能正确处理，memcpy不能（?）</li>
+</ol>
+<p>##五、地址转换</p>
+<ol>
+<li><p>IPv4专用</p>
+<pre><code>#include &lt;arpa/inet.h&gt;
+int inet_aton(const char *strptr, struct in_addr *addptr)
+</code></pre><ul>
+<li><p>点分十进制字符串 -&gt; IP二进制值</p>
+<p><code>in_addr_t inet_addr(const char *strptr)</code></p>
+</li>
+<li><p>点分十进制字符串 -&gt; IP二进制值    </p>
+</li>
+<li>IP全255的结果与出错相同，所以无法转换</li>
+<li><p>已废弃</p>
+<p><code>char *inet_ntoa(struct in_addr inaddr)</code></p>
+</li>
+<li><p>IP二进制值 -&gt; 点分十进制字符串</p>
+</li>
+<li>不可重入，结果指向静态内存</li>
+<li>传入结构体而不是指针（sucks）</li>
+</ul>
+</li>
+<li><p>通用</p>
+<pre><code>#include &lt;arpa/inet.h&gt;
+int inet_pton(int family, const char *strptr, void *addptr)
+成功返回1，失败0，出错-1
+const char *inet_ntop(int family, const void *addptr, char *strptr, size_t len)
+成功返回非空，失败返回NULL
+</code></pre></li>
+</ol>
+<ul>
+<li>p代表表示presentation，n代表数值numeric</li>
+<li><p>family参数错误时返回EAFNOSUPPORT</p>
+<p>   IPv4: AF_INET<br>   IPv6: AF_INET6</p>
+</li>
+<li><p>len大小用于防止用户缓冲区溢出，空间不够时返回ENOSPC</p>
+<p>   #include <netinet in.h=""><br>   #define INET_ADDRSTRLEN    16<br>   #define INET6_ADDRSTRLEN 46</netinet></p>
+</li>
+</ul>
+<p>##六、读写</p>
+<ol>
+<li>由于有buffer，套接字读写的结果可能与预期不符，需要判断返回值，根据实际操作结果判断操作是否完成</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第三章-套接字编程简介/" data-id="cio1njx6s00vblvfyf5yo0afe" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第二十一章-多播/" class="pre">第二十一章 多播</a><a href="/2016/05/11/阅读笔记-《高级C、C-编译技术》阅读笔记/" class="next">《高级C、C++编译技术》阅读笔记</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第六章 执行期语意学 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第六章 执行期语意学</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第六章 执行期语意学</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##一、对象的构造和解构<br><strong>destructor总是安插在离开作用域的地方，每一个离开点</strong></p>
+<pre><code>如：
+    {
+    A a;
+    switch(a.a)
+        case 0:
+        //安插destructor
+        return;
+        case 1:
+        //安插destructor
+        return;            
+        case 2:
+        //安插destructor
+        return;    
+    }    
+</code></pre><ul>
+<li>所以object应尽量定义在使用它的地方，否则会插入很多destructor</li>
+</ul>
+<ol>
+<li><p>global object</p>
+<ul>
+<li>第一次使用前构造，离开main之前析构</li>
+<li>全局对象放在<code>.data</code>，未赋值自动初始化为0</li>
+<li>constructor只能在程序启动时调用，而.data段中需要静态初始化</li>
+<li>linux的ELF扩充<code>.init</code>和<code>.fini</code>段支持静态初始化<code>&lt;补充：见《程序员的自我修养》4.4.2&gt;</code></li>
+<li>对每个需要静态初始化的全局对象产生一个<code>__sti</code>函数和一个<code>__std</code>函数</li>
+<li>链接器扫描所有的<code>__sti</code>和<code>__std</code>函数，分别放入<code>.init</code>和<code>.fini</code>段</li>
+<li>其初始化顺序无法保证</li>
+<li>尽量不要使用全局对象，会带来初始化顺序和异常处理的问题</li>
+</ul>
+</li>
+<li><p>local static object</p>
+<ul>
+<li>无论函数被调用多少次，local static object 的constructor和destructor都只能被调用一次</li>
+<li><p>通过全局变量来保护</p>
+<pre><code>A* func() {
+    local static A a;
+    return &amp;a;
+}
+
+转化为：
+    static A* __glb_temp = 0;
+
+    A* func() {                    
+    __glb_temp ? 0 : a.A::A(), __glb_temp=&amp;a;        //local static A a;        
+    return &amp;a;
+    }
+创建__std函数：
+    __std_a() {
+    __glb_temp ? a.A::~A(), __glb_temp=0 : 0;
+    }
+</code></pre></li>
+</ul>
+</li>
+<li><p>对象数组</p>
+<ul>
+<li>定义对象数组时，编译器需要对数组每个元素调用构造函数，可显式初始化或者调用default constructor</li>
+<li><p>对于未显式初始化的元素，编译器插入<code>array_new()</code>函数来初始化</p>
+<pre><code>void array_new( void* array,                        //数组地址
+        size_t element_size,                        //元素大小
+        int element_count,                            //元素个数
+        void (*constructor)(void *),
+        void (*destructor)(void *));                //当发生异常时，需要析构已构造的元素
+</code></pre></li>
+<li><p>数组生命期结束时，编译器插入<code>array_delete()</code>函数来销毁对象</p>
+<pre><code>void array_delete( void* array,                        //数组地址
+        size_t element_size,                        //元素大小
+        int element_count,                            //元素个数
+        void (*destructor)(void *));
+
+如 A a[10]={A(), }; 被转化为：
+A a[10]；
+
+A::A(&amp;a[0]);                                        //显式初始化第一个元素
+array_new(&amp;a+1, sizeof(A), 9, &amp;A::A, 0);            //余下的通过array_new()函数来初始化
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<p>##二、new和delete操作符</p>
+<ol>
+<li><p>new和delete</p>
+<ul>
+<li><p>new的调用包括分配内存和构造对象两个过程，还要考虑构造对象时的异常情况</p>
+<pre><code>A *a = new A;
+被转换为：
+A *a;
+if (a = _new(sizeof(A)))    {
+    try {
+        a = A::A(a);
+    }
+    catch (...) {
+        __delete(a);                            //构造对象失败回收内存
+        throw;                                    //传播异常
+    }
+}
+</code></pre></li>
+<li><p>delete调用相反，包括析构对象和释放内存，需要考虑当前地址为0的情况</p>
+<pre><code>delete a;
+被转换为：
+if (a != 0)    {
+    A::~A(a);
+    __delete(a);
+}
+</code></pre></li>
+<li><p>operator new由malloc实现, 需考虑输入的size为0的情况，也要能分配出一个地址</p>
+<pre><code>external void* operator new(size_t size) {
+    if (size == 0) size = 1;                    // size为0时转换为1，可分配正确地址
+
+    void* last_alloc;
+    while( !(last_alloc = malloc(size)) ) {        //分配不成功时重新尝试分配和调用new_handler
+        if (_new_handler) (*_new_handler)();    //允许提供定制的new_handler
+        else return 0;
+    }
+    return last_alloc;
+}
+</code></pre></li>
+<li><p>operator delete由free实现</p>
+<pre><code>external void* operator delete(void* ptr) {
+    if (ptr) free((char*)ptr);
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>针对数组的new语意</p>
+<ul>
+<li>只有元素对象定义了default constructor，<code>array_new()</code>才会被调用，以初始化所有的数组元素</li>
+<li>在构造过程中，如果个别元素抛出exception，会传播给<code>array_new()</code>，此时会析构已构造的元素</li>
+<li>delete和new的形式要配对使用，因为获得数组的维度是非常困难的，所以仅当[]出现时，delete才这么做</li>
+<li><code>array_new()</code>会在返回的内存中插入一个cookie用来存储数组维度</li>
+<li><p>delete数组的时候要特别注意类型一定和new匹配，不能以base class类型来delete由derived class类型new出来的数组，即数组不能以多态的方式来new和delete：</p>
+<pre><code>class A {}; class B: public A {}
+
+A* pa = new B[10];
+delete [] pa;                                    //error：实际上是对每个class B类型元素调用了A::~A()析构函数
+</code></pre><ul>
+<li>所以应该避免以一个base class指针指向derived class组成的数组，否则需要手动显式调用其构造函数</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>##三、placement new的语意</p>
+<ol>
+<li><p>区分operator new和placement new</p>
+<pre><code>void* mem = operator new(sizeof(A));                //operator new：分配内存
+A* pa = new(mem) A;                                    //placement new：构造对象
+</code></pre></li>
+<li><p>对placement new产生的对象，不能直接delete</p>
+<ul>
+<li>显式调用析构函数</li>
+<li><p>某些情况下编译器会调用operator delete，如异常发生时</p>
+<pre><code>delete pa;                                        //error：会释放operator new分配的内存
+pa-&gt;~A();                                        //正确：只析构对象
+</code></pre></li>
+</ul>
+</li>
+<li><p>placement new不支持多态，绝不要对base class分配的内存构造derived class对象</p>
+<pre><code>void* mem = operator new(sizeof(A));
+B* pb = new(mem) B;                                    //dangerous!
+</code></pre></li>
+<li><p>注意避免对一个已析构的地址placement new类型不同的对象，C++ standard对此没有定义</p>
+<pre><code>struct A { int a; virtual void func() { cout &lt;&lt; &quot;A&quot; &lt;&lt; endl; } };
+struct B: public A { void func() { cout &lt;&lt; &quot;B&quot; &lt;&lt; endl; } };        //两个class大小一样
+
+A a;
+    a.func();                                        // 调用 A::func()
+    a.~A();                                            // 析构A对象
+    new (&amp;a) B;                                        // 在已经析构的A对象地址上构造B对象
+    a.func();                                        // 调用哪个func()?
+</code></pre><ul>
+<li>在<code>gcc4.8.2</code>上测试初始还是A，即调用<code>A::func()</code>，貌似第二个构造不成功。</li>
+</ul>
+</li>
+</ol>
+<p>##四、临时性对象</p>
+<ol>
+<li><p>临时对象的产生</p>
+<pre><code>T a, b; T c = a + b;                                //没有临时对象，因为NRV优化可以直接在c上构造+的结果
+T a, b, c; c = a + b;                                //生成临时对象保存+的结果再拷贝给c，因为无法运行c的copy constructor，所以不能NRV优化
+T a, b; a + b;                                        //没有临时对象，因为没有目标对象
+</code></pre></li>
+<li><p>临时对象的生命期</p>
+<ul>
+<li><p>c++ standard规定，临时对象应在完整表达式执行的最后一步被销毁：</p>
+<pre><code>cout &lt;&lt; a + b &lt;&lt; endl;                            //a + b生成的临时对象，在cout执行完后才会销毁
+</code></pre></li>
+<li><p>c++ standard规定，在遇到需要根据表达式评估结果来决定是否生成临时对象时，需要在完整表达式评估过后才销毁：</p>
+<pre><code>class A {
+public:
+    A() {}
+    ~A() {}
+    operator int();
+    A func() { A a; return a; };
+};
+
+A a1, a2;
+if (a1.func()||a2.func()) { ... };
+
+被转化为：
+A a1, a2;
+
+a1.A::A();
+a2.A::A();
+
+{
+    A temp1, temp2, temp3, temp4;
+
+    temp1.A::A();
+    temp2.A::A();
+    temp3.A::A();
+    temp4.A::A();
+
+    if ( temp1 = a1.func(), temp2 = temp1.operator int(), temp2 ) {
+        ...
+
+    } else if ( temp3 = a2.func(), temp4 = temp3.operator int(), temp4 ) {
+        ...
+        temp3.A::~A();
+        temp4.A::~A();
+    } else {
+
+        temp3.A::~A();
+        temp4.A::~A();
+    }
+
+    temp1.A::~A();
+    temp2.A::~A();    
+}
+</code></pre></li>
+<li><p>临时对象声明规则有两个例外：</p>
+<ul>
+<li><p>含有表达式执行结果的临时对象，应保存到object初始化完成</p>
+<pre><code>string a(&quot;hello &quot;), b(&quot;world&quot;);
+bool toprint;
+string c = toprint ? a + b : 0;                //a + b 生成的临时对象在?:运算符完成后并不析构，直到赋值完成
+</code></pre></li>
+<li><p>如果一个临时性对象被绑定到一个reference，则其生命期直到被初始化的reference结束而结束</p>
+<pre><code>const string&amp; str = &quot;temp string&quot;;    
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>临时性对象的迷思</p>
+<ul>
+<li>gcc编译器能消除内建变量产生的临时变量，但class类型的则不行，所以class类型临时变量construct和destruct的成本是不可避免的。</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《Inside-the-C-Object-Model》-第六章-执行期语意学/" data-id="cio1njx0900iulvfy7xf9g5ze" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《More-Effective-C-》-一、仔细区别pointers和references/" class="pre">一、仔细区别pointers和references</a><a href="/2016/05/11/阅读笔记-《Inside-the-C-Object-Model》-第二章-构造函数语意学/" class="next">第二章 构造函数语意学</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

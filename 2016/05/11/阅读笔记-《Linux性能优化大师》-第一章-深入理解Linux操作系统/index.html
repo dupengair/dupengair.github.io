@@ -1,0 +1,261 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第一章 深入理解Linux操作系统 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第一章 深入理解Linux操作系统</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第一章 深入理解Linux操作系统</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##一、进程管理</p>
+<ol>
+<li><p>进程与线程</p>
+<ul>
+<li>创建进程的写时复制：exec调用将新程序复制到子进程的地址空间，由于两个进程共享地址空间，当新程序写数据时会引发页错误，内核会给子程序分配新的物理页</li>
+<li>线程创建时不需要复制资源，所以开销小</li>
+</ul>
+</li>
+<li><p>进程优先级（见《补充：进程优先级》）</p>
+</li>
+<li><p>系统不能有太多进程的上下文切换，不然会引发性能问题，因为每次切换都要刷新寄存器和高速缓存，释放空间给新进程</p>
+</li>
+<li><p>中断</p>
+<ul>
+<li>Linux有两类中断：    <ul>
+<li>硬中断：由硬件设备产生，需要快速响应</li>
+<li>软中断：软件处理的可以推迟的任务</li>
+</ul>
+</li>
+<li>多CPU时，将中断绑定到CPU上可以提高系统性能</li>
+</ul>
+</li>
+<li><p>进程状态</p>
+<ul>
+<li><p>状态</p>
+<ul>
+<li><code>TASK_RUNNING</code>：正在运行，或在运行队列中等待运行</li>
+<li><code>TASK_STOPPED</code>：进程由于信号而暂停，等待恢复信号</li>
+<li><code>TASK_INTERRUPTIBLE</code>：进程暂停，等待某个条件</li>
+<li><code>TASK_UNINTERRUPTIBLE</code>：进程不允许执行任何操作</li>
+<li><code>TASK_ZOMBIE</code>：进程在等待通知父进程释放资源</li>
+</ul>
+</li>
+<li><p>僵尸进程</p>
+<ul>
+<li>通常在很短的时间内，进程是僵尸进程，用于搜到终止信号时结束任务结束任务，如关闭文件等</li>
+<li>如果一个僵尸进程不能终止自己，就会显示为Z状态，此时无法用kill杀死，只能杀死父进程，如果父进程是init，就只能重启了</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>内存</p>
+<pre><code>Stack
+（Dynamic lib）
+Heap
+BSS    
+Data
+Text
+</code></pre></li>
+<li><p>CPU调度</p>
+<ul>
+<li>O(1) 调度<br>进程 -（优先级）-&gt; 运行队列 -（优先级和阻塞率）-&gt; 时间片 -&gt; 过期队列<ul>
+<li>交互式进程有机会得到高优先级，拥有较长时间片，低优先级进程不会被饿死，有机会得到较多时间</li>
+<li>支持非统一内存架构NUMA和对称多线程处理器SMP</li>
+</ul>
+</li>
+<li>完全公平调度CFS<ul>
+<li>使用基于虚拟时间的红黑树，虚拟时间基于进程等待运行的时间，竞争CPU的数量以及进程优先级</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>##二、内存体系结构</p>
+<ol>
+<li><p>内存分配</p>
+<ul>
+<li>出于效率，计算机的内存由固定大小的chunk组成，被称为分页，大小由处理器决定，物理地址线性连续</li>
+<li>内核以内存页为单位，进程请求内存页时，当前有效内存页被立刻分配，缺少时需要从其它进程或分页缓存中获得</li>
+<li>为进程分配内存时，物理地址被映射到进程的虚拟地址</li>
+<li>32位架构上单个进程虚拟地址空间4G，3G用户1G内核</li>
+</ul>
+</li>
+<li><p>虚拟内存管理</p>
+<ul>
+<li><p>虚拟内存</p>
+<ul>
+<li>虚拟内存不一定映射到物理内存，也可以映射到磁盘子系统上的swap文件</li>
+<li><p>Linux比windows更高效的管理内存，虚拟内存的默认配置是：分配所有有效的空闲内存空间为磁盘缓存</p>
+<pre><code>                         |                 &lt;-&gt; slab分配器 &lt;-&gt;  [ 划分区域 ] &lt;-&gt; mmu    &lt;-&gt; 物理内存
+应用程序 &lt;-&gt; glibc &lt;-&gt; | &lt;-&gt; 内核子系统 &lt;----------------&gt; [ 的buddy ] &lt;-&gt; kswapd
+                         |                                    [ 分配器   ] &lt;-&gt; [ pdflush ]
+                         |                                                    [ Per-BDI ]&lt;-&gt; 磁盘驱动 &lt;-&gt;|&lt;-&gt; 物理磁盘 
+                         |                                                    [ flush   ]                  |
+                         |                                                                              |
+  user space          |            kernel space                                                      |    Hardware
+</code></pre></li>
+</ul>
+</li>
+<li><p>伙伴系统(buddy system)</p>
+<ul>
+<li>伙伴系统负责维护空闲分页，给请求分配分页，保证内存区域的连续性</li>
+<li>通过/proc/buddyinfo找到伙伴系统信息</li>
+</ul>
+</li>
+<li><p>分页回收</p>
+<ul>
+<li>分页回收——回收不再使用仍被标记为活跃的分页，由kswapd负责，可通过vmstat -a 查看</li>
+<li>基于LRU（最近最少使用）原则</li>
+<li>分页的目的：分页缓存和进程地址空间。分页缓存是分页被映射到磁盘上的一个文件，分页属于一个进程地址空间，被用于堆和栈，称为匿名内存，因为不被映射到任何文件，并且没有名称。回收分页的时候，宁可缩小分页缓存也不希望移出进程的分页。</li>
+<li>可以通过/proc/sys/vm/swappiness来控制分页回收的行为</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>swap</p>
+<ul>
+<li>当虚拟内存管理器发现进程的内存分页已经分配，但大量时间没有使用时，会将其移动到swap空间，以释放一个昂贵的主内存分页</li>
+<li>swap空间使用率高并不一定表面存在内存瓶颈，也证明了Linux能有效利用系统资源</li>
+</ul>
+</li>
+</ol>
+<p>##三、文件系统</p>
+<ol>
+<li><p>VFS</p>
+<ul>
+<li>VFS提供了访问文件系统的通用对象模型。对用户隐藏了每个文件系统的差异</li>
+</ul>
+</li>
+<li><p>文件系统日志</p>
+<ul>
+<li>非日志文件系统中，内核先改变文件系统的元数据，再写实际的用户数据，如果元数据写入中发生崩溃，会损坏数据完整性</li>
+<li>日志文件系统中，内核先将改变数据写入日志区</li>
+<li>对于日志文件系统，牺牲多少性能开销来保证数据的一致性，取决于用户数据写入前有多少信息写入元数据</li>
+</ul>
+</li>
+</ol>
+<p>##四、IO子系统</p>
+<ol>
+<li><p>Cache</p>
+<ul>
+<li>cache机制通过在较快的存储器中缓存频繁使用的数据来减少对速度较慢的存储器的访问次数，主要思想为局部性原理<ul>
+<li>存储层次结构<ul>
+<li>| CPU: 寄存器（非常快） &lt;-&gt; cache（快） | &lt;-&gt; | RAM（慢）| &lt;-&gt; | 磁盘（非常慢）|</li>
+</ul>
+</li>
+<li>局部性原理<ul>
+<li>目的：在更快的存储器上实现更高的缓存命中率            </li>
+<li>时间局部性：最近使用过的数据        </li>
+<li>空间局部性：已使用数据周围的数据</li>
+</ul>
+</li>
+<li>dirty page<ul>
+<li>当一个进程试图改变数据时，首先将数据写入内存，此时内存和磁盘上数据不同，内存中的数据称为dirty page，应该尽快同步到磁盘上，这个同步过程被称为刷新</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>块层</p>
+<ul>
+<li>块层处理所有与块设备操作相关的活动，bio（block io）是文件系统和块层的接口</li>
+<li>文件系统的写操作，是写入由块缓冲区构成的页缓冲区，这是通过将连续放置的块构成的bio结构发送到块层的过程</li>
+<li>块层链接这些bio，将其发送到IO请求队列中，这个过程叫做IO电梯调度（IO elevator），共有4种算法<ul>
+<li>CFQ — 完全公平队列：每个进程一个IO队列，实现QoS策略，为默认调度。适合大型多用户和需要并发读写的场合</li>
+<li>Deadline —— 近似实时，保证吞吐量和好的块设备扇区的顺序访问，适合需要执行大量IO的场合</li>
+<li>NOOP —— 简单的FIFO队列，不执行任何操作，假设块设备拥有自己的电梯算法</li>
+<li>Anticipatory —— 3.xx版本已取消</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>##五、网络子系统</p>
+<ol>
+<li><p>内核的网络实现</p>
+<ul>
+<li>socket buffer<ul>
+<li>可在/proc/sys/net中调整socket缓冲区配置</li>
+</ul>
+</li>
+<li>NAPI(Network API)<ul>
+<li>在linux网络栈的标准实现中，可靠性和低延迟要比低开销和高吞吐重要</li>
+<li>传统实现中，网卡将收到的数据包移动到内核缓冲区，然后出发CPU硬中断来处理每一个MAC匹配的以太网帧，容易导致大量的CPU中断和上下文切换</li>
+<li>NAPI为第一个数据报产生中断，然后网卡进入polling模式，将到达的数据包放入网络接口的DMA ring buffer，最后一个数据包处理完成后ring buffer清空，网卡再次退回到中断模块</li>
+</ul>
+</li>
+<li>Netfilter<ul>
+<li>数据包过滤(filter)</li>
+<li>地址转换(nat)</li>
+<li>数据包改写(mangle)</li>
+</ul>
+</li>
+<li>连接跟踪<ul>
+<li>Netfilter使用连接跟踪机制监控网络流量</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>TCPIP</p>
+<ul>
+<li>建立连接——三次握手</li>
+<li>流量控制——滑动窗口<ul>
+<li>窗口大小由接收端控制<br>(2) 窗口开始很小，从连接的另一端每一个成功的确认开始慢慢增加</li>
+</ul>
+</li>
+<li>重传<ul>
+<li>可用通过配置内核参数来适应不同的网络环境，如在高丢包率的网络锁，可以尝试增加建立连接的SYN数量</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Offload</p>
+<ul>
+<li>可以通过网卡的硬件Offload功能降低CPU占用率 </li>
+</ul>
+</li>
+<li><p>Bonding</p>
+<ul>
+<li>通过双网卡绑定提高带宽，两块具有相同IP的网卡被并行链接聚合成一个逻辑链路工作</li>
+</ul>
+</li>
+</ol>
+<p>##六、度量标准</p>
+<ol>
+<li><p>CPU</p>
+<ul>
+<li>cpu usage：持续时间内超过80%，cpu存在瓶颈</li>
+<li>user time：高好，系统执行效率高</li>
+<li>sys time： 低好，内核被中断的时间少</li>
+<li>waiting：  低好，不应过多等待IO</li>
+<li>idle time：系统空闲</li>
+<li>nice time：内核renice进程执行顺序和优先级花的时间</li>
+<li>load average：<code>TASK_RUNNING + TASK_UNINTERRUPTIBLE</code>，高——得不到cpu时间的进程多，低——能得到cpu的进程多</li>
+<li>可运行的进程：不应超过cpu数量的10倍</li>
+<li>阻塞的进程：反映出IO瓶颈</li>
+<li>context switch：大量的上下文切换如果与大量中断相关，意味着驱动或应用程序可能有问题</li>
+<li>中断：系统存在软件瓶颈，硬中断对性能影响更大，包括CPU时钟</li>
+</ul>
+</li>
+<li><p>内存</p>
+<ul>
+<li>空闲内存：内核会分配大量未使用内存作为文件系统缓存，所有有效空闲内存=free+used中的buffer(缓冲)和cache(缓存)</li>
+<li>使用的swap：Swap In/Out可以识别内存瓶颈，如果持续时间内达到每秒200到300以上的分页值，表明可能存在内存瓶颈</li>
+<li>缓冲与缓存：分配给文件系统和块设备</li>
+<li>Slab：内核使用的内存<br>活跃与非活跃内存：非活跃内存可能是kswapd守护进程swap out到磁盘的候选者</li>
+</ul>
+</li>
+<li><p>块设备</p>
+<ul>
+<li>IO 等待：CPU等待一个IO操作的时间，较高和持续的值表明存在IO瓶颈</li>
+<li>平均队列长度：未完成的IP请求数量，一个磁盘2~3个队列最佳，高说明存在磁盘IO瓶颈</li>
+<li>平均等待时间：服务一个IO请求的平均时间，单位ms，由实际IO操作时间和IO队列等待时间组成</li>
+<li>每秒传输：每秒执行的IO数，结合每秒kB值确定系统的平均传输大小</li>
+<li>每秒读写入的块数量：默认1024B</li>
+<li>每秒读写的字节数：块设备传输的实际数据量</li>
+</ul>
+</li>
+<li><p>网络</p>
+<ul>
+<li>收发数据报数量</li>
+<li>收发字节数</li>
+<li>每秒冲突数：发生持续冲突通常是网络基础设施问题</li>
+<li>丢包数：可能是防火墙或者缺乏网络缓冲区</li>
+<li>溢出：网络接口溢出缓冲区空间的次数，结合丢包率来确定是网络缓冲区还是网络队列的瓶颈</li>
+<li>错误：通常是网路不匹配或者硬件问题</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《Linux性能优化大师》-第一章-深入理解Linux操作系统/" data-id="cio1njwzo00hflvfyst4cxwm6" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《Linux性能优化大师》/">《Linux性能优化大师》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《Linux性能优化大师》-第二章，监控工具/" class="pre">第二章，监控工具</a><a href="/2016/05/11/阅读笔记-《Effective-STL》-条款45-注意count、find、binary-search、lower-bound、upper-bound/" class="next">条款45 注意count、find、binary_search、lower_bound、upper_bound</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

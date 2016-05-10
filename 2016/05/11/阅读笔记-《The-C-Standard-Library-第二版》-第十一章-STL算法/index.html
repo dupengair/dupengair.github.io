@@ -1,0 +1,992 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第十一章 STL算法 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第十一章 STL算法</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第十一章 STL算法</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##一、头文件</p>
+<ol>
+<li><p>算法</p>
+<pre><code>#include &lt;algorithm&gt;
+</code></pre></li>
+<li><p>数值处理</p>
+<pre><code>#include &lt;numeric&gt;
+</code></pre></li>
+<li><p>Function object、Function adapter</p>
+<pre><code>#include &lt;functional&gt;
+</code></pre></li>
+</ol>
+<p>##二、算法概览</p>
+<ol>
+<li><p>介绍</p>
+<ul>
+<li>所有STL算法都被设计用来处理一个或多个区间，通常第一个区间用起点和终点表示，其它区间只需要起点，终点可以由第一个区间的元素推导</li>
+<li>调用者必需保证区间的有效性：<ul>
+<li>起点和终点指向同一容器</li>
+<li>起点在终点之前</li>
+<li>其它区间有足够空间</li>
+</ul>
+</li>
+<li>允许自定义一部分操作，如果返回值是Boolean，称为Predicate（判别式），可以作为：<ul>
+<li>查找准则</li>
+<li>排序算法</li>
+<li>某种操作</li>
+<li>执行数值运算</li>
+</ul>
+</li>
+<li>Predicate不应在调用中改变自身状态</li>
+<li>STL算法采用覆盖模式</li>
+</ul>
+</li>
+<li><p>算法分类</p>
+<ul>
+<li>后缀<ul>
+<li><code>_if</code>: 不带<code>_if</code>的版本传入值进行比较，带_if的传入Function object</li>
+<li><code>_copy</code>: 表示算法不只被操作，还会复制元素到目标区间</li>
+</ul>
+</li>
+<li><p>分类</p>
+<ul>
+<li>非更易型</li>
+<li>更易型</li>
+<li>移除型</li>
+<li>变序型</li>
+<li>排序算法</li>
+<li>已排序区间算法</li>
+<li>数值算法</li>
+</ul>
+</li>
+<li><p>非更易型算法</p>
+<ul>
+<li>既不改动元素值，又不改动元素次序</li>
+<li>通过input和Forward迭代器实现，可用于所有标准容器</li>
+<li>最重要是<code>for_each()</code>，C++11里可以由range-based for完成</li>
+</ul>
+</li>
+<li><p>更易型算法</p>
+<ul>
+<li>不是直接改变元素值，就是改变复制到其它区间的元素值（原区间不变）</li>
+<li>最重要是<code>for_each()</code>和transform()</li>
+<li>associative和unordered容器元素通常被视为常量，所以不可以用作更易型算法</li>
+<li><code>for_each()</code>用reference方式传递实参可以改动</li>
+<li>transform()返回改动后的元素，可以将结果赋给原容器，速度稍慢但灵活性高，可以把序列复制到目标容器的同时进行改动</li>
+</ul>
+</li>
+<li><p>移除性算法</p>
+<ul>
+<li>是一种特殊的更易型算法，可以移除元素，或者在复制的过程中执行移除</li>
+<li>只是逻辑上移除，将保留的元素向前覆盖被移除的元素，返回最后的逻辑终点，区间的实际大小和元素个数不变</li>
+<li>和更易型算法一样，不可以用于associative和unordered容器</li>
+<li><code>remove()、remove_if()、remove_copy()</code></li>
+</ul>
+</li>
+<li><p>变序型算法</p>
+<ul>
+<li>通过元素值的赋值和互换。改变元素顺序但不改变值</li>
+<li>也不能用于associative和unordered容器</li>
+<li><code>reverse() retate() partition()</code> </li>
+</ul>
+</li>
+<li><p>排序算法</p>
+<ul>
+<li>执行时间是关键，复杂度通常比线性差，必需用到随机访问迭代器</li>
+<li>默认排序准则为<code>less&lt;&gt;</code>，升序效果。排序准则必需是严格排序，不允许<code>&lt;=</code>这样的操作</li>
+<li>也不能用于associative和unordered容器，另外list不提供随即访问迭代器，只能用它们自身提供的成员函数sort()</li>
+<li>sort()采用快速排序，保证很好的平均效率，多数情况下运行效率高，复杂度至少为n<code>*log(n)</code>，最差情况下<code>n*n</code>（n平方）</li>
+<li><code>partial_sort()</code>采用heapsort，保证任何情况下复杂度<code>n*log(n)</code>，多数情况比sort慢</li>
+<li><code>stable_sort()</code>采用mergesort，内存充足时才有<code>n*log(n)</code>的复杂度，优点是会保留相等元素间的相对次序</li>
+</ul>
+</li>
+<li><p>已排序算法</p>
+<ul>
+<li>作用区间已经在某种排序准则下排序，有较好复杂度</li>
+<li>一般而言，结果仍然是已排序的</li>
+<li><code>binary_search() merge() equal_range()</code></li>
+</ul>
+</li>
+<li><p>数值算法</p>
+<ul>
+<li>以各种不同方式结合数值</li>
+<li><code>accumulate() adjacent_difference()</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>##三、for_each()<br>    op for_each(begin, end, op)</p>
+<ol>
+<li>对区间内每一个元素调用op，并返回op的副本</li>
+<li>忽略op的任何返回值</li>
+<li>复杂度：线性</li>
+<li>C++11提供range-based for具有更自然的行为</li>
+</ol>
+<p>##四、非更易型算法</p>
+<ol>
+<li><p>元素计数</p>
+<pre><code>difference_type count(begin, end, const T&amp; value)
+difference_type count_if(begin, end, op)
+</code></pre><ul>
+<li>形式1返回value为true的元素个数，形式2返回令op为true的元素个数</li>
+<li>difference_type表现iterator间距</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>associative和unordered容器提供成员函数count()，用来计算给定value的元素</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>最小值和最大值</p>
+<pre><code>iter min_element(begin, end)
+iter min_element(begin, end, op)
+iter max_element(begin, end)
+iter max_element(begin, end, op)
+</code></pre></li>
+<li><p>元素查找</p>
+<ul>
+<li><p>查找第一个匹配元素</p>
+<pre><code>iter find(begin, end, const T&amp; value)
+iter find_if(begin, end, op)
+iter find_if_not(begin, end, op)
+</code></pre><ul>
+<li>找到返回第一个元素位置，没有找到匹配元素，返回end</li>
+<li>对已排序区间，可以使用<code>lower_bound、upper_bound、equal_range、binary_search</code>来提高效能</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>associative和unordered容器提供等效的成员函数find()</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>查找n个连续匹配值</p>
+<pre><code>iter search_n(begin, end, Size count, const T&amp; value)
+iter search_n(begin, end, Size count, const T&amp; value, op)
+</code></pre><ul>
+<li>第二个形式返回连续count个使表达式op(elem, value)为true的子区间中第一个元素的位置，注意op为binary Predicate，有两个参数</li>
+<li>找到返回第一个元素位置，没有找到匹配元素，返回end</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>查找第一个子区间</p>
+<pre><code>iter search(begin, end, begin2, end2)
+iter search(begin, end, begin2, end2, op)
+</code></pre><ul>
+<li>第二个形式返回使表达式op(elem, elem2)为true的第一个子区间中第一个元素的位置，注意op为binary Predicate，有两个参数</li>
+<li>找到返回第一个匹配的子区间的一个元素位置，没有找到匹配元素，返回end</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>查找最后一个子区间</p>
+<pre><code>iter find_end(begin, end, begin2, end2)
+iter find_end(begin, end, begin2, end2, op)
+</code></pre><ul>
+<li>第二个形式返回使表达式op(elem, elem2)为true的最后一个子区间中第一个元素的位置，注意op为binary Predicate，有两个参数</li>
+<li>找到返回最后一个匹配的子区间的一个元素位置，没有找到匹配元素，返回end</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>查找元素第一次出现位置</p>
+<pre><code>iter find_first_of(begin, end, begin2, end2)
+iter find_first_of(begin, end, begin2, end2, op)
+</code></pre><ul>
+<li>第一个形式返回既出现于区间[begin, end)又出现于[begin1, end1)中的第一个元素位置</li>
+<li>第二个形式返回第一个区间中使第二个区间的每一个元素对表达式op(elem, elem2)为true的第一个元素的位置，注意op为binary Predicate，有两个参数</li>
+<li>没有找到匹配元素，返回end</li>
+<li>可以使用reverse iterator查找最后一个符合条件的元素</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>查找两个连续且相等的元素</p>
+<pre><code>iter adjacent_find(begin, end)
+iter adjacent_find(begin, end, op)
+</code></pre><ul>
+<li>第一个形式返回区间中第一对两个连续相等的元素中第一个元素位置</li>
+<li>第二个形式返回区间中第一对两个连续相等且都能使表达式op(elem, next elem)为true元素中第一个元素位置，注意op为binary Predicate，有两个参数</li>
+<li>没有找到匹配元素，返回end</li>
+<li>可以使用reverse iterator查找最后一个符合条件的元素</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>区间比较</p>
+<ul>
+<li><p>检验相等性</p>
+<pre><code>bool equal(begin, end, begin1)
+bool equal(begin, end, begin1, op)
+</code></pre><ul>
+<li>第一个形式判断两个区间是否相等，</li>
+<li>第二个形式判断第一个区间所有元素是否能和第二个区间对应元素使表达式op(elem, elem1)为true，注意op为binary Predicate，有两个参数</li>
+<li>序列不相等时要了解不同，可以使用mismatch()算法</li>
+<li>判断两个区间是否数值相同但顺序不同，可以使用is_permutation()算法</li>
+<li>调用者要确保第二个区间含有足够元素</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>测试不定序的相等性</p>
+<pre><code>bool is_permutation(begin, end, begin1)
+bool is_permutation(begin, end, begin1, op)
+</code></pre><ul>
+<li>第一个形式判断两个区间是否在顺序不同的情况下相等，以operator==比较元素</li>
+<li>第二个形式以op(elem, elem1)比较元素，注意op为binary Predicate，有两个参数</li>
+<li>元素类型要相等</li>
+<li>调用者要确保第二个区间含有足够元素</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：2次</li>
+</ul>
+</li>
+<li><p>查找第一处不同</p>
+<pre><code>pair&lt;iter, iter1&gt; mismatch(begin, end, begin1)
+pair&lt;iter, iter1&gt; mismatch(begin, end, begin1, op)
+</code></pre><ul>
+<li>第一个形式查找两个区间内第一组两两相异的元素</li>
+<li>第二个形式判断两个区间内第一组使表达式op(elem, elem1)为false的元素，注意op为binary Predicate，有两个参数</li>
+<li>如果没找到相异点，返回第一个区间的end和第二个区间对应元素组成的pair，这不意味两个容器相等，因为个数可能不同</li>
+<li>只需要检查返回pair的第一个元素是否等于被传入区间的终点，就知道是否存在相异</li>
+<li>判断两个区间是否相等需要使用equal()算法</li>
+<li>调用者要确保第二个区间含有足够元素</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>检验小于</p>
+<pre><code>bool lexicographical_compare(begin, end, begin1, end1)
+bool lexicographical_compare(begin, end, begin1, end1, op)
+</code></pre><ul>
+<li><p>用字典序来判断第一个区间的元素是否小于第二个区间，字典序：</p>
+<ul>
+<li>一一比较</li>
+<li>第一个不相等的比较结果为整个比较的结果</li>
+<li>元素值相等的情况下，个数少的小于个数多的</li>
+</ul>
+</li>
+<li><p>第一个以<code>operator &lt;</code>，第二个形式以op(elem, elem1)比较元素，注意op为binary Predicate，有两个参数</p>
+</li>
+<li>调用者要确保第二个区间含有足够元素</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Predicate检验区间</p>
+<ul>
+<li><p>检查是否排序</p>
+<pre><code>bool is_sorted(begin, end)
+bool is_sorted(begin, end, op)
+iter is_sorted_until(begin, end)
+iter is_sorted_until(begin, end, op)
+</code></pre><ul>
+<li>第一个形式检查区间元素是否已排序，第二个形式返回区间内第一个破坏顺序的元素，如果没有相异点，返回end</li>
+<li>第一三以<code>operator &lt;</code>，第二四形式以op(elem, elem1)比较元素，注意op为binary Predicate，elem &lt; elem1时返回true</li>
+<li>区间为空返回true，只有一个元素返回end</li>
+<li>始自C++11</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>检查是否被分割</p>
+<pre><code>bool is_partitioned(begin, end, op)
+iter partition_point(begin, end, op)
+</code></pre><ul>
+<li>第一个形式检查区间元素是否被分割，符合op的元素置于前面</li>
+<li>第二个形式返回已分割区间内分割点后第一个元素，如果区间为空，返回end</li>
+<li>始自C++11</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：第一个线性，第二个如果是random iterator为对数，否则为线性</li>
+</ul>
+</li>
+<li><p>检查是否形成heap</p>
+<pre><code>bool is_heap(begin, end)
+bool is_heap(begin, end, op)
+iter is_heap_until(begin, end)
+iter is_heap_until(begin, end, op)
+</code></pre><ul>
+<li>第一个形式检查区间元素是否形成heap，第二个形式返回区间内第一个破坏顺序无法形成heap的元素，如果没有这样的元素返回end</li>
+<li>第一三以operator &lt;，第二四形式以op(elem, elem1)比较元素，注意op为binary Predicate，elem &lt; elem1时返回true</li>
+<li>区间为空返回true，只有一个元素返回end</li>
+<li>始自C++11</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>检查All、Any或None</p>
+<pre><code>bool any_of(begin, end, op)
+bool all_of(begin, end, op)
+bool none_of(begin, end, op)
+</code></pre><ul>
+<li>检查区间内是否全部、或至少一个、或没有元素使Unary Predicate op(elem)为true</li>
+<li>区间为空时一二返回true，三返回false</li>
+<li>始自C++11</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>##五、更易型算法</p>
+<ul>
+<li>有两种办法更改元素:<ul>
+<li>遍历过程中</li>
+<li>复制区间过程中</li>
+</ul>
+</li>
+<li>目标区间不能是associative或者unordered</li>
+<li>所有单一目标区间的算法<blockquote>
+</blockquote>
+</li>
+</ul>
+<ol>
+<li><p>复制元素</p>
+<pre><code>iter copy(begin, end, dstBegin) 
+iter copy_if(begin, end, dstBegin, op) 
+iter copy_n(begin, num, dstBegin) 
+iter copy_backward(begin, end, dstEnd) 
+</code></pre><ul>
+<li>copy是向前复制（正向遍历），dstBegin要在begin之前，<code>copy_backward</code>是向后复制（反向遍历），dstEnd要在end之后，对于<code>copy_if</code>，源和目标区间不可重复。因此只要第三实参在源区间内，就不能采用此算法</li>
+<li>返回目标区间最后一个被复制元素的下一个位置</li>
+<li><p>必须确保目标区间有足够空间，否则要用insert iterator:</p>
+<pre><code>copy(col1.begin(), col1.end(), back_insertor(col2));
+</code></pre></li>
+<li><p>对于不同情况的处理：</p>
+<ul>
+<li>如果源区间元素不再使用，应该使用<code>move()、move_backward()</code></li>
+<li>如果希望复制过程中反转元素次序，应该使用<code>reverse_copy()</code>，比<code>copy()+reverse iterator</code>更快</li>
+<li>如果希望把容器所有元素赋值给另一个容器，应使用assignment操作符或者assign()成员函数</li>
+<li>如果希望复制的同时移除元素，应使用<code>remove_copy、remove_copy_if</code></li>
+<li>如果希望复制过程中改动元素，应使用transform()</li>
+<li>如果希望将容器元素按条件分别拷贝到两个区间，应使用<code>partition_copy()</code></li>
+<li>C++11前未提供<code>copy_if</code>和<code>copy_n</code>，需要使用<code>remove_copy_if+negated predicate</code></li>
+</ul>
+</li>
+<li>可使用i/ostream iterator把标准输入/出设备当作源/目标区域</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>搬移元素</p>
+<pre><code>iter move(begin, end, dstBegin) 
+iter move_backward(begin, end, dstEnd) 
+</code></pre><ul>
+<li>move是向前搬运（正向遍历），dstBegin要在begin之前，<code>move_backward</code>是向后搬运（反向遍历），dstEnd要在end之后。因此只要第三实参在源区间内，就不能采用此算法</li>
+<li>返回目标区间最后一个被搬运元素的下一个位置</li>
+<li><p>必须确保目标区间有足够空间，否则要用insert iterator:</p>
+<pre><code>move(col1.begin(), col1.end(), back_insertor(col2));
+</code></pre></li>
+<li>如果元素未提供move语义，则行为与copy相同</li>
+<li>可使用i/ostream iterator把标准输入/出设备当作源/目标区域</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>转换和结合元素</p>
+<ul>
+<li><p>转换元素</p>
+<pre><code>iter transform(begin, end, dstBegin, op)  
+</code></pre><ul>
+<li>dstBegin和begin可以相同，以改动序列内元素</li>
+<li>返回目标区间最后一个被转换元素的下一个位置</li>
+<li><p>必须确保目标区间有足够空间，否则要用insert iterator:</p>
+<pre><code>transform(col1.begin(), col1.end(), back_insertor(col2));
+</code></pre></li>
+<li><p>如果想用某值替换满足条件的元素，应使用replace</p>
+</li>
+<li>可使用i/ostream iterator把标准输入/出设备当作源/目标区域</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>结合元素</p>
+<pre><code>iter transform(begin, end, begin2, dstBegin, op)  
+</code></pre><ul>
+<li>begin、begin1和dstBegin可以相同，自己和自己结合然后覆盖自己</li>
+<li>返回目标区间最后一个被赋值元素的下一个位置</li>
+<li><p>必须确保目标区间有足够空间，否则要用insert iterator:</p>
+<p>  transform(col1.begin(), col1.end(), back_insertor(col2));</p>
+</li>
+<li><p>必需确保第二源区间至少和第一区间一样大</p>
+</li>
+<li>可使用i/ostream iterator把标准输入/出设备当作源/目标区域</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>互换元素</p>
+<pre><code>iter swap_range(beg, end, beg1)
+</code></pre><ul>
+<li>第二区间内的元素与第一区间互换</li>
+<li>返回目标区间最后一个被互换元素的下一个位置</li>
+<li>必须确保目标区间有足够空间</li>
+<li>两区间不可重叠</li>
+<li>如果要互换两个容器内所有元素，应使用swap成员函数，通常具备常量复杂度</li>
+<li>复杂度：线性    </li>
+</ul>
+</li>
+<li><p>赋值</p>
+<ul>
+<li><p>赋予相同值</p>
+<pre><code>void fill(beg, end, const T&amp; value)
+void fill_n(beg, num, const T&amp; value)
+</code></pre><ul>
+<li>n为负时不做任何事，返回beg</li>
+<li>返回最后一个被赋值元素的下一个位置</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>复杂度：线性    </li>
+</ul>
+</li>
+<li><p>赋予新生值</p>
+<pre><code>void generate(beg, end, op)
+void generate_n(beg, num, op)
+</code></pre><ul>
+<li>n为负时不做任何事，返回beg</li>
+<li>返回最后一个被赋值元素的下一个位置</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>复杂度：线性    </li>
+</ul>
+</li>
+<li><p>赋予逐一递增值</p>
+<pre><code>void itoa(beg, end, T startValue)
+</code></pre><ul>
+<li>从startValue依次赋值</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>替换元素</p>
+<ul>
+<li><p>替换序列内元素</p>
+<pre><code>void replace(beg, end, const T&amp; oldValue, const T&amp; newValue)
+void replace_if(beg, end, op, const T&amp; newValue)
+</code></pre><ul>
+<li>第一个替换等值元素，第二个替换使op返回true的元素</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>复制并替换</p>
+<pre><code>iter replace_copy(beg, end, dstBeg, const T&amp; oldValue, const T&amp; newValue)
+iter replace_copy_if(beg, end, dstBeg, op, const T&amp; newValue)
+</code></pre><ul>
+<li>在复制过程中替换元素，第一个替换等值元素，第二个替换使op返回true的元素</li>
+<li>返回最后一个被替换元素的下一个位置</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>op在调用过程中不应改变状态，也不应改动传入的实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>##六、移除型算法</p>
+<ul>
+<li>不改变元素数量，只是逻辑上的思考</li>
+<li>将不移除的元素前移，覆盖被移除的元素，返回改动后的逻辑终点</li>
+<li>不能用于associative或者unordered<br>&gt;</li>
+</ul>
+<ol>
+<li><p>移除某些元素</p>
+<ul>
+<li><p>移除序列内元素</p>
+<pre><code>iter remove(beg, end, const T&amp; Value)
+iter remove_if(beg, end, op)
+</code></pre><ul>
+<li>第一个删除等值元素，第二个删除使op返回true的元素</li>
+<li>返回改动后的逻辑终点</li>
+<li>list提供效率更高的成员函数remove()</li>
+<li>op在调用过程中不应改变状态，remove_if内部会复制两次op</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>复制时移除</p>
+<pre><code>iter remove_copy(beg, end, dstBeg, const T&amp; Value)
+iter remove_copy_if(beg, end, dstBeg, op)
+</code></pre><ul>
+<li>在复制过程中删除元素，第一个删除等值元素，第二个删除使op返回true的元素</li>
+<li>返回目标区间最后一个被复制元素的下一个位置</li>
+<li>可以使用<code>partition_copy()</code>，根据是否满足op将元素复制到两个目标区间</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>op在调用过程中不应改变状态</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>移除重复元素</p>
+<ul>
+<li><p>移除连续重复元素</p>
+<pre><code>iter unique(beg, end)
+iter unique(beg, end, op)
+</code></pre><ul>
+<li>第一个删除连续重复元素，所以要求先排序才有效</li>
+<li><p>第二个删除与已健在的前一元素相比使op返回true的当前元素：</p>
+<pre><code>coll: 1 3 3 6 5 2 7 3 4 4 1 8
+unique(coll.beging(), coll.end(), greater&lt;int&gt;());    // 结果： 1 3 3 6 7 8
+</code></pre></li>
+<li><p>未删除的元素相对次序不变</p>
+</li>
+<li>list提供了相同功能的成员函数unique()，效率更高</li>
+<li>op在调用过程中不应改变状态</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>复制过程中移除元素</p>
+<pre><code>iter unique_copy(beg, end, dstBeg)
+iter unique_copy(beg, end, dstBeg, op)
+</code></pre><ul>
+<li>两者都是copy+unique的组合，第二种形式与unique第二种形式处理相同</li>
+<li>返回目标区间最后一个被复制元素的下一个位置</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>op在调用过程中不应改变状态</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>##七、变序型算法</p>
+<ul>
+<li>改变元素次序，不改变值</li>
+<li>不能用于associative或者unordered<br>&gt;</li>
+</ul>
+<ol>
+<li><p>反转次序</p>
+<pre><code>void reverse(beg, end)
+iter reverse_copy(beg, end, dstBeg)
+</code></pre><ul>
+<li>第一个反转序列内元素，第二个复制过程中反转元素</li>
+<li>第二个返回目标区间最后一个被复制元素的下一个位置</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>list提供了相同功能的成员函数reverse()，效率更高</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>旋转元素</p>
+<ul>
+<li><p>序列内旋转</p>
+<pre><code>iter rotate(beg, newBeg, end)
+</code></pre><ul>
+<li>旋转beg到newBeg之间的元素，执行后newBeg称为新的第一元素</li>
+<li>C++11起返回原第一元素旋转后的新位置，C++11之前返回类型为void</li>
+<li>必须确保newBeg在区间内</li>
+<li><p>可以使用起点的正向偏移，或者终点的负向偏移，但只有对随机访问迭代器才可以加偏移，否则需要使用advance()或next()来改变迭代器本身的值：</p>
+<pre><code>vector&lt;int&gt; coll;
+rotate(coll.begin(), coll.begin()+2, coll.end());    // 正向旋转coll前两个元素
+rotate(coll.begin(), coll.end()-2, coll.end());        // 负向旋转coll最后两个元素
+set&lt;int&gt; coll;
+set&lt;int&gt;::iterator newPos = next(coll.begin());
+rotate(coll.begin(), newPos, coll.end());        // 正向旋转coll第1个元素
+set&lt;int&gt;::iterator newPos = coll.end();
+advance(newPos, -2);    
+rotate(coll.begin(), newPos, coll.end());        // 负向旋转coll最后2个元素
+</code></pre></li>
+<li><p>复杂度：线性    </p>
+</li>
+</ul>
+</li>
+<li><p>旋转并复制</p>
+<pre><code>iter rotate(beg, newBeg, end, dstBeg)
+</code></pre><ul>
+<li>copy与rotate的组合</li>
+<li>返回目标区间最后一个被复制元素的下一个位置</li>
+<li>必须确保newBeg在区间内</li>
+<li>源和目标区间不可重合</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>复杂度：线性    </li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>排列元素（略）</p>
+</li>
+<li><p>洗牌（Shuffling Elements）</p>
+<ul>
+<li><p>以随机数洗牌</p>
+<pre><code>void shuffle(beg, end，Generator&amp;&amp; eng)
+void random_shuffle(beg, end)
+void random_shuffle(beg, end，RandomFunc&amp;&amp; op)
+</code></pre><ul>
+<li><p>第一种形式使用给定的随机数引擎eng，但不可是临时变量，如：</p>
+<pre><code>default_random_engine dre;
+</code></pre></li>
+<li><p>第二种形式使用内部的均匀分布随机数产生器</p>
+</li>
+<li>第三种形式使用op，算法内部使用一个整数值来调用op，并返回一个(0, max)之间的随机数：<br>op(max)</li>
+<li><p>C++11前op不可为传入的临时变量，如：</p>
+<pre><code>random_shuffle(coll.begin(), coll.end(), MyRandom());
+</code></pre></li>
+<li><p>采用随机数算法通常比直接调用rand()性能好</p>
+</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>向前搬运元素</p>
+<pre><code>iter partition(beg, end, op)
+iter stable_partition(beg, end, op)    
+</code></pre><ul>
+<li>两个算法都将op为true的元素前移，将序列分割为两部分，并返回搬运后界线后（不满足op）的第一个元素位置</li>
+<li>第二个形式会保留元素间相对位置</li>
+<li>C++11前partition要求迭代器为bidirectional，而不是Forward</li>
+<li>可以使用partition_copy()，根据是否满足op将元素复制到两个目标区间</li>
+<li>op在调用过程中不应改变状态</li>
+<li><p>复杂度：</p>
+<pre><code>partition: 线性
+stable_partition: 内存足够时线性，内存不够时nlogn    
+</code></pre></li>
+</ul>
+</li>
+<li><p>划分子区间</p>
+<pre><code>pair&lt;iter1, iter2&gt; partition(beg, end, beg1, beg2, op)
+</code></pre><ul>
+<li>以op为依据将序列分割为两部分，满足op的拷贝到beg1，不满足的拷贝到beg2</li>
+<li>返回的pair为区间beg1和beg2最末元素的下一个位置 </li>
+<li>如果只需要按条件找到元素，可以使用copy_if()，将满足条件的元素复制到目标区间</li>
+<li>op在调用过程中不应改变状态</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ol>
+<p>##八、排序算法</p>
+<ul>
+<li>优先使用局部排序算法，性能更好</li>
+<li>不能用于associative或者unordered</li>
+<li>对全体元素进行一次性排序，通常比始终保持顺序状态高效<br>&gt;</li>
+</ul>
+<ol>
+<li><p>所有元素排序</p>
+<pre><code>void sort(beg, end)
+void sort(beg, end, op)
+void stable_sort(beg, end)
+void stable_sort(beg, end, op)
+</code></pre><ul>
+<li>第一种形式使用<code>operator &lt;</code>来排序，第二种形式使用op作为排序准则</li>
+<li><code>stable_sort</code>保证相等元素的相对次序在排序后不变</li>
+<li>不能对list和forward list调用，两者不提供随机访问迭代器，不过可以调用自身成员函数sort()</li>
+<li>sort()保证了不错的平均效率nlogn，如果要避免出现最差情况，就该使用<code>partial_sort()</code>和<code>stable_sort()</code></li>
+<li>op必须对元素值定义出strict weak ordering，且不应在调用中改变状态</li>
+<li>复杂度：    <ul>
+<li><code>sort()</code>: 平均nlogn</li>
+<li><code>stable_sort()</code>: 内存足够nlogn，不足时<code>nlogn*logn</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>局部排序</p>
+<ul>
+<li><p>排序</p>
+<pre><code>void partial_sort(beg, newBeg, end)
+void partial_sort(beg, newBeg, end, op)    
+</code></pre><ul>
+<li>第一种形式使用<code>operator &lt;</code>来排序，第二种形式使用op作为排序准则</li>
+<li>在beg和newBeg之间的元素进行排序（不包括newBeg）</li>
+<li>如果newBeg等于end，排序所有元素，平均效率不如sort，最差情况优于sort</li>
+<li>op必须对元素值定义出strict weak ordering，且不应在调用中改变状态</li>
+<li>复杂度：线性和nlogn之间</li>
+</ul>
+</li>
+<li><p>排序并复制</p>
+<pre><code>iter partial_sort_copy(beg, end, dstBeg, dstEnd)
+iter partial_sort_copy(beg, end, dstBeg, dstEnd, op)    
+</code></pre><ul>
+<li>copy()与partial_sort()的结合</li>
+<li>复制区间为两个区间的较小值</li>
+<li>返回目标区间最后一个被复制元素的下一个位置</li>
+<li>op必须对元素值定义出strict weak ordering，且不应在调用中改变状态</li>
+<li>复杂度：线性和nlogn之间</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>根据第n个元素排序</p>
+<pre><code>void nth_element(beg, nth, end)
+void nth_element(beg, nth, end, op)
+</code></pre><ul>
+<li>以位置n元素划分序列，n之前的元素小于等于n，之后的元素大于等于n</li>
+<li>可以得到根据位置n的元素划分的序列第一个的元素小于第二个，目的是找出序列中n个最小元素</li>
+<li>第一种形式使用<code>operator &lt;</code>来排序，第二种形式使用op作为排序准则</li>
+<li>partition算法也可以划分区间</li>
+<li>op必须对元素值定义出strict weak ordering，且不应在调用中改变状态</li>
+<li>复杂度：平均为线性</li>
+</ul>
+</li>
+<li><p>Heap算法</p>
+<ul>
+<li><p>概念</p>
+<ul>
+<li>heap是以序列式集合实现的二叉树</li>
+<li>heap的两大特征：<ul>
+<li>第一个元素总是最大<ul>
+<li>总能在对数时间内增加或移除一个元素</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>heap是实现priority queue（自动排序序列）的理想数据结构，被priority queue容器所使用</li>
+<li>STL提供4个算法用于heap<ul>
+<li><code>make_heap()</code>: 将区间内元素转化为heap</li>
+<li><code>push_heap()</code>: 增加一个元素到heap</li>
+<li><code>pop_heap()</code>:  从heap取出一个元素</li>
+<li><code>sort_heap()</code>: 将heap转化为一个已排序群集，以后就不是heap了</li>
+</ul>
+</li>
+<li>可以传入binary predicate作为排序准则，默认为operator &lt;</li>
+</ul>
+</li>
+<li><p><code>make_heap</code></p>
+<pre><code>void make_heap(beg, end)
+void make_heap(beg, end, op)
+</code></pre><ul>
+<li>只有在多于一个元素的情况下才有必要使用这些函数，单一元素自动形成一个heap</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p><code>push_heap</code></p>
+<pre><code>void push_heap(beg, end)
+void push_heap(beg, end, op)
+</code></pre><ul>
+<li>将end之前的最后一个元素加入原本就是heap的[beg, end-1)区间内，使整个区间[beg, end)成为一个heap</li>
+<li>调用者必需保证，进入函数时[beg, end-1)区间就是一个heap（排序准则相同），新元素紧随其后</li>
+<li>复杂度：对数</li>
+</ul>
+</li>
+<li><p><code>pop_heap</code></p>
+<pre><code>void pop_heap(beg, end)
+void pop_heap(beg, end, op)
+</code></pre><ul>
+<li>将[beg, end)的最高元素移到最后位置，使剩余的[beg, end-1)区间成为一个新的heap</li>
+<li>调用者必需保证，进入函数时[beg, end)区间就是一个heap（排序准则相同）</li>
+<li>复杂度：对数</li>
+</ul>
+</li>
+<li><p><code>sort_heap</code></p>
+<pre><code>void sort_heap(beg, end)
+void sort_heap(beg, end, op)
+</code></pre><ul>
+<li>将[beg, end)转换为已排序序列，一旦调用该区间就不是一个heap了</li>
+<li>调用者必需保证，进入函数时[beg, end)区间就是一个heap（排序准则相同）</li>
+<li>复杂度：对数</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>##九、已排序区间算法</p>
+<ul>
+<li>源区间必须是已排序的，否则行为未定义</li>
+<li>性能较好，通常对数复杂度，对于非随机访问迭代器，降低为线性，移动迭代器只能线性，但比较次数仍然是对数</li>
+<li>associative和unordered容器提供了对应成员函数，应优先使用<br>&gt;</li>
+</ul>
+<ol>
+<li><p>查找元素</p>
+<ul>
+<li><p>检查某个元素是否存在</p>
+<pre><code>bool binary_search(beg, end, const T&amp; value)
+bool binary_search(beg, end, const T&amp; value, op)
+</code></pre><ul>
+<li>是否包含等值元素，op为排序准则</li>
+<li>要获得元素位置要用<code>lower_bound()、upper_bound()、equal_range()</code></li>
+<li>确保工作区间已排序</li>
+<li>复杂度：随机访问迭代器为对数，否则为线性</li>
+</ul>
+</li>
+<li><p>检查多个元素是否存在</p>
+<pre><code>bool includes(beg, end, beg1, end1)
+bool includes(beg, end, beg1, end1, op)
+</code></pre><ul>
+<li>是否包含第二个集合，op为排序准则</li>
+<li>确保两个工作区间都已排序</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>查找第一个或最后一个可能位置</p>
+<pre><code>iter lower_bound(beg, end, const T&amp; value)
+iter lower_bound(beg, end, const T&amp; value, o)
+iter upper_bound(beg, end, const T&amp; value)
+iter upper_bound(beg, end, const T&amp; value, op)
+</code></pre><ul>
+<li><code>lower_bound</code>返回第一个大于等于value的元素位置，是可插入value且不破坏顺序的第一个位置</li>
+<li><code>upper_bound</code>返回第一个大于value的元素位置，是可插入value且不破坏顺序的最后一个位置</li>
+<li>如果不存在值为value的元素返回end</li>
+<li>要同时获得两种结果，调用<code>equal_range()</code></li>
+<li>associative容器提供等效成员函数，效率更高</li>
+<li>确保工作区间已排序</li>
+<li>复杂度：随机访问迭代器为对数，否则为线性</li>
+</ul>
+</li>
+<li><p>查找第一个和最后一个可能位置</p>
+<pre><code>pair&lt;iter1, iter2&gt; equal_range(beg, end, const T&amp; value)
+pair&lt;iter1, iter2&gt; equal_range(beg, end, const T&amp; value, op)
+</code></pre><ul>
+<li>返回与value相等的元素形成的区间，此区间内插入value不会破坏顺序</li>
+<li><p>和下式等效</p>
+<pre><code>make_pair(lower_bound, upper_bound)
+</code></pre></li>
+<li><p>associative和unordered容器提供等效成员函数，效率更高</p>
+</li>
+<li>确保工作区间已排序</li>
+<li>复杂度：随机访问迭代器为对数，否则为线性</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>合并元素</p>
+<ul>
+<li><p>合并两个已排序集合的所有元素</p>
+<pre><code>iter merge(beg, end, beg1, end1, dstBeg)
+iter merge(beg, end, beg1, end1, dstBeg, op)
+</code></pre><ul>
+<li>合并后区间含两个区间所有元素，源区间不会有任何变化</li>
+<li>返回目标区间最后一个被复制元素的下一个位置</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>源和目标区间不可重合</li>
+<li>list和forward list提供效率更高的成员函数</li>
+<li>要确保两个源区间都出现的元素目标区间只出现一次，使用<code>set_union()</code></li>
+<li>要获得同时存在于两个区间内的元素，使用<code>set_intersection</code></li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>合并两个已排序集合的并集</p>
+<pre><code>iter set_union(beg, end, beg1, end1, dstBeg)
+iter set_union(beg, end, beg1, end1, dstBeg, op)
+</code></pre><ul>
+<li><p>两个源区间都出现的元素目标区间只复制一次，源区间不会有任何变化</p>
+<pre><code>src1： 1 2 2 3 
+src2： 1 2 2 2 3 4
+dst：  1 2 2 2 3 4
+</code></pre></li>
+<li><p>如果某区间存在重复元素，按最大重复次数复制，</p>
+</li>
+<li>返回目标区间最后一个被复制元素的下一个位置</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>源和目标区间不可重合</li>
+<li>要获得两个区间内的所有元素，使用merge</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>合并两个已排序集合的交集</p>
+<pre><code>iter set_intersection(beg, end, beg1, end1, dstBeg)
+iter set_intersection(beg, end, beg1, end1, dstBeg, op)
+</code></pre><ul>
+<li><p>两个源区间都出现的元素才会目标区间复制，源区间不会有任何变化</p>
+<pre><code>src1： 1 2 2 3 
+src2： 1 2 2 2 3 4
+dst：  2 2 3 
+</code></pre></li>
+<li><p>如果某区间存在重复元素，按最小重复次数复制</p>
+</li>
+<li>返回目标区间最后一个被复制元素的下一个位置</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>源和目标区间不可重合</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>* 合并两个已排序集合的差集
+    + 复制相异元素
+
+            iter set_difference(beg, end, beg1, end1, dstBeg)
+            iter set_difference(beg, end, beg1, end1, dstBeg, op)
+
+        - 两个区间相异的元素才会目标区间复制，区间2的重复次数大于1时不复制，源区间不会有任何变化
+
+                src1： 1 2 2 3 3 5 5
+                src2： 1 2 2 2 3 4
+                dst：  3 5 5 
+
+        - 如果某区间存在重复元素，按区间1减去区间2复制
+        - 返回目标区间最后一个被复制元素的下一个位置
+        - 必须确保目标区间有足够空间，否则要用insert iterator
+        - 源和目标区间不可重合
+        - 复杂度：线性
+
+    + 复制不同时存在的元素
+
+            iter set_symmetric_difference(beg, end, beg1, end1, dstBeg)
+            iter set_symmetric_difference(beg, end, beg1, end1, dstBeg, op)
+
+        - 不同时存在于两个区间的元素才会目标区间复制，源区间不会有任何变化
+
+                src1： 1 2 2 3 3 5 5
+                src2： 1 2 2 2 3 4
+                dst：  2 3 4 5 5 
+
+        - 如果某区间存在重复元素，按重复次数差复制
+        - 返回目标区间最后一个被复制元素的下一个位置
+        - 必须确保目标区间有足够空间，否则要用insert iterator
+        - 源和目标区间不可重合
+        - 复杂度：线性
+
+* 合并同一个集合连贯的两部分，使之成为已排序集合
+
+        void implace_merge(beg, endbeg, end)
+        void implace_merge(beg, endbeg, end, op)
+
+    + 将同一个区间的[beg, endbeg)和[endbeg, end)的部分，使之形成已排序集合
+
+            inplace_merge(coll.begin(), coll.begin()+5, coll.end())
+            before： 1 3 5 7 9 2 4 6 8 10
+            after：  3 5 5 
+
+    + 复杂度：内存够为线性，否则为nlogn
+</code></pre><p>##十、数值算法</p>
+<ul>
+<li><code>#include &lt;numeric&gt;</code></li>
+<li>也可以用来处理非数值元素<br>&gt;</li>
+</ul>
+<ol>
+<li><p>运算后产生结果</p>
+<ul>
+<li><p>对数列进行运算</p>
+<pre><code>T accumulate(beg, end, T initVal)
+T accumulate(beg, end, T initVal, op)
+</code></pre><ul>
+<li>形式一计算initVal与每个元素值的总合：<code>initVal+=elem</code>，形式二计算initVal与每个元素op的结果：<code>initVal=op(initVal, elem)</code></li>
+<li>如果数列为空<code>（beg == end）</code>两者都返回initVal</li>
+<li>op不能改动实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+<li><p>计算两数列内积</p>
+<pre><code>T inner_product(beg, end, beg1, T initVal)
+T inner_product(beg, end, beg1, T initVal, op1, op2)
+</code></pre><ul>
+<li>形式一计算initVal与两数列对应元素积的合：<code>initVal += elem * elem1</code>，</li>
+<li>形式二计算initVal与两数列对应元素op2的结果的op1：<code>initVal=op1(initVal, op2(elem, elem1))</code> </li>
+<li>如果第一数列为空<code>（beg == end）</code>两者都返回initVal</li>
+<li>op1和op2不能改动实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>相对数列和绝对数列间的转换</p>
+<ul>
+<li><p>相对值转绝对值</p>
+<pre><code>iter partial_sum(beg, end, dstBeg)
+iter partial_sum(beg, end, dstBeg, op)
+</code></pre><ul>
+<li>形式一计算每个元素的绝对合：<code>e1 e1+e2 e1+e2+e3</code></li>
+<li>形式二计算每个元素的绝对op：<code>e1 op(e1, e2) op(e1, e2, e3)</code></li>
+<li>返回目标区间内最后一个写入元素的下一个位置</li>
+<li>形式一与<code>adjacent_difference()</code>互补</li>
+<li>源和目标可以完全相同</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>op不能改动实参</li>
+<li>复杂度：线性    </li>
+</ul>
+</li>
+<li><p>绝对值转相对值</p>
+<pre><code>iter adjacent_difference(beg, end, dstBeg)
+iter adjacent_difference(beg, end, dstBeg, op)
+</code></pre><ul>
+<li>形式一计算相邻元素的相对差：<code>e1 e2-e1 e3-e2</code></li>
+<li>形式二计算相邻元素的相对op：<code>e1 op(e2, e1) op(e3, e2)</code></li>
+<li>返回目标区间内最后一个写入元素的下一个位置</li>
+<li>形式一与<code>partial_sum()</code>互补</li>
+<li>必须确保目标区间有足够空间，否则要用insert iterator</li>
+<li>op不能改动实参</li>
+<li>复杂度：线性</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《The-C-Standard-Library-第二版》-第十一章-STL算法/" data-id="cio1njx6d00uolvfyl060f0oy" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《TCPIP详解（卷一）》-第九章-IP选路/" class="pre">第九章 IP选路</a><a href="/2016/05/11/阅读笔记-《The-C-Standard-Library-第一版》阅读笔记/" class="next">《The C++ Standard Library 第一版》阅读笔记</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

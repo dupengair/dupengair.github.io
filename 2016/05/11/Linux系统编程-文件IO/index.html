@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>文件IO | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">文件IO</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">文件IO</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/Linux系统编程/">Linux系统编程</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##一、引言<br>文件操作与流操作的区别：文件操作不带缓冲，都是直接的系统调用，流操作在用户层增加了缓冲区，目的是减少系统调用的次数（DuangDuangDuang~~~本质区别导致不同的应用场合，好了大家可以去玩了）</p>
+<p>##二、文件描述符</p>
+<ol>
+<li>内核向进程返回，非负整数，0~OPEN_MAX</li>
+<li>0、1、2（IN OUT ERR）</li>
+</ol>
+<p>##三、操作</p>
+<ol>
+<li><p>open</p>
+<pre><code>（必选）
+O_RDONLY
+O_WRONLY
+O_RDWR
+
+（可选）
+O_APPEND
+O_CREAT
+O_EXCL：在同时指定O_CREAT时，文件存在会报错，用来检查文件存在
+O_TRUNC：打开时文件长度截断为0
+O_NOCTTY：指定设备为终端时，不分配为此进程的控制终端
+O_NONBLOCK：对于FIFO或者特殊文件，后续操作位非阻塞模式
+（POSIX）
+O_DSYNC：每次写都等物理IO完成，除非写入不影响读取刚写入的数据（此时有可能出现文件大小等状态和实际不一致）
+O_RSYNC：每次读都等到写操作完成
+O_SYNC：任何情况下，写都等物理IO完成
+</code></pre><ul>
+<li>open返回的一定是最小未用fd</li>
+</ul>
+</li>
+<li><p>create</p>
+<ul>
+<li>相当于<code>open(O_RDWR|O_CREAT|O_TRUNC)</code></li>
+</ul>
+</li>
+<li><p>close</p>
+<ul>
+<li>关闭文件时，会释放进程加在文件上的锁</li>
+<li>进程退出时，内核自动关闭它打开的所有文件</li>
+</ul>
+</li>
+<li><p>lseek</p>
+<ul>
+<li>文件打开时，除非<code>O_APPEND</code>，否则偏移量为0</li>
+<li><p>方式:</p>
+<pre><code>SEEK_SET：自开始处
+SEEK_CUR：自当前
+SEEK_END：自文件结尾
+</code></pre></li>
+<li><p>返回文件的偏移量可能为负，所以测试返回值不要测试是否&lt;0，而是是否==-1</p>
+</li>
+<li>lseek会将偏移量记录到内核，不会引起任何IO操作</li>
+<li>当偏移量大于文件长度时，写操作会造成文件空洞，没写过的地方读出都是0，空洞并不占用磁盘存储</li>
+</ul>
+</li>
+<li><p>read</p>
+<ul>
+<li>返回实际读取的</li>
+<li>从终端读时，一次最多一行</li>
+<li>判断文件尾，实际读取小于所需读取</li>
+</ul>
+</li>
+<li><p>write</p>
+<ul>
+<li>普通打开从头写，<code>O_APPEND</code>从尾写</li>
+</ul>
+</li>
+</ol>
+<p>##四、文件共享</p>
+<ol>
+<li><p>内核打开的文件的三种数据结构：</p>
+<ul>
+<li>每个进程——所有打开文件的描述符表（fd、指向文件表的指针）</li>
+<li>所有打开文件——文件表（文件状态、当前偏移量、指向文件节点的指针）</li>
+<li><p>每个打开文件——v-node表（文件类型和操作）</p>
+<pre><code>per proc                                           per file
+进程表                   文件表                 v-node表
+文件描述符标志
+fd    File*     -&gt;     文件状态标志     节点信息
+                              当前文件偏移     文件长度
+                              Node *      -&gt;       文件操作
+</code></pre></li>
+</ul>
+</li>
+<li><p>一般情况下每个进程一个文件表项（除dup和fork）——记录每个进程打开的文件偏移，每个文件一个node表，记录文件自身的信息（位置、长度）</p>
+</li>
+<li>文件状态操作影响的是进程的文件表，node信息只有文件本身被修改才会改变</li>
+<li>可多个fd指向同一个文件表项，如dup或fork后，父子进程共享文件描述符</li>
+<li>文件描述符标志——用于进程內一个文件描述符<ul>
+<li>文件状态标志——用于指向该表的所有进程的描述符，如dup使多个fd指向同一表项</li>
+</ul>
+</li>
+<li>多个进程打开同一文件会各自在文件表生成表项，以维护各自的偏移和文件状态</li>
+</ol>
+<p>##五、原子操作</p>
+<ol>
+<li><code>O_APPEND</code><br>用于取代lseek+write</li>
+<li><code>O_CREAT+O_EXCL</code><br>用于取代open+create</li>
+<li>pread pwrite<ul>
+<li>带offset，偏移和读写为原子操作，相当于顺序调用lseek+read/write</li>
+<li>不更新文件指针File* ?</li>
+</ul>
+</li>
+</ol>
+<p>##六、复制文件描述符</p>
+<ol>
+<li>dup dup2<ul>
+<li>返回新描述符为可用的最小值，使之指向同一个文件表，共享文件状态标志（读写 偏移）</li>
+<li>后者指定新描述符的值，如果新值已有对应文件打开则先关闭，如果和本身相等则不关闭</li>
+</ul>
+</li>
+<li><p>fcntl</p>
+<pre><code>dup(fd) == fcntl(fd, F_DUPFD, 0)
+dup2(fd, n) ==close(n) + fcntl(fd, F_DUPFD, n)
+</code></pre></li>
+<li><p>区别</p>
+<ul>
+<li>dup2为原子操作</li>
+<li>errno不同</li>
+</ul>
+</li>
+</ol>
+<p>##七、缓冲区操作</p>
+<ol>
+<li>内核缓冲区带来的延迟写，减少了磁盘IO次数，也降低了文件更新速度，可能造成系统故障时文件更新丢失</li>
+<li>操作<ul>
+<li>sync —— 提交内核缓冲区到硬件写队列，不等硬件写操作完成</li>
+<li>fsync —— 只对指定fd的文件起作用，等硬件操作完成返回，会更新文件属性</li>
+<li>fdatasync —— 只更新文件数据，不更新属性，硬件完成后返回</li>
+</ul>
+</li>
+</ol>
+<p>##八、fcntl</p>
+<ol>
+<li>作用<ul>
+<li>复制fd （<code>F_DUPFD</code>）</li>
+<li>设置文件描述符标志 （<code>F_G/SETFD</code>）</li>
+<li>设置文件状态标志 （<code>F_G/SETFL</code>）</li>
+<li>设置异步IO所有权 （<code>F_G/SETOWN</code>）</li>
+<li>设置记录锁 （<code>F_G/SETLK(W)</code>）</li>
+</ul>
+</li>
+<li>文件描述符标志<ul>
+<li>当前只定义了<code>FD_CLOEXEC</code>，默认0，调用exec时不关闭，为1时关闭</li>
+<li><code>F_DUPFD</code>时清除<code>FD_CLOEXEC</code></li>
+</ul>
+</li>
+<li><p>文件状态标志</p>
+<pre><code>1) O_RDONLY
+2) O_WRONLY
+3) O_RDWR
+4) O_APPEND
+5) O_NONBLOCK
+6) O_SYNC 等待写完成（数据和属性）
+7) O_DSYNC 等待写完成（仅数据）
+8) O_RSYNC 同步读写
+9) O_FSYNC* 等待写完成
+10) O_ASYNC* 异步IO
+</code></pre></li>
+<li><p>fsync和fdatasync通常在需要时更新文件内容，O_SYNC则每次写操作都会更新，所以更慢</p>
+</li>
+</ol>
+<p>##九、ioctl —— 主要用于终端操作</p>
+<p>##十、/dev/fd</p>
+<ol>
+<li>打开/ dev/fd/n相当于复制文件描述符n</li>
+<li>open时mode只能是之前打开的子集，如之前打开为RDONLY，即使用RDWR成功打开也无法写入</li>
+<li>主要由shell使用，运行用路径为参数的程序以统一的方式处理fd</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/Linux系统编程-文件IO/" data-id="cio1njwox002elvfyslrich24" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux系统编程/">Linux系统编程</a></div><div class="post-nav"><a href="/2016/05/11/Linux系统编程-多线程编程注意事项/" class="pre">多线程编程注意事项</a><a href="/2016/05/11/Linux系统编程-系统数据文件和信息/" class="next">系统数据文件和信息</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

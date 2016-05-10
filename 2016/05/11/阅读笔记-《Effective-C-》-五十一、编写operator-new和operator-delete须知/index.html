@@ -1,0 +1,132 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>五十一、编写operator new和operator delete须知 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">五十一、编写operator new和operator delete须知</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">五十一、编写operator new和operator delete须知</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p><strong>条款五十说明了何时需要自己编写operator delete和operator new，现在看一看应该如何编写它们。</strong></p>
+<p>##一、普通版operator new</p>
+<ol>
+<li><p>实现实现一致性的operator new需要做到：</p>
+<ul>
+<li>内存申请得到满足时，返回一个指向它的指针</li>
+<li>不能满足时，有new-handler则调用，没有的话抛出一个bad_alloc异常</li>
+<li>必须有对付0内存申请的准备</li>
+<li>避免掩盖正常形式的new</li>
+</ul>
+</li>
+<li><p>这里要特别注意：</p>
+<ul>
+<li>operator new实际上不止一次尝试分配内存，并且在每次分配失败后调用new_handling函数。只有当指向new-handling函数的指针式null，operator new才抛出异常。</li>
+<li>C++规定，即使客户申请0 bytes，operator new也要返回一个合法指针。这种诡异的做法是为了简化语言的其它部分。</li>
+</ul>
+</li>
+</ol>
+<p>##二、普通版operator new实例</p>
+<pre><code>void* operator new(std::size_t size) throw(std::bad_alloc)
+{
+    using namespace std;
+    if (size == 0) {
+        size = 1;
+    }
+
+    while (true) {                                    //尝试分配size bytes;
+
+        if (分配成功)
+            return (一个指向所分配内存的指针);            //分配失败时，通过设置一个新的new-handling函数找到目前的
+
+        new_handler globalHandler = set_new_handler(0);        //返回目前的new-handling函数
+        set_new_handler(globalHandler);                //将new-handling函数设置为目前的
+
+        if (globalHandler)                             //调用目前的new-handling函数
+            (*globalHandler)();
+        else
+            throw std::bad_alloc();
+    }
+}
+</code></pre><ol>
+<li>这里处理0 size申请的做法是转换为1 size</li>
+<li>因为没有任何办法直接取得当前的new-handling函数，所以只能通过设置一个新的（null）返回得到目前的</li>
+<li>如果在多线程环境中，需要加锁来处理new-handling函数背后的global数据结构</li>
+<li>operator new应该内含一个无限循环(while(true))，尝试分配内存和调用new-handler函数，仅当成功分配内存才退出循环</li>
+<li>new-handler函数应该做的事情（见条款49）    <ul>
+<li>让更多内存可用</li>
+<li>安装另一个new-handler函数</li>
+<li>卸载new-handler函数（设为null）</li>
+<li>抛出bad_alloc异常</li>
+<li>分配失败调用abort或exit退出</li>
+</ul>
+</li>
+</ol>
+<p>##三、定制class专属的operator new</p>
+<ol>
+<li>operator new成员函数会被derived class继承并调用</li>
+<li>定制class专属的operator new的通常目的是为特定的class对象分配行为提供最优化，但不是为其derived class</li>
+<li><p>针对class定制的operator new通常很典型的只为大小为sizeof(class)的对象而设计</p>
+<pre><code>如：
+class Base {
+public:
+    static void* operator new(std::size_t size) throw(std::bad_alloc);                     //定义在基类中
+    …
+};
+
+class Derived : public Base { … };
+
+Derived *p = new Derived;                //在derived class中被调用
+</code></pre></li>
+</ol>
+<p>##四、特定类专属，与派生类无关的设计</p>
+<ul>
+<li><p>定制特定类专属，与派生类无关的operator new的最佳做法是通过“内存大小申请错误”的调用行为，由标准operator new 来处理派生类。</p>
+<pre><code>void* Base::operator new(std::size_t size) throw(std::bad_alloc)
+{
+    if(size != sizeof(Base))                //大小错误即意味着不是特定的Base class
+        return ::operator new(size)            //调用标准operator new
+    ……
+}
+
+此时，0 size的情况也交由标准operator new 来处理。
+</code></pre></li>
+</ul>
+<p>##五、定制class专属的array new</p>
+<ol>
+<li>为class定制operator new []唯一需要做的就是分配一块未加工的内存，因为无法为array内还不存在的元素做任何事情。</li>
+<li>如果它有可能被继承，那么不能假设base class的对象有多大，不能通过sizeof来计算</li>
+</ol>
+<p>##六、定制operator delete    </p>
+<ol>
+<li>C++需保证删除null指针用于安全</li>
+<li><p>如果是member，须检查size，如果operator new将size错误的申请交给标准operator new处理，那么operator delete也应该这么做</p>
+<pre><code>non-member版本：
+void operator delete(void* rawMemory) throw()
+{
+    if (rawMemory == 0)                     //如果删除的是null指针
+        return;                             //直接返回，什么也不做
+
+    否则，归还参数所指的内存;
+}
+
+member版本：
+class Base {
+public:
+    static void* operator new(std::size_t size) throw(bad_alloc);
+    static void operator delete(void* rawMemory, std::size_t size) throw();
+    ……
+};
+
+void Base::operator delete(void* rawMemory, std::size_t size) throw()
+{
+    if (rawMemory == 0) return;                //处理null指针
+    if (size != sizeof(Base)) {
+        ::operator delete(rawMemory);        //size错误时由标准operator delete处理
+        return;
+    }                                        //否则，归还参数所指的内存;        
+}
+</code></pre></li>
+</ol>
+<p>##七、关于virtual 析构函数</p>
+<ul>
+<li>如果被删除的对象派生自某个欠缺virtual析构函数的base class，那么C++传给operator delete的size_t参数可能不正确，那么也不能正确运作</li>
+</ul>
+<p>##八、总结</p>
+<ol>
+<li>operator new应该内核一个无限循环，在其中尝试分配内存，如果无法分配就应该调用new-handler。它要能处理0 bytes申请。class专属版本还应该处理“与正确大小不同的申请”（即派生类的情况）</li>
+<li>operator delete应该在收到null指针时不做任何事。同样，class专属版本还应该处理“与正确大小不同的申请”（即派生类的情况）</li>
+</ol>
+<pre><code>杜鹏
+2013-01-09
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《Effective-C-》-五十一、编写operator-new和operator-delete须知/" data-id="cio1njwyk00f6lvfysg4dlzue" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《Effective-C-》/">《Effective C++》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《Effective-C-》-二十八、避免返回Handles指向对象内部成分/" class="pre">二十八、避免返回Handles指向对象内部成分</a><a href="/2016/05/11/阅读笔记-《Effective-C-》-五十二、placement-new-和-placement-delete-要同时存在/" class="next">五十二、placement new 和 placement delete 要同时存在</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

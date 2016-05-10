@@ -1,0 +1,324 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第六章 IO复用 select和poll | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第六章 IO复用 select和poll</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第六章 IO复用 select和poll</h1><div class="post-meta">May 11, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><p>##一、I/O复用</p>
+<ol>
+<li>I/O复用： 内核发现指定的I/O条件就绪，立即通知进程的过程</li>
+<li>I/O复用的场合<ul>
+<li>同时处理多个描述符</li>
+<li>同时处理多个套接字</li>
+<li>同时处理监听套接字和已连接套接字</li>
+<li>同时处理TCP和UDP</li>
+<li>同时处理多个服务和多个协议</li>
+</ul>
+</li>
+</ol>
+<p>##二、I/O模型</p>
+<ul>
+<li><p>Unix下可用的5种IO：</p>
+<blockquote>
+<p>阻塞式IO</p>
+<p>非阻塞式IO</p>
+<p>IO复用(select/poll/epoll)</p>
+<p>信号驱动(SIGIO)</p>
+<p>异步(aio_xxx)</p>
+</blockquote>
+</li>
+<li><p>输入操作的两个阶段:</p>
+<blockquote>
+<p>等待数据准备</p>
+<p>从内核向进程复制数据</p>
+</blockquote>
+</li>
+<li><p>同步IO与异步IO</p>
+<blockquote>
+<p>同步IO：真正的IO操作将阻塞进程（由进程完成）</p>
+<p>异步IO：IO操作由内核完成，不阻塞进程</p>
+</blockquote>
+</li>
+</ul>
+<ol>
+<li><p>阻塞式IO</p>
+<ul>
+<li>从进程空间切换到内核空间等待数据，阻塞在IO系统调用上</li>
+<li>最常见错误是系统调用被信号中断</li>
+</ul>
+</li>
+<li><p>非阻塞式IO</p>
+<ul>
+<li>polling：应用程序持续轮询内核</li>
+<li>无数据是返回EWOULDBLOCK错误</li>
+</ul>
+</li>
+<li><p>IO复用</p>
+<ul>
+<li>阻塞在select/poll/epoll上，而不是IO系统调用</li>
+</ul>
+</li>
+<li><p>信号驱动IO</p>
+<ul>
+<li>开启套接字信号驱动-&gt;安装信号处理函数-&gt;数据准备好时内核产生信号</li>
+<li>IO操作由应用程序完成（内核通知数据准备好）</li>
+<li>进程不受等待信号处理的影响</li>
+<li>处理能力有限</li>
+</ul>
+</li>
+<li><p>异步IO</p>
+<ul>
+<li>aio_传递缓冲区-&gt;IO操作完成时内核产生信号</li>
+<li>IO操作由内核完成（内核通知IO完成）</li>
+</ul>
+</li>
+</ol>
+<p>##三、select</p>
+<pre><code>#include &lt;sys/select.h&gt;
+#include &lt;sys/time.h&gt;
+int select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset, const struct timeval *timeout);
+成功返回就绪描述符数目，超时返回0，出错返回-1
+</code></pre><ol>
+<li><p>timeval</p>
+<pre><code>struct timeval {
+    long tv_sec;
+    long tv_usec;
+};
+</code></pre><ul>
+<li>有3种可能<ul>
+<li>为NULL时永远等待(阻塞)</li>
+<li>为0时不等待(轮询)</li>
+<li>等待固定时间(阻塞超时)</li>
+</ul>
+</li>
+<li>Berkeley内核绝不自动重启被中断的select</li>
+<li>内核支持的真实分辨率比usec粗糙得多，多数为10ms的倍数</li>
+<li>通过EINVAL表示不支持的值(超大值)</li>
+<li>const表示时间值不会被修改</li>
+</ul>
+</li>
+<li><p>文件描述符集</p>
+<ul>
+<li>readset、writeset、exceptset：读、写、异常</li>
+<li>目前支持的异常条件只有两个：<ul>
+<li>套接字带外数据到达</li>
+<li>某个已置为分组模式的伪终端存在可以从其主端读取的控制状态信息（@#￥%…&amp;*~）</li>
+</ul>
+</li>
+<li>描述符集通常是一个整数数组，每个整数的每一位对应一个描述符，元素1对应0~31,2对应32~63…</li>
+<li>Poll使用可变长度的结构体数组，每个结构体代表一个描述符</li>
+<li>对不感兴趣的条件设为空指针，如果三个指针都为空则是一个高精度定时器</li>
+<li>maxfdp1为待测试的最大描述符+1，使得内核可以不复制描述符集中进程不需要的部分，从而避免测试总为0的那些位</li>
+<li>头文件<code>&lt;sys/select.h&gt;</code>中定义的<code>FD_SETSIZE</code>值为<code>fd_set</code>中描述符的总数，通常值为1024</li>
+<li><code>fd_set</code>的三个参数为值-结果参数，函数返回后使用FD_ISSET宏进行测试，每次重新调用select时，都要将关系的描述符重新置位</li>
+<li>返回值为描述符集已就绪的总位数</li>
+<li>常见的编程错误：<ul>
+<li>没有对最大描述符+1</li>
+<li>重复调用时，忘记对<code>fd_set</code>再次置位</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>描述符就绪条件</p>
+<ul>
+<li>套接字可读<ul>
+<li>接收缓冲区数据超过低水位标记<ul>
+<li>读返回大于0(数据量)</li>
+<li>可以使用<code>SO_RCVLOWAT</code>设置低水位标记，TCP和UDP默认为1</li>
+</ul>
+</li>
+<li>连接的读半部关闭，TCP连接收到FIN<ul>
+<li>读返回0(EOF)</li>
+</ul>
+</li>
+<li>监听套接字已完成队列大于0<ul>
+<li>accept通常不阻塞</li>
+</ul>
+</li>
+<li>套接字产生待处理错误<ul>
+<li>读返回-1，设置errno</li>
+<li>可以通过指定<code>SO_ERROR</code>套接字选项，并调用getsockopt获取并清除</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>套接字可写<ul>
+<li>发送缓冲区可用空间超过低水位标记<ul>
+<li>写返回大于0(数据量)</li>
+<li>可以使用<code>SO_SNDLOWAT</code>设置低水位标记，TCP和UDP默认为2048</li>
+</ul>
+</li>
+<li>连接的写半部关闭<ul>
+<li>写收到RST响应，继续产生SIGPIPE</li>
+</ul>
+</li>
+<li>非阻塞式connect已建立连接，或者connect失败</li>
+<li>套接字产生待处理错误<ul>
+<li>写返回-1，设置errno</li>
+<li>可以通过指定SO_ERROR套接字选项，并调用getsockopt获取并清除 </li>
+</ul>
+</li>
+</ul>
+</li>
+<li>套接字存在带外数据时，为异常</li>
+<li>套接字错误时，同时可读写</li>
+<li>接收发送低水位标记的目的在于，允许进程控制select返回时的缓冲区数据量</li>
+<li>UDP套接字只要低水位标记小于缓冲区大小就总是可写，因为UDP不需要连接，不控制流量</li>
+</ul>
+</li>
+</ol>
+<p>##四、shutdown</p>
+<ol>
+<li><p>close的限制</p>
+<ul>
+<li>引用计数-1，为0时才关闭套接字，shutdown可以直接触发TCP关闭序列</li>
+<li>同时终止读写两个方向，无法保证链路徽中的数据完成传输(通常要先关闭写，再关闭读)</li>
+</ul>
+</li>
+<li><p>参数</p>
+<ul>
+<li><code>SHUT_RD</code><ul>
+<li>读关闭</li>
+<li>接收缓冲区数据丢弃</li>
+<li>关闭后收到的对端数据都被确认，然后丢弃(RST-&gt;SIGPIPE?)</li>
+</ul>
+</li>
+<li><code>SHUT_WR</code><ul>
+<li>写关闭(半关闭)</li>
+<li>发送缓冲区数据都被发送，然后终止连接</li>
+</ul>
+</li>
+<li><code>SHUT_RDWR</code><ul>
+<li>同时关闭读写</li>
+<li>相当于先调用<code>SHUT_RD</code>，再调用<code>SHUT_WR</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>##五、拒绝服务DoS</p>
+<ol>
+<li>当一个服务器处理多个客户时，绝对不能阻塞于只与单个客户相关的函数调用，否则可能导致服务器挂起，拒绝为其它客户提供服务</li>
+<li>可能的解决办法<ul>
+<li>使用非阻塞IO</li>
+<li>per client per thread</li>
+<li>IO操作设置超时</li>
+</ul>
+</li>
+</ol>
+<p>##六、pselect</p>
+<pre><code>#include &lt;sys/select.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;time.h&gt;
+
+int pselect(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset, const struct timespec *timeout, const sigset_t *sigmask);
+成功返回就绪描述符数目，超时返回0，出错返回-1
+</code></pre><ol>
+<li><p>对于select的变化</p>
+<ul>
+<li><p>使用timespec结构，tv_nsec为纳秒</p>
+<pre><code>struct timespec {
+    time_t tv_sec;
+    long   tv_nsec;
+}
+</code></pre></li>
+<li><p>增加了新参数*sigmask，指向信号掩码，调用时以原子操作安装该信号掩码，返回时恢复原来的信号屏蔽字</p>
+<ul>
+<li>如果该指针为空，则和select一样。</li>
+<li>以允许应用程序先屏蔽信号，再测试由信号改变的全局变量，然后调用pselect并重新设置信号掩码。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>举例</p>
+<p> SIG_INT信号设置全局变量<code>intr_flag</code></p>
+<ul>
+<li>出现竞争条件的情况</li>
+</ul>
+</li>
+</ol>
+<pre><code>        if(select(...) &lt; 0) {
+            if(error == EINTR) {
+                if(intr_flag)
+                    handle_intr();
+            }
+            ...
+        }
+
+    + 在测试`intr_flag`之后，下次调用select之前如果有信号发生，如果select永远阻塞，则信号可能会丢失
+
+* 改用pselect
+
+        sigset_t newmask, oldmask, zeromask;
+
+        sigemptyset(&amp;zeromask);
+        sigemptyset(&amp;newmask);
+        sigaddset(&amp;newmask, SIGINT);
+
+        // 阻塞SIGINT
+        sigprocmask(SIG_BLOCK, &amp;newmask, &amp;oldmask);
+        // 调用pselect以后不阻塞任何信号,直到返回
+        if(pselect(..., &amp;zeromask) &lt; 0) { 
+            if(error == EINTR) {
+                if(intr_flag)
+                    handle_intr();
+            }
+            ...
+        }
+
+    + 当pselect被调用时，先以空集zeromask替代进程的信号掩码(不阻塞任何信号，可以捕获SIGINT)，再检查描述符并可能进入睡眠。pselect返回时，进程的信号掩码又被重置为调用pselect之前的值(阻塞SIGINT)，从而避免了SIGINT信号的丢失
+</code></pre><p>##七、poll</p>
+<pre><code>#include &lt;poll.h&gt;
+int poll(struct poll *fdarray, unsigned long nfds, int timeout);
+返回就绪描述符数目，超时返回0，出错返回-1
+</code></pre><ol>
+<li><p>fdarray</p>
+<pre><code>struct pollfd {
+    int fd;
+    short events;        // interested
+    short revents;        // occurred
+};
+</code></pre><ul>
+<li>fdarray为结构体数组，events调用条件，revents返回结果，不再是值-结果参数</li>
+<li><p>events</p>
+<hr>
+<ul>
+<li>POLLIN：normal或priority band数据可读</li>
+<li>POLLRDNORM：normal数据可读</li>
+<li>POLLRDBAND：priority band数据可读</li>
+<li>POLLPRI：high priority数据可读</li>
+</ul>
+<hr>
+<ul>
+<li>POLLOUT：normal数据可写</li>
+<li>POLLWRNORM：normal数据可写</li>
+<li>POLLWRBAND：优先级带数据可写</li>
+</ul>
+<hr>
+<ul>
+<li>POLLERR：发生错误，只作结果返回</li>
+<li>POLLHUP：发生挂起，只作结果返回</li>
+<li>POLLNVAL：描述符不是一个打开的文件，只作结果返回</li>
+</ul>
+</li>
+<li><p>有三类数据：normal、priority band、high priority</p>
+</li>
+<li>有多种方法可以返回相同的条件：<ul>
+<li>所有TCP和UDP正规数据为normal</li>
+<li>带外数据为priority band</li>
+<li>TCP连接的读半部关闭为normal</li>
+<li>TCP连接的错误可以为normal，或者POLLERR，随后的读操作返回-1并设置error，可用于接收RST或发生超时</li>
+<li>监听套接字上有新连接，可认为是normal或high priority</li>
+<li>非阻塞式connect完成为套接字可写</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>nfds指明结构数组的元素个数</p>
+</li>
+<li><p>timeout为ms值</p>
+<pre><code>INFTM：永远等待     
+0：立即返回，非阻塞     
+&gt;0：ms值
+</code></pre><ul>
+<li>任何timeout值都受限于时钟分辨率(通常为10ms)</li>
+</ul>
+</li>
+<li><p>如果不再关心某个特定fd，把结构中的fd成员设置为-1</p>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第六章-IO复用-select和poll/" data-id="cio1njx7k00wllvfymtc5j07n" class="article-share-link">分享到</a><div class="tags"><a href="/tags/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a></div><div class="post-nav"><a href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十七章-ioctl操作/" class="pre">第十七章 ioctl操作</a><a href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第八章-基本UDP编程/" class="next">第八章 基本UDP编程</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第四章-基本TCP编程/">第四章 基本TCP编程</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">第十四章 高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十八章-路由套接字/">第十八章 路由套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/11/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
