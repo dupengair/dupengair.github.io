@@ -1,0 +1,560 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 安装Hexo搭建github blog<br>date: 2016-05-13 17:01:59<br>categories: 开发环境搭建<br>tag: 开发环境搭建<br>toc: true</p>
+<hr>
+<ol>
+<li>安装node.js(需翻墙)</li>
+</ol>
+<pre><code>    brew install node
+
+
+
+
+
+
+
+* 安装完成后提示无法正常建立link：
+
+
+
+
+
+
+
+        ==&gt; ./configure --prefix=/usr/local/Cellar/node/0.12.7/libexec/npm
+
+
+
+        ==&gt; make install
+
+
+
+        Error: The `brew link` step did not complete successfully
+
+
+
+        The formula built, but is not symlinked into /usr/local
+
+
+
+        Could not symlink include/node
+
+
+
+        /usr/local/include is not writable.
+
+
+
+
+
+
+
+        You can try again using:
+
+
+
+          brew link node
+
+
+
+
+
+
+
+        Warning: The post-install step did not complete successfully
+
+
+
+        You can try again using `brew postinstall node`
+
+
+
+        ==&gt; Caveats
+
+
+
+        Bash completion has been installed to:
+
+
+
+          /usr/local/etc/bash_completion.d
+
+
+
+        ==&gt; Summary
+
+
+
+        🍺  /usr/local/Cellar/node/0.12.7: 2726 files, 31M, built in 4.9 minutes
+
+
+
+        ➜  ~ node -v
+
+
+
+        zsh: command not found: node
+</code></pre><ol>
+<li>手动建立node的link</li>
+</ol>
+<pre><code>* 不能建立link是因为homebrew不在root用户组，没有写入系统文件夹的权限
+
+
+
+* 查看brew的用户组：
+
+
+
+
+
+
+
+        ➜  ~ ls -al `which brew`
+
+
+
+        -rwxr-xr-x  1 dupengair  admin  791  8 13  2015 /usr/local/bin/brew
+
+
+
+
+
+
+
+* 将其改为root用户组：
+
+
+
+
+
+
+
+        ➜  ~ sudo chown root:admin `which brew`
+
+
+
+
+
+
+
+* 执行brew建立链接命令：
+
+
+
+        ➜  ~ sudo brew link --overwrite node
+
+
+
+
+
+
+
+* 执行完成后改回原来的用户组：
+
+
+
+        ➜  ~ sudo chown dupengair:admin `which brew`
+</code></pre><ol>
+<li>安装npm</li>
+</ol>
+<pre><code>* node -v 正常后，发现找不到npm命令，按网上的solution，重装node解决
+
+
+
+
+
+
+
+        $ brew update
+
+
+
+        $ brew uninstall node
+
+
+
+        $ brew install node
+
+
+
+        $ sudo brew postinstall node 
+
+* 按同样方法建立链接后，终于得到了正确的输出：
+
+
+
+        ➜  ~ sudo chown root:admin `which brew`
+
+        ➜  ~ sudo brew link --overwrite node
+
+        Linking /usr/local/Cellar/node/0.12.7... 6 symlinks created
+
+        ➜  ~ sudo chown dupengair:admin `which brew`
+
+        ➜  ~ node -v
+
+        v0.12.7
+
+        ➜  ~ npm -v
+
+        2.12.1
+</code></pre><ol>
+<li>安装hexo</li>
+</ol>
+<pre><code>sudo npm install -g hexo --no-optional （--no-optional重要，否则运行报错）
+
+
+
+
+
+ ➜ ~ sudo npm install -g hexo --no-optional
+
+Password:
+
+
+
+&gt; spawn-sync@1.0.15 postinstall /usr/local/lib/node_modules/hexo/node_modules/hexo-util/node_modules/cross-spawn/node_modules/spawn-sync
+
+&gt; node postinstall
+
+
+
+&gt; hexo-util@0.5.3 postinstall /usr/local/lib/node_modules/hexo/node_modules/hexo-util
+
+&gt; npm run build:highlight
+
+
+
+/
+
+&gt; hexo-util@0.5.3 build:highlight /usr/local/lib/node_modules/hexo/node_modules/hexo-util
+
+&gt; node scripts/build_highlight_alias.js &gt; highlight_alias.json
+
+
+
+/usr/local/bin/hexo -&gt; /usr/local/lib/node_modules/hexo/bin/hexo
+
+hexo@3.2.0 /usr/local/lib/node_modules/hexo
+
+├── hexo-front-matter@0.2.2
+
+├── pretty-hrtime@1.0.2
+
+├── abbrev@1.0.7
+
+├── archy@1.0.0
+
+├── titlecase@1.1.2
+
+├── text-table@0.2.0
+
+├── bluebird@3.3.5
+
+├── hexo-log@0.1.2 (bunyan@1.8.0)
+
+├── tildify@1.2.0 (os-homedir@1.0.1)
+
+├── hexo-i18n@0.2.1 (sprintf-js@1.0.3)
+
+├── js-yaml@3.6.0 (esprima@2.7.2, argparse@1.0.7)
+
+├── strip-indent@1.0.1 (get-stdin@4.0.1)
+
+├── chalk@1.1.3 (escape-string-regexp@1.0.5, supports-color@2.0.0, ansi-styles@2.2.1, has-ansi@2.0.0, strip-ansi@3.0.1)
+
+├── hexo-cli@1.0.1 (object-assign@4.0.1, minimist@1.2.0)
+
+├── moment-timezone@0.5.3
+
+├── minimatch@3.0.0 (brace-expansion@1.1.3)
+
+├── swig-extras@0.0.1 (markdown@0.5.0)
+
+├── cheerio@0.20.0 (entities@1.1.1, dom-serializer@0.1.0, css-select@1.2.0, htmlparser2@3.8.3)
+
+├── moment@2.11.2
+
+├── swig@1.4.2 (optimist@0.6.1, uglify-js@2.4.24)
+
+├── hexo-util@0.5.3 (striptags@2.1.1, html-entities@1.2.0, camel-case@1.2.2, cross-spawn@2.2.3, highlight.js@9.3.0)
+
+├── lodash@4.11.1
+
+├── hexo-fs@0.1.5 (escape-string-regexp@1.0.5, graceful-fs@4.1.3, chokidar@1.4.3)
+
+├── nunjucks@2.4.2 (asap@2.0.3, yargs@3.32.0, chokidar@1.4.3)
+
+└── warehouse@2.2.0 (graceful-fs@4.1.3, is-plain-object@2.0.1, JSONStream@1.1.1, cuid@1.3.8)
+</code></pre><ol>
+<li>enjoy it！</li>
+</ol>
+<pre><code> ➜ ~ github hexo init
+
+INFO  Cloning hexo-starter to ~/Work/Blog/github
+
+Cloning into &apos;/Users/dupengair/Work/Blog/github&apos;...
+
+remote: Counting objects: 53, done.
+
+remote: Total 53 (delta 0), reused 0 (delta 0), pack-reused 53
+
+Unpacking objects: 100% (53/53), done.
+
+Checking connectivity... done.
+
+Submodule &apos;themes/landscape&apos; (https://github.com/hexojs/hexo-theme-landscape.git) registered for path &apos;themes/landscape&apos;
+
+Cloning into &apos;themes/landscape&apos;...
+
+fatal: unable to access &apos;https://github.com/hexojs/hexo-theme-landscape.git/&apos;: Empty reply from server
+
+Clone of &apos;https://github.com/hexojs/hexo-theme-landscape.git&apos; into submodule path &apos;themes/landscape&apos; failed
+
+WARN  git clone failed. Copying data instead
+
+INFO  Install dependencies
+
+
+
+&gt; spawn-sync@1.0.15 postinstall /Users/dupengair/Work/Blog/github/node_modules/hexo/node_modules/hexo-util/node_modules/cross-spawn/node_modules/spawn-sync
+
+&gt; node postinstall
+
+
+
+
+
+&gt; spawn-sync@1.0.15 postinstall /Users/dupengair/Work/Blog/github/node_modules/hexo-renderer-marked/node_modules/hexo-util/node_modules/cross-spawn/node_modules/spawn-sync
+
+&gt; node postinstall
+
+
+
+
+
+&gt; dtrace-provider@0.6.0 install /Users/dupengair/Work/Blog/github/node_modules/hexo/node_modules/hexo-log/node_modules/bunyan/node_modules/dtrace-provider
+
+&gt; node scripts/install.js
+
+
+
+---------------
+
+Building dtrace-provider failed with exit code 1 and signal 0
+
+re-run install with environment variable V set to see the build output
+
+---------------
+
+
+
+&gt; hexo-util@0.5.3 postinstall /Users/dupengair/Work/Blog/github/node_modules/hexo/node_modules/hexo-util
+
+&gt; npm run build:highlight
+
+
+
+
+
+&gt; hexo-util@0.5.3 build:highlight /Users/dupengair/Work/Blog/github/node_modules/hexo/node_modules/hexo-util
+
+&gt; node scripts/build_highlight_alias.js &gt; highlight_alias.json
+
+
+
+
+
+&gt; hexo-util@0.5.3 postinstall /Users/dupengair/Work/Blog/github/node_modules/hexo-renderer-marked/node_modules/hexo-util
+
+&gt; npm run build:highlight
+
+
+
+
+
+&gt; hexo-util@0.5.3 build:highlight /Users/dupengair/Work/Blog/github/node_modules/hexo-renderer-marked/node_modules/hexo-util
+
+&gt; node scripts/build_highlight_alias.js &gt; highlight_alias.json
+
+
+
+
+
+&gt; fsevents@1.0.11 install /Users/dupengair/Work/Blog/github/node_modules/hexo/node_modules/hexo-fs/node_modules/chokidar/node_modules/fsevents
+
+&gt; node-pre-gyp install --fallback-to-build
+
+
+
+[fsevents] Success: &quot;/Users/dupengair/Work/Blog/github/node_modules/hexo/node_modules/hexo-fs/node_modules/chokidar/node_modules/fsevents/lib/binding/Release/node-v14-darwin-x64/fse.node&quot; is installed via remote
+
+
+
+&gt; fsevents@1.0.11 install /Users/dupengair/Work/Blog/github/node_modules/hexo/node_modules/nunjucks/node_modules/chokidar/node_modules/fsevents
+
+&gt; node-pre-gyp install --fallback-to-build
+
+
+
+[fsevents] Success: &quot;/Users/dupengair/Work/Blog/github/node_modules/hexo/node_modules/nunjucks/node_modules/chokidar/node_modules/fsevents/lib/binding/Release/node-v14-darwin-x64/fse.node&quot; is installed via remote
+
+hexo-renderer-ejs@0.1.1 node_modules/hexo-renderer-ejs
+
+├── object-assign@4.0.1
+
+└── ejs@1.0.0
+
+
+
+hexo-generator-category@0.1.3 node_modules/hexo-generator-category
+
+├── object-assign@2.1.1
+
+└── hexo-pagination@0.0.2 (utils-merge@1.0.0)
+
+
+
+hexo-generator-archive@0.1.4 node_modules/hexo-generator-archive
+
+├── object-assign@2.1.1
+
+└── hexo-pagination@0.0.2 (utils-merge@1.0.0)
+
+
+
+hexo-generator-tag@0.2.0 node_modules/hexo-generator-tag
+
+├── object-assign@4.0.1
+
+└── hexo-pagination@0.0.2 (utils-merge@1.0.0)
+
+
+
+hexo-generator-index@0.2.0 node_modules/hexo-generator-index
+
+├── object-assign@4.0.1
+
+└── hexo-pagination@0.0.2 (utils-merge@1.0.0)
+
+
+
+hexo-server@0.1.3 node_modules/hexo-server
+
+├── object-assign@4.0.1
+
+├── opn@3.0.3
+
+├── mime@1.3.4
+
+├── chalk@1.1.3 (escape-string-regexp@1.0.5, supports-color@2.0.0, ansi-styles@2.2.1, has-ansi@2.0.0, strip-ansi@3.0.1)
+
+├── bluebird@3.3.5
+
+├── morgan@1.7.0 (on-headers@1.0.1, basic-auth@1.0.3, depd@1.1.0, debug@2.2.0, on-finished@2.3.0)
+
+├── serve-static@1.10.2 (escape-html@1.0.3, parseurl@1.3.1, send@0.13.1)
+
+├── connect@3.4.1 (utils-merge@1.0.0, parseurl@1.3.1, debug@2.2.0, finalhandler@0.4.1)
+
+└── compression@1.6.1 (on-headers@1.0.1, vary@1.1.0, bytes@2.2.0, debug@2.2.0, compressible@2.0.7, accepts@1.3.2)
+
+
+
+hexo-renderer-stylus@0.3.1 node_modules/hexo-renderer-stylus
+
+├── stylus@0.53.0 (css-parse@1.7.0, debug@2.2.0, mkdirp@0.5.1, source-map@0.1.43, sax@0.5.8, glob@3.2.11)
+
+└── nib@1.1.0 (stylus@0.49.3)
+
+
+
+hexo-renderer-marked@0.2.10 node_modules/hexo-renderer-marked
+
+├── object-assign@4.0.1
+
+├── marked@0.3.5
+
+├── strip-indent@1.0.1 (get-stdin@4.0.1)
+
+└── hexo-util@0.5.3 (striptags@2.1.1, html-entities@1.2.0, camel-case@1.2.2, bluebird@3.3.5, cross-spawn@2.2.3, highlight.js@9.3.0)
+
+
+
+hexo@3.2.0 node_modules/hexo
+
+├── hexo-front-matter@0.2.2
+
+├── pretty-hrtime@1.0.2
+
+├── abbrev@1.0.7
+
+├── archy@1.0.0
+
+├── titlecase@1.1.2
+
+├── text-table@0.2.0
+
+├── tildify@1.2.0 (os-homedir@1.0.1)
+
+├── strip-indent@1.0.1 (get-stdin@4.0.1)
+
+├── hexo-i18n@0.2.1 (sprintf-js@1.0.3)
+
+├── chalk@1.1.3 (escape-string-regexp@1.0.5, supports-color@2.0.0, ansi-styles@2.2.1, has-ansi@2.0.0, strip-ansi@3.0.1)
+
+├── minimatch@3.0.0 (brace-expansion@1.1.3)
+
+├── swig-extras@0.0.1 (markdown@0.5.0)
+
+├── bluebird@3.3.5
+
+├── js-yaml@3.6.0 (esprima@2.7.2, argparse@1.0.7)
+
+├── hexo-cli@1.0.1 (object-assign@4.0.1, minimist@1.2.0)
+
+├── swig@1.4.2 (optimist@0.6.1, uglify-js@2.4.24)
+
+├── moment-timezone@0.5.3
+
+├── moment@2.11.2
+
+├── lodash@4.11.1
+
+├── warehouse@2.2.0 (graceful-fs@4.1.3, is-plain-object@2.0.1, JSONStream@1.1.1, cuid@1.3.8)
+
+├── cheerio@0.20.0 (entities@1.1.1, dom-serializer@0.1.0, css-select@1.2.0, htmlparser2@3.8.3, jsdom@7.2.2)
+
+├── hexo-log@0.1.2 (bunyan@1.8.0)
+
+├── hexo-util@0.5.3 (striptags@2.1.1, html-entities@1.2.0, camel-case@1.2.2, cross-spawn@2.2.3, highlight.js@9.3.0)
+
+├── hexo-fs@0.1.5 (escape-string-regexp@1.0.5, graceful-fs@4.1.3, chokidar@1.4.3)
+
+└── nunjucks@2.4.2 (asap@2.0.3, yargs@3.32.0, chokidar@1.4.3)
+
+INFO  Start blogging with Hexo!
+</code></pre><ol>
+<li><p>此时可以启动本地server进行验证</p>
+<pre><code>hexo new &quot;test.md&quot;
+hexo g
+hexo s
+</code></pre><ul>
+<li>生成的文件在./source/__post/下</li>
+</ul>
+</li>
+<li><p>安装deploy插件</p>
+<pre><code>npm install hexo-deployer-git --save
+</code></pre></li>
+<li><p>修改配置文件_config.xml</p>
+<pre><code># Deployment
+## Docs: https://hexo.io/docs/deployment.html
+deploy:
+  type: git
+  repo: git@github.com:dupengair/dupengair.github.io.git
+  branch: master
+</code></pre></li>
+<li><p>部署到github上即可看到效果</p>
+<pre><code>hexo d
+</code></pre></li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/开发环境搭建-安装Hexo搭建github-blog/" data-id="cio5xrkkj002e86fy6w8ratrd" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/杂项-DM365datasheet阅读笔记/" class="pre"></a><a href="/2016/05/14/开发环境搭建-wireshark在mac下找不到网卡/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

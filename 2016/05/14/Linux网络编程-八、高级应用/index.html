@@ -1,0 +1,407 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 八、高级应用<br>date: 2016-05-13 17:01:56<br>categories: Linux网络编程<br>tag: Linux网络编程<br>toc: true</p>
+<hr>
+<hr>
+<h1 id="守护进程和inetd超级服务器"><a href="#守护进程和inetd超级服务器" class="headerlink" title="守护进程和inetd超级服务器"></a>守护进程和inetd超级服务器</h1><hr>
+<p>#一、守护进程的启动</p>
+<ol>
+<li>系统初始化脚本启动，拥有超级用户特权，如inetd、syslog</li>
+<li>许多网络服务由inetd启动，如telnet，FTP</li>
+<li>cron守护进程按规则定期执行程序，由cron启动的程序也作为守护进程运行</li>
+<li>at命令用于在将来某个时刻执行程序</li>
+<li>从用户终端在前台或后台启动，这样必需主动脱离与控制终端的关联，从而避免与作业控制、会话管理、系统信号发生不期望的交互，和非预期的退出</li>
+</ol>
+<p>#二、syslogd</p>
+<ol>
+<li>启动流程<ul>
+<li>读取配置，通常是/etc/syslog.conf</li>
+<li>创建UNIX套接字，绑定到/var/run/log上</li>
+<li>创建UDP套接字，绑定端口514</li>
+<li>打开/dev/klog，可以读取来自内核的消息</li>
+<li>调用select，读入日志消息，按照配置文件进行处理</li>
+</ul>
+</li>
+<li>收到SIGHUP信号时，重新读取配置文件</li>
+<li>用户可以创建域套接字，向syslogd发送日志消息</li>
+<li>也可以创建UDP套接字，通过换回地址和端口514发送消息，新实现禁止创建，避免DoS攻击</li>
+</ol>
+<p>#三、syslog函数</p>
+<ol>
+<li>守护进程没有终端，不能发送消息到标准输出，所以通常调用syslog</li>
+<li><p>syslog函数</p>
+<pre><code>#include &lt;syslog.h&gt;
+void syslog(int prio, const char *msg, ...)；
+</code></pre><ul>
+<li>prio是级别level和设施facility的组合</li>
+<li>默认level为<code>LOG_NOTICE</code>，facility为<code>LOG_USER</code></li>
+</ul>
+</li>
+<li><p>level</p>
+<pre><code>LOG_EMERG    0    系统不可用
+LOG_ALERT    1    必需立即处理
+LOG_CRIT    2    临界条件
+LOG_ERR        3    出错条件
+LOG_WARNING    4    警告条件
+LOG_NOTICE    5    正常但重要(default)
+LOG_INFO    6    通告消息
+LOG_DEBUG    7    调试信息(最低优先级)
+</code></pre></li>
+<li><p>facility(消息属主)</p>
+<pre><code>LOG_AUTH        安全/授权消息
+LOG_AUTHPRIV    安全/授权消息(私用)
+LOG_CRON        cron守护进程
+LOG_DAEMON        系统守护进程
+LOG_FTP
+LOG_KERN        内核消息
+LOG_LOCAL0~7    本地消息
+LOG_LPR
+LOG_MAIL
+LOG_NEWS
+LOG_SYSLOG        syslogd内部产生消息
+LOG_USER        任意用户的消息(default)
+LOG_UUCP    
+</code></pre></li>
+<li><p>手动打开</p>
+<ul>
+<li>域套接字通常一直保持打开，进程也可以手动打开</li>
+<li><p>openlog调用时，通常不马上创建域套接字，首次调用syslog时才创建，可以通过<code>LOG_NDELAY</code>强制创建，</p>
+<pre><code>#include &lt;syslog.h&gt;
+void openlog(const char *ident, int options, int facility);
+void closelog(void);
+
+LOG_CONS    消息无法发送到syslogd时登记到控制台
+LOG_NDELAY    open时立即创建套接字
+LOG_PERROR    发送到syslogd时，同时发送到标准错误
+LOG_PID        随消息记录进程pid
+</code></pre><ul>
+<li>ident用于消息前缀，通常是进程名</li>
+<li>facility指定默认值，通常open时指定，后面调用syslog时只需要指定级别</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>#四、inetd守护进程</p>
+<ol>
+<li><p>问题来由</p>
+<ul>
+<li>很多网络服务程序都有相似代码，表现在创建套接字、处理守护进程等</li>
+<li>每个守护进程会占用进程表项，且大部分时间处于睡眠，等待客户端连接</li>
+</ul>
+</li>
+<li><p>目的</p>
+<ul>
+<li>简化守护进程的编写</li>
+<li>单个进程处理客户端请求，减少系统的进程数</li>
+</ul>
+</li>
+<li><p>配置</p>
+<ul>
+<li><p>/etc/inetd.conf</p>
+<pre><code>service-name                必须在/etc/services中定义
+socket-type                    stream/dgram
+protocol                    必须在/etc/protocols中定义
+wait-flag                    对TCP一般nowait，对UDP一般wait
+login-name                    来自/etc/passwd的用户名，一般为root
+server-program                exec调用的完整路径名
+server-program-arguments    exec调用指定的命令行参数
+</code></pre></li>
+</ul>
+</li>
+<li><p>流程</p>
+<pre><code>                socket 
+                   |
+                 bind
+                   |
+                listen(TCP)
+                   |
+                select
+                   |
+                accept(TCP)
+                   |
+                 fork
+                   |
+        ————————————————————————
+        |                        |
+    parent：                      child：
+close 已连接套接字        close除套接字外所有描述符
+    (TCP)                        |
+                        dup2套接字到描述符0 1 2，然后close套接字
+                                |
+                        setgid、setuid(如果不是root)
+                                |
+                        exec服务端程序
+</code></pre><ul>
+<li>启动<ul>
+<li>读取配置</li>
+<li>inetd能处理的服务器数量取决于能新建的描述符数量</li>
+</ul>
+</li>
+<li>bind<ul>
+<li>绑定服务器端口和地址</li>
+<li>端口通过getservbyname获得，配置的service-name和protocol做参数</li>
+</ul>
+</li>
+<li>listen<ul>
+<li>对TCP需要执行</li>
+</ul>
+</li>
+<li>select<ul>
+<li>TCP为新连接可用</li>
+<li>UDP为数据报到达</li>
+<li>inetd大部分时间阻塞于select内部</li>
+</ul>
+</li>
+<li>accept<ul>
+<li>如果是TCP套接字，且wait-flag=nowait，就accept新连接</li>
+</ul>
+</li>
+<li>fork<ul>
+<li>子进程关闭除套接字外的所有描述符<ul>
+<li>对TCP：套接字为accept返回的已连接套接字</li>
+<li>对UDP：父进程最初创建的UDP套接字</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>dup2<ul>
+<li>把待处理套接字复制到描述符0 1 2，然后关闭原套接字，这样子进程打开的描述符只有0 1 2,子进程自标准读写的实际上是套接字</li>
+</ul>
+</li>
+<li>setgid/setuid<ul>
+<li>子进程根据配置文件的login-name字段，调用getpwnam获得对应的保密字文件表项</li>
+<li>如果login-name不是root，就通过setgid/setuid把自身改为指定用户</li>
+</ul>
+</li>
+<li>exec<ul>
+<li>server-program指定的程序，server-program-arguments    exec作为命令行参数</li>
+</ul>
+</li>
+<li>close<ul>
+<li>对于TCP套接字，父进程必需关闭已连接套接字，然后返回select调用，等待下一个套接字(类似并发服务器)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>wait标志</p>
+<ul>
+<li>TCP的典型设置是指定nowait标志，意味着inetd不必等待某个子进程终止，就可以接受对该子进程提供的服务的另一个连接</li>
+<li>如果指定wait标志，则inetd必需在套接字再次成为select调用的候选套接字之前等待当前服务该套接字的子进程终止<ul>
+<li>fork返回父进程时，保存子进程ID，以便于waitpid回收</li>
+<li>父进程通过<code>FD_CLR</code>清除这个(监听)套接字在select描述符集的位，以便于子进程接管该套接字直到终止</li>
+<li>子进程终止时，以SIGCHLD信号通知父进程设置清除的描述符集，以便继续使用select监听</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>获取客户端信息</p>
+<ul>
+<li>由inetd启动的服务通过getpeername后去客户端地址和端口，因为fork和exec后，只能通过getpeername获取客户端信息</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h1 id="线程"><a href="#线程" class="headerlink" title="线程"></a>线程</h1><hr>
+<p>#一、线程</p>
+<ol>
+<li>进程的问题<ul>
+<li>fork代价昂贵：写时复制</li>
+<li>IPC通信的复杂性</li>
+</ul>
+</li>
+<li>线程(lightweight process)<ul>
+<li>共享：<ul>
+<li>全局变量</li>
+<li>进程指令</li>
+<li>文件描述符</li>
+<li>信号处理</li>
+<li>当前工作目录</li>
+<li>用户ID和组ID</li>
+</ul>
+</li>
+<li>私有：<ul>
+<li>线程ID</li>
+<li>寄存器集合，包括程序计数器和栈指针</li>
+<li>栈，用于存放局部变量和返回地址</li>
+<li>errno</li>
+<li>信号掩码</li>
+<li>优先级</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>#二、线程私有数据</p>
+<ol>
+<li>系统为每个进程支持有限数量的线程私有数据，为每个进程维护一个key结构数组，以及每个线程维护一个pthread结构</li>
+<li><p>key结构标志数组元素是否正在使用，通过<code>pthread_key_create</code>创建私有数据时，系统找出第一个不在使用的数组元素</p>
+<pre><code>flag                    -&gt; key[0]
+destructor pointer
+flag                    -&gt; key[1]
+destructor pointer
+...                        -&gt; key[MAX]
+</code></pre></li>
+<li><p>pthread结构保存了指向每一个key结构数组元素的指针pkey，逐一关联进程内可能的所有key，被初始化为空指针</p>
+<pre><code>&lt;thread 0&gt;        &lt;thread 1&gt;        &lt;thread...&gt;                
+Pthread{}
+线程信息...
+pointer [NULL] -&gt; pkey[0] -&gt; thread data    
+pointer [NULL] -&gt; pkey[1]    
+...               -&gt; pkey[MAX]
+</code></pre></li>
+<li><p>线程通过<code>pthread_key_create</code>创建私有数据</p>
+<pre><code>#include &lt;pthread.h&gt;
+int pthread_once(pthread_once_t *onceptr, void (*init)(void));
+int pthread_key_create(pthread_key_t *keyptr, void (*destructor)(void *value));
+成功返回0，出错返回errno
+</code></pre><ul>
+<li><code>pthread_once</code>使用onceptr指向变量的值，确保init参数指向的函数在进程范围内只被调用一次，destructor在线程终止时调用</li>
+<li>对于一个给定的key，<code>pthread_key_create</code>只能被调用一次，创建的key通过keyptr返回</li>
+</ul>
+</li>
+<li><p>然后通过<code>pthread_getspecific</code>获得key对应的本线程pkey值</p>
+<pre><code>void *pthread_getspecific(pthread_key_t key);
+返回指向私有数据的指针或者NULL
+int pthread_setspecific(pthread_key_t key, const void *value);
+成功返回0，出错返回errno
+</code></pre></li>
+<li><p><code>pthread_key_create</code>的参数为指向key的指针，get和set函数则是key本身</p>
+</li>
+<li><p>典型用法</p>
+<pre><code>pthread_key_t  rl_key;
+pthread_once_t rl_once = PTHREAD_ONCE_INIT;
+
+void destructor(void *ptr) {
+    free(ptr);
+}
+
+void create_once(void) {
+    pthread_key_create(&amp;rl_key, destructor);
+}
+
+ssize_t do_something() {
+    ...
+    // get key
+    pthread_once(&amp;rl_once, create_once);
+
+    // get pkey
+    if((ptr = pthread_getspecific(rl_key)) == NULL) {
+        // associate user pointer to pkey
+        ptr = malloc(...);
+        pthread_setspecific(rl_key, ptr);
+    }
+
+    // do your business
+    ...
+}
+</code></pre></li>
+</ol>
+<hr>
+<h1 id="客户端和服务端设计"><a href="#客户端和服务端设计" class="headerlink" title="客户端和服务端设计"></a>客户端和服务端设计</h1><hr>
+<p>#一、服务器类型</p>
+<pre><code>* 迭代
+* 并发多进程
+* 预分配子进程，子进程accept
+* 预分配子进程，文件锁保护accept
+* 预分配子进程，线程互斥保护accept
+* 预分配子进程，父进程向子进程传递fd
+* 并发多线程
+* 预分配线程，互斥锁保护accept
+* 预分配线程，主线程accept
+</code></pre><p>#二、客户端</p>
+<pre><code>* 非阻塞IO速读最快，复杂度最高
+* 多线程和多进程牺牲少许性能，复杂度低很多
+</code></pre><p>#三、迭代服务器</p>
+<pre><code>* 处理完一个客户请求后再处理下一个，性能极低
+</code></pre><p>#四、并发服务器</p>
+<pre><code>* fork为每个客户派生子进程
+* fork消耗时间
+</code></pre><p>#五、TCP预先分配子进程，accept在各个进程中无保护</p>
+<ol>
+<li>预先分配子进程<ul>
+<li>客户端数量由子进程决定</li>
+<li>无须引入fork的开销</li>
+<li>accept在各个进程中，内核调度算法可以把连接均匀分布到各个子进程</li>
+</ul>
+</li>
+<li>问题<ul>
+<li>子进程不够或者过多的问题</li>
+<li>accept在各个进程中，连接到时，子进程都被唤醒，产生惊群现象</li>
+<li>子进程满时，无法立即拒绝客户端连接，直到listen的backlog满<ul>
+<li>因为内核会完成三次握手，使客户端connect立即返回，并处于等待，客户端能感受到服务器响应时间的恶化</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>服务器可以动态调整进程数，以适应客户端的变化</li>
+<li>子进程过多<ul>
+<li>会加剧惊群问题</li>
+<li>某些Unix内核实现可以唤醒等待某个事件的特定进程，而不是等待它的所有进程</li>
+</ul>
+</li>
+<li>select冲突<ul>
+<li>如果在accept前使用select，会导致多个进程阻塞在select上，而不是accept</li>
+<li>此时多个进程等待同一套接字，内核必需唤醒阻塞在select上的所有进程，然后处理冲突，从而引入额外开销</li>
+<li><strong>如果多个进程阻塞在同一个实体(套接字或者fd)，最好直接阻塞在系统调用上，而不是select，以避免内核处理冲突引入的额外开销</strong></li>
+</ul>
+</li>
+</ol>
+<p>#六、TCP预先分配子进程，accept使用文件锁保护</p>
+<ol>
+<li>某些内核的实现，accept无法同时在多个进程中监听同一个套接字，解决的办法是最accept加锁保护</li>
+<li>各进程通过fork前统一创建的文件锁保护accept</li>
+<li>性能比不加锁有所下降</li>
+</ol>
+<p>#七、TCP预先分配子进程，accept线程上锁</p>
+<ol>
+<li>要求：<ul>
+<li>互斥锁存放在进程共享的内存(mmap)</li>
+<li>必须告诉线程函数库在不同进程间共享的互斥锁(PTHREAD_PROCESS_SHARD)</li>
+</ul>
+</li>
+<li>mmap之后close(fd)是可行的，因为内存已经被映射，mummap只需要地址，不需要fd</li>
+<li>线程互斥锁快于文件锁</li>
+</ol>
+<p>#八、TCP预先分配子进程，传递描述符</p>
+<ol>
+<li>父进程调用accept，把已连接套接字传递给子进程</li>
+<li>父进程要跟踪子进程状态，给空闲子进程分配套接字</li>
+<li>传递描述符的形式，两种比上锁方式性能更差，因为传递过程远比加解锁费时</li>
+</ol>
+<p>#九、TCP并发服务器，per client per thread</p>
+<ol>
+<li>accept到客户端连接后建立线程进行处理</li>
+<li>节省fork的开销，比创建子进程快很多</li>
+</ol>
+<p>#十、预先创建线程服务器，每个线程各自accept，用互斥锁保护</p>
+<ol>
+<li>快于线程并发服务器</li>
+<li>某些源于Berkeley的内核，不用对accept上锁，结果用户时间有所减少，系统时间增加比较多<ul>
+<li>因为上锁动作发生在用户空间，所以减少</li>
+<li>由于内核要处理连接到达时唤醒所有accept产生的惊群现象，所以比较多<ul>
+<li>此时内核需要将连接派送到线程，需要内核态的互斥保护，性能消耗较大</li>
+<li>此时让内核执行派遣不如用户态的线程函数执行派遣来得快</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>#十一、预先创建线程服务器，主线程统一accept</p>
+<ol>
+<li>主线程accept以后，把连接传递给子线程</li>
+<li>通过条件变量唤醒，多了传递的保护，比互斥锁性能稍差</li>
+<li>子线程被函数库轮循唤醒</li>
+</ol>
+<p>#十二、总结</p>
+<ol>
+<li>系统负载较轻时，per client per process足够简单</li>
+<li>预分配进程池或线程池性能提高10倍以上，带来的复杂度是：<ul>
+<li>需要监视空闲子进程/线程，动态调整数量</li>
+</ul>
+</li>
+<li>某些内核实现允许多个进程阻塞在对同一个套接字的accept中，某些不允许，需要加锁保护，可以使用文件锁或者pthread互斥锁</li>
+<li>子进程/线程自行调用accept，通常比父进程/线程调用后传递连接的效率高，而且简单</li>
+<li>由于潜在的select冲突，让所有子进程/线程阻塞在同一个accept调用中，比阻塞在同一个select中更可取</li>
+<li>线程通常远快于进程</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/Linux网络编程-八、高级应用/" data-id="cio5xrkil000o86fyroo5m1wl" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/Linux网络编程-五、高级套接字编程/" class="pre"></a><a href="/2016/05/14/Linux网络编程-七、杂项/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

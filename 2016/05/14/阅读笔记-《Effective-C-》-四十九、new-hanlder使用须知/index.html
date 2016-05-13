@@ -1,0 +1,202 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 四十九、new-hanlder使用须知<br>date: 2016-05-13 17:02:04<br>categories: [阅读笔记, 《Effective C++》]<br>tag: 《Effective C++》<br>toc: true</p>
+<hr>
+<p>#一、什么是new-handler?</p>
+<ol>
+<li>当operator new无法满足某一内存分配需求时，它会抛出异常</li>
+<li>在operator new抛出异常之前，会先尝试调用一个客户指定的错误处理函数，即new-handler</li>
+</ol>
+<p>#二、指定new-handler</p>
+<ol>
+<li><p>为了指定这个“用来处理内存不足”的函数，需要调用声明于<new>的标准程序库函数<code>set_new_handler</code></new></p>
+<pre><code>namespace std {
+    typedef void (*new_handler) ();
+    new_handler set_new_handler(new_handler p) throw();
+}
+
+//定义new_handler函数
+void outofMem()
+{
+    std::cerr &lt;&lt; &quot;out of memmory\n&quot;;
+    std::about();
+}
+
+//指定new_handler
+std::set_new_handler(outofMem);
+</code></pre><ul>
+<li>new_handler函数没有参数和返回值</li>
+<li><code>set_new_handler</code>的throw()表明它不抛出任何异常</li>
+</ul>
+</li>
+</ol>
+<p>#三、new-handler的处理<br><strong>当operator new无法满足内存申请时，会不断调用new-handler函数，直到找到足够内存。</strong></p>
+<p><strong>因此，一个设计良好的new-handler函数应该处理以下事情：</strong></p>
+<ol>
+<li>让更多内存可用<ul>
+<li>这可以让operator new的下一次操作可能成功，实现它的一个策略是程序一开始分配一大块内存，而后当new-handler第一次被调用，将它们释放还给程序使用。即先让程序占有内存，new失败时将内存退还给系统，程序再new时可能成功。</li>
+</ul>
+</li>
+<li>安装另一个new-handler<ul>
+<li>可以安装另外一个new-handler以替换自己，只要在new-handler中直接调用<code>set_new_handler</code>就行。当下次operator new 调用 new-handler 时就会调用最新安装的。实现它的一个策略是让new-handler修改“会影响new-handler”行为的static数据、namespace数据或global数据。</li>
+</ul>
+</li>
+<li>卸载new-handler<ul>
+<li>将null指针传递给<code>set_new_handler</code>，一旦没有安装任何new-handler，operator new会在内存分配不成功时抛出异常</li>
+</ul>
+</li>
+<li>抛出<code>bad_alloc</code>(或派生自<code>bad_alloc</code>)的异常<ul>
+<li>这个异常不会被operator new捕捉，因此会被传递到申请内存处</li>
+</ul>
+</li>
+<li>不返回<ul>
+<li>通常调用abort()或exit()</li>
+</ul>
+</li>
+</ol>
+<p>#三、为class定义new-handler</p>
+<ol>
+<li>C++不支持class专属的new-handler，只需要让每一个class提供自己的new-handler和<code>set_new_handler</code>即可。</li>
+<li>其中<code>set_new_handler</code>使客户指定class专属的new-handler（就像标准的<code>set_new_handler</code>允许客户指定global new-handler）</li>
+<li>operator new则确保在分配class对象内存的过程中以class专属的new-handler替换global new-handler。</li>
+</ol>
+<p>#四、定义客户端class</p>
+<ul>
+<li><p>需要声明一个类型为new-handler的static成员，用以指向客户class的new-handler</p>
+<pre><code>class Widget {
+public:
+    static std::new_handler set_new_handler(std::new_handler p) throw();
+    static void *operator new(std::size_t size) throw(std::bad_alloc);
+private:
+    static std::new_handler currentHandler;        //static成员，可以被安装到global
+};
+</code></pre></li>
+</ul>
+<p>#五、实现设置客户端class的new-handler</p>
+<pre><code>std::new_handler Widget::currentHandler = 0;        //class内初始化为null
+
+//class自己的set_new_handler，只是保存客户的new-handler，并不马上设置
+std::new_handler Widget::set_new_handler(std::new_handler p) throw() 
+{
+    std::new_handler oldHandler = currentHandler;
+    currentHandler = p;
+    return oldHandler;
+}
+</code></pre><ul>
+<li>客户class内的<code>set_new_handler</code>函数会将它获得的指针存储起来，然后返回调用前存储的指针，这也是标准版<code>set_new_handler</code>的行为</li>
+</ul>
+<p>#六、定义客户端class的operator new</p>
+<ol>
+<li>调用标准<code>set_new_handler</code>，将客户class的new-handler安装为global new-handler</li>
+<li>调用global operator new，执行实际的内存分配<ul>
+<li>如果分配失败，global operator new会调用刚刚被安装为global new-handler的客户class定义的new-handler</li>
+<li>如果global operator new最终无法分配足够内存，会抛出一个bad_alloc异常。此时客户的operator new必须恢复原本的global new-handler，然后在传播该异常</li>
+<li>为确保原本的new-handler总是能够被重新安装回去，客户class需要将global new-handler视为资源，运用资源管理对象防止资源泄漏（条款13）</li>
+</ul>
+</li>
+<li><p>如果分配成功，客户的operator new会返回一个指向分配所得的指针。这时客户析构函数需要管理global new-handler，自动将客户class的new-handler安装前的old new-handler恢复回来，以保持系统状态不变</p>
+<pre><code>定义资源管理类：
+class NewHandlerHolder {
+public:
+    explicit NewHandlerHolder(std::new_handler nh)    //取得目前的new-handler
+        : handler(nh) {}    
+    ~NewHandlerHolder ()                            //释放并恢复old new-handler
+        { std::set_new_handler(handler); }
+private:
+    std::new_handler handler;                        //保存old new-handler
+
+    NewHandlerHolder(const NewHandlerHolder&amp;);        //阻止copy
+    NewHandlerHolder&amp; operator= (const NewHandlerHolder&amp;); 
+}
+
+实现class的operator new:
+void *Widget::operator new(std::size_t size) throw(std::bad_alloc)
+{
+    NewHandlerHolder h(std::set_new_handler(currentHandler));                //安装客户的new-handler
+    return ::operator new(size);    //分配内存、恢复old new-handler、可能抛出异常
+}
+
+使用客户的new_handler：
+void outOfMem();                    //函数声明。此函数在Widget对象分配失败时被调用
+
+Widget::set_new_handler(outOfMem);    //保存outOfMem为客户的new-handler
+
+Widget* pwl = new Widget;            //如果内存分配失败，调用outOfMem，并恢复之前的new-handler
+
+std::string* ps = new std::string;    //如果内存分配失败，调用global new-handler
+
+Widget::set_new_handler(0);            //设定客户的new-handler为null
+
+Widget* pwl2 = new Widget;            //如果内存分配失败，立即抛出异常
+</code></pre></li>
+</ol>
+<p>#七、模板化为客户端class定义new-handler</p>
+<ol>
+<li>实现为客户端class定义new-handler并不因class不同而不同，所以可以将这个操作模板化，设计成一个模板类作为base class。</li>
+<li><p>derived class可以继承所需的set_new_handler和operator new。template的base class部分则保证每一个derived class获得一个实体互异的currentHandler成员变量。</p>
+<pre><code>//&quot;Mixin&quot; 风格的base class，用以支持class专属的set_new_handler
+template&lt;typename T&gt;
+class NewHandlerSupport {
+public:
+    static std::new_handler set_new_handler(std::new_handler p) throw();
+    static void *operator new(std::size_t size) throw(std::bad_alloc);
+private:
+    static std::new_handler currentHandler;        
+};
+
+template&lt;typename T&gt;
+std::new_handler NewHandlerSupport&lt;T&gt;::set_new_handler(std::new_handler p) throw();    
+{
+    std::new_handler oldHandler = currentHandler;
+    currentHandler = p;
+    return oldHandler;
+}
+
+template&lt;typename T&gt;
+void NewHandlerSupport&lt;T&gt;::operator new(std::size_t size) throw(std::bad_alloc)
+{
+    NewHandlerHolder h(std::set_new_handler(currentHandler));    
+    return ::operator new(size);        
+}
+
+//初始化static 成员
+template&lt;typename T&gt;
+std::new_handler NewHandlerSupport&lt;T&gt;::currentHandler = 0；
+</code></pre></li>
+</ol>
+<p>#七、使用template base class</p>
+<ul>
+<li><p>只要让客户class继承NewHandlerSupport<t>就好：</t></p>
+<pre><code>class Widget : public NewHandlerSupport&lt;Widget&gt; {
+……
+}；
+</code></pre></li>
+</ul>
+<p>#八、关于template</p>
+<ol>
+<li>可以看到，在template base class中并没有使用类型T，这个类型参数T的作用是让继承template base class的每一个派生类都特化出有一个自身的base class，其目的是为了让static成员变量currentHandler唯一。</li>
+<li>所以类型参数T只是为了区分每一个derived class，让编译器自动为每一个T生成一个currentHandler。</li>
+</ol>
+<p>#九、mixin风格须小心</p>
+<ul>
+<li>当遇到多重继承时，mixin风格肯定会导致二义性。</li>
+</ul>
+<p>#十、旧式new操作与“nothrow”形式</p>
+<ol>
+<li>旧式的operator new操作在无法分配足够内存时返回null</li>
+<li>新式的operator new操作应抛出bad_alloc异常</li>
+<li><p>为了兼容旧式operator new操作，可以使用“nothrow”形式</p>
+<pre><code>class Widget { ……; }；
+Widget* pwl = new Widget;            //如果分配失败，抛出bad_alloc异常
+if(pwl == 0) …                        //这个测试一定失败
+Widget* pwl2 = new (std::nothrow) Widget;        //如果分配失败，返回0
+if(pwl2 == 0) …                        //这个测试可能成功
+</code></pre></li>
+</ol>
+<p>#十一、避免使用“nothrow”</p>
+<ol>
+<li>nothrow的异常保证性不高，因为即使内存分配成功，在构造函数中任然可能new一些内存，此时不能保证会再次使用nothrow，而这两件事在同一个表达式中完成，容易造成疏忽。</li>
+<li>即使用nothrow new只能保证operator new不抛出异常，不能保证像<code>new (std::nothrow) Widget</code>这样的表达式不会抛出异常，因此不建议使用</li>
+</ol>
+<pre><code>杜鹏
+2013-1-7
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-C-》-四十九、new-hanlder使用须知/" data-id="cio5xrknt004m86fy0gbbybb1" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-C-》-一、C-的4个层次/" class="pre"></a><a href="/2016/05/14/阅读笔记-《C程序设计语言》-《C程序设计语言》阅读笔记/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

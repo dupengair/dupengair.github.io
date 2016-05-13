@@ -1,0 +1,525 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 六、IP基础编程<br>date: 2016-05-13 17:01:56<br>categories: Linux网络编程<br>tag: Linux网络编程<br>toc: true</p>
+<hr>
+<hr>
+<p>#IP选项</p>
+<hr>
+<p>#一、概述</p>
+<ol>
+<li>IPv4首部在固定的20Bytes后可以跟最多40B的选项<ul>
+<li>4bit的IP首部长度限制为<code>15*4(d-word)=60B</code>，选项可以占40B</li>
+<li>已定义的有10种</li>
+<li>最常用的的是原路径选项</li>
+<li>通过存取IP_OPTIONS套接字选项来访问</li>
+</ul>
+</li>
+<li>IPv6在固定40Byte的IPv6首部和传输层首部之间允许出现扩展首部<ul>
+<li>目前定义6种</li>
+<li>通过函数接口访问</li>
+</ul>
+</li>
+</ol>
+<p>#二、IPv4选项</p>
+<ol>
+<li><p>选项</p>
+<ul>
+<li>NOP(no-operation)<ul>
+<li>单字节</li>
+<li>为某个后续选项4B对齐进行填充</li>
+</ul>
+</li>
+<li>EOL(end-of-list)<ul>
+<li>单字节</li>
+<li>终止项处理，最后一个有效选项之后可能跟0~3个EOL字节</li>
+</ul>
+</li>
+<li>LSRR(loose source and record route)<ul>
+<li>宽松的源站选路</li>
+</ul>
+</li>
+<li>SSRR(stricte source and record route)<ul>
+<li>严格的源站选路</li>
+</ul>
+</li>
+<li>Timestamp<ul>
+<li>IP记录时间戳</li>
+</ul>
+</li>
+<li>Record route<ul>
+<li>记录路由</li>
+</ul>
+</li>
+<li>Basic security(obsoleted)</li>
+<li>Extended security(obsoleted)</li>
+<li>Stream identifier(obsoleted)</li>
+<li>Router alert<ul>
+<li>要求所有路由器查看IP包内容</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>读取和设置IP选项字段使用get/setsockopt，level为<code>IPPROTO_IP</code>，optname为<code>IP_OPTIONS</code></p>
+<ul>
+<li>除了两种源路径选项外，其它选项的缓冲区数据格式就是在IP数据报中的格式</li>
+</ul>
+</li>
+<li>可以在TCP、UDP和原始套接字上设置这些选项，清除使用setsockopt，内容参数置空或者长度参数置0<ul>
+<li>不同的内核实现，对于设置IP_HDRINCL选项的原始套接字，支持程度不同</li>
+</ul>
+</li>
+<li>调用getsockopt获取由accept创建的某个已连接套接字的IP选项时，返回的是在监听套接字上收到客户SYN分节的数据报中的源路径选项的逆转<ul>
+<li>因为服务端需要使用从客户端到服务端的源路径的逆转</li>
+<li>如果没有源路径伴随SYN分节，返回的长度为0</li>
+</ul>
+</li>
+<li>对于其它TCP、UDP和原始套接字，获取IP选项所返回的，仅仅是同一个套接字设置过的选项内容</li>
+<li>对于原始套接字，输入函数总是返回包含任何IP选项在内的到达IP首部</li>
+</ol>
+<p>#三、IPv4源路径选项</p>
+<ol>
+<li>源路径值IP数据报发送者指定一个IP列表，数据报必需逐一经过<ul>
+<li>严格的源站选路<ul>
+<li>数据报必需且只能逐一经过</li>
+<li>源路径的所有节点必需前后互为邻居</li>
+</ul>
+</li>
+<li>宽松的源站选路<ul>
+<li>数据报必需逐一经过</li>
+<li>可以经过未列在路径中的其它节点</li>
+</ul>
+</li>
+<li>广域网大多数路由器禁止源站路由</li>
+</ul>
+</li>
+<li>源路径称为源和记录路径(source and record route)</li>
+<li>数据报经过的每个节点，把列在源路径中的自己地址替换为外出接口地址</li>
+<li>允许接收者逆转新的列表顺序，以得到沿相反方向回到发送者的路径</li>
+<li><p>setsockopt的缓冲区格式</p>
+<pre><code>|&lt;-                    44 Byte                  -&gt;|
+|NOP|code|len|ptr|IP1|IP2|IP3|...|IP9|dst IP|
+  1   1    1   1   4B                      4B
+</code></pre><ul>
+<li>9个源路径地址+1个目的IP地址</li>
+<li>每过一个节点，将源路径中自己的地址替换为外出接口地址，数据报离开源主机时，将第一个地址替换为IP数据报的目的地址</li>
+<li>code字段对LSRR为0x83，SSRR为0x89</li>
+<li>len指定选项的字节长度<ul>
+<li>包括3byte首部和地址</li>
+<li>对有1个源路径IP为11(3+4+4)，2个为15</li>
+<li>NOP不计算在内，只计算在setsockopt指定的缓冲区大小中</li>
+<li>源地址列表在数据报每过一个节点时，移出地址并且长度-4</li>
+</ul>
+</li>
+<li>ptr为待处理IP地址偏移量<ul>
+<li>初始值为4，表示指向第一字节</li>
+<li>每个处理的节点逐次+4</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>getsockopt的缓冲区格式</p>
+<pre><code>|&lt;-                    44 Byte                  -&gt;|
+|IP1|NOP|code|len|ptr|IP2|IP3|...|IP9|dst IP|
+ 4B   1   1    1   1   4B                  4B
+
+#incldue &lt;netinet/ip_var.h&gt;
+#define MAX_IPOPTLEN    40
+struct ipoption {
+    sturct in_addr ipopt_dst;
+    char           ipopt_list[MAX_IPOPTLEN];
+};
+</code></pre><ul>
+<li>相对于setsockopt，对换了头4个字节和第二个4字节</li>
+<li>Berkeley实现对TCP套接字自动使用SYN所在的IP数据报的接收源路径逆转</li>
+</ul>
+</li>
+<li><p>删除收取的源路径</p>
+<ul>
+<li>对TCP无法通过删除收取到的客户端源路径来避免客户端使用源路径发送，因为握手的时候SYN里已经自动完成了源路径逆转</li>
+<li>只能强行关闭连接</li>
+</ul>
+</li>
+</ol>
+<p>#四、IPv6扩展首部</p>
+<ol>
+<li>选项<ul>
+<li>步跳(hop-by-hop)<ul>
+<li>必需紧跟40B的IPv6首部</li>
+<li>目前无选项可设置</li>
+</ul>
+</li>
+<li>目的地(destionation)<ul>
+<li>目前无选项可设置</li>
+</ul>
+</li>
+<li>分片首部(fragment header)<ul>
+<li>内核对IPv6数据报执行分片的主机自动产生，最终在目的主机重组时处理</li>
+</ul>
+</li>
+<li>认证首部(authentication header, AH)</li>
+<li>安全净荷封装(encapsulating security payload, ESP)</li>
+</ul>
+</li>
+<li>分片、AH、ESP首部由内核处理，前三个可以用户设置</li>
+</ol>
+<p>#五、步跳和目的地</p>
+<ol>
+<li><p>格式</p>
+<pre><code>0          7|8         15|16                        31
+| 下一个首部 | 首部扩展长度 | 步跳或目的地选项 |            |
+|                步跳或目的地选项                        |
+</code></pre><ul>
+<li>下一个首部：标识跟在本扩展首部之后的下一个首部</li>
+<li>首部扩展长度：本地扩展首部长度，以8Byte为单位，不包括第一个8Byte</li>
+<li>这两种首部都被填充为8Byte的整数倍</li>
+</ul>
+</li>
+<li><p>个体选项</p>
+<pre><code>| 类型 | 长度 | 选项值 |
+   1      1    长度字段值
+</code></pre><ul>
+<li>采用TLV编码</li>
+<li>类型<ul>
+<li>高序两位指定IPv6节点在不理解本选项时的处理行为<ul>
+<li>00：调过本选项，继续处理本首部</li>
+<li>01：丢弃本分组</li>
+<li>00：丢弃本分组，并且不论分组目的地址是否为多播地址，均发送一个ICMP参数问题(类型4代码2)错误</li>
+<li>00：丢弃本分组，并且分组目的地址不是多播地址的情况下，才发送一个ICMP参数问题(类型4代码2)错误</li>
+</ul>
+</li>
+<li>下一位之多本选项数据在途中是否有变化<ul>
+<li>0：无变化</li>
+<li>1：有变化</li>
+</ul>
+</li>
+<li>低序5位指定选项本身<ul>
+<li>不能孤立标识一个选项，需要结合高序3位</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>长度<ul>
+<li>指定选项数据的字节长度</li>
+<li>不包含类型和本长度字段</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>步跳选项</p>
+<pre><code>pad1:          | 0 |
+padN:          | 1 | 0 | 0字节... |     (长度字段值Byte, 2Byte填充长度为0)
+特大净荷长度： |194| 4 | 特大净荷长度 |    (4Byte)
+路由器告警：   | 5 | 2 | 值 |             (2Byte)
+</code></pre></li>
+<li><p>对齐要求</p>
+<ul>
+<li>每个步跳选项和目的地选项都有对齐要求xn+y</li>
+<li>表示选项必需出现在扩展首部开始处x字节整数倍+y字节的位置</li>
+</ul>
+</li>
+<li><p>步跳和目的地通常作为辅助数据通过sendmsg执行， recvmsg返回</p>
+<ul>
+<li>相应套接字选项开启才能返回：<ul>
+<li>步跳：<code>IPV6_RECVHOPOPTS</code></li>
+<li>目的地：<code>IPV6_RECVDSTOPTS</code> </li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>struct cmsghdr</p>
+<pre><code>cmsg_len    cmsg_level    cmsg_type            data
+            IPPRO_IPV6    IPV6_RECVHOPOPTS    步跳选项
+            IPPRO_IPV6    IPV6_RECVDSTOPTS    目的地选项
+</code></pre></li>
+</ol>
+<p>#六、IPv6路由首部</p>
+<pre><code>| 下一个首部 | 首部扩展长度 | 路由类型=0 | 剩余字段 | 保留 | 地址1 | 地址2 | ... | 地址N |
+0          7|8         15|16       23|24     31|
+</code></pre><ol>
+<li>前两个字段和之前一样</li>
+<li>已定义的路由只有类型0</li>
+<li>地址数量仅受限于分组允许长度等外在因素</li>
+<li>剩余字节必需小于等于所列的地址数目</li>
+<li>通常作为辅助数据通过sendmsg执行， recvmsg返回<ul>
+<li>相应套接字选项开启才能返回：<ul>
+<li>步跳：<code>IPV6_RECVRTHDR</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>#七、IPv6粘附选项</p>
+<ol>
+<li><p>7种辅助数据对象</p>
+<ul>
+<li>IPv6分组信息，<ul>
+<li>目的地址和外出接口索引</li>
+<li>源和到达接口索引</li>
+</ul>
+</li>
+<li>跳限(发送、接收)</li>
+<li>下一跳地址(只发送)</li>
+<li>流通类别(发送、接收)</li>
+<li>步跳选项</li>
+<li>目的地选项</li>
+<li>路由首部</li>
+</ul>
+</li>
+<li><p>当应用于某个套接字时，直接设置套接字选项(level：<code>IPPROTO_IPV6</code>)</p>
+<ul>
+<li><code>IPV6_PKTINFO</code></li>
+<li><code>IPV6_HOPLIMIT</code></li>
+<li><code>IPV6_NEXTHOP</code></li>
+<li><code>IPV6_TCLASS</code></li>
+<li><code>IPV6_HOPOPTS</code></li>
+<li><code>IPV6_DSTOPTS</code></li>
+<li><code>IPV6_RTHDR</code></li>
+</ul>
+</li>
+<li><p>对于UDP和原始IPv6套接字，在辅助数据中针对单个分组改写这些粘附性选项</p>
+</li>
+<li><p>使用辅助数据接收粘附性选项需要开启相应的套接字选项</p>
+<ul>
+<li><code>IPV6_RECVPKTINFO</code></li>
+<li><code>IPV6_RECVHOPLIMIT</code></li>
+<li><code>IPV6_RECVNEXTHOP</code></li>
+<li><code>IPV6_RECVTCLASS</code></li>
+<li><code>IPV6_RECVHOPOPTS</code></li>
+<li><code>IPV6_RECVDSTOPTS</code></li>
+<li><code>IPV6_RECVRTHDR</code></li>
+</ul>
+</li>
+<li><p>对于TCP，只能使用套接字选项，对整个套接字设置</p>
+<ul>
+<li>当发生重传时，如果前后的粘附性选项发生改变，则重传的分组是不确定的</li>
+<li><p>对于接收</p>
+<blockquote>
+<p>TCP应用程序也可以如此获取这些辅助数据对象，不过既然在TCP套接字上不能使用recvmsg与用户数据一道接收辅助数据，由recvmsg返回的这些粘附性选项，实际上来做最近收取的分节所在的IPv6分组。这些选项应该是面向整个TCP连接的，也就是说所有外来段所在的IPv6分组具有相同的选项</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ol>
+<hr>
+<p>#原始套接字</p>
+<hr>
+<p>#一、能力</p>
+<ol>
+<li>可以读写ICMPv4/6、IGMPv4等分组<ul>
+<li>多播路由守护程序mrouted</li>
+</ul>
+</li>
+<li>可以读写内核不处理的IPv4数据报<ul>
+<li>内核只处理协议字段如下的数据报：<ul>
+<li>ICMP：1</li>
+<li>IGMP：2</li>
+<li>TCP ：6</li>
+<li>UDP ：17</li>
+</ul>
+</li>
+<li>OSPF路由守护进程gated</li>
+</ul>
+</li>
+<li>使用IP_HDRINCL自行构造IP首部</li>
+</ol>
+<p>#二、原始套接字创建</p>
+<ol>
+<li><p>调用socket创建套接字时，type为<code>SOCK_RAW</code>，protocol通常不为0</p>
+<pre><code>int sockfd = socket(AF_INET, SOCK_RAW, protocal)
+</code></pre><ul>
+<li><p>protocold定义在<code>&lt;netinet/in.h&gt;</code>:</p>
+<pre><code>#include &lt;linux/types.h&gt;
+#include &lt;linux/socket.h&gt;
+
+/* Standard well-defined IP protocols.  */
+enum {
+  IPPROTO_IP = 0,        /* Dummy protocol for TCP        */
+  IPPROTO_ICMP = 1,        /* Internet Control Message Protocol    */
+  IPPROTO_IGMP = 2,        /* Internet Group Management Protocol    */
+  IPPROTO_IPIP = 4,        /* IPIP tunnels (older KA9Q tunnels use 94) */
+  IPPROTO_TCP = 6,        /* Transmission Control Protocol    */
+  IPPROTO_EGP = 8,        /* Exterior Gateway Protocol        */
+  IPPROTO_PUP = 12,        /* PUP protocol                */
+  IPPROTO_UDP = 17,        /* User Datagram Protocol        */
+  IPPROTO_IDP = 22,        /* XNS IDP protocol            */
+  IPPROTO_DCCP = 33,    /* Datagram Congestion Control Protocol */
+  IPPROTO_RSVP = 46,    /* RSVP protocol            */
+  IPPROTO_GRE = 47,        /* Cisco GRE tunnels (rfc 1701,1702)    */
+
+  IPPROTO_IPV6     = 41,        /* IPv6-in-IPv4 tunnelling        */
+
+  IPPROTO_ESP = 50,         /* Encapsulation Security Payload protocol */
+  IPPROTO_AH = 51,          /* Authentication Header protocol       */
+  IPPROTO_BEETPH = 94,        /* IP option pseudo header for BEET */
+  IPPROTO_PIM    = 103,        /* Protocol Independent Multicast    */
+
+  IPPROTO_COMP   = 108,      /* Compression Header protocol */
+  IPPROTO_SCTP   = 132,        /* Stream Control Transport Protocol    */
+  IPPROTO_UDPLITE = 136,    /* UDP-Lite (RFC 3828)            */
+
+  IPPROTO_RAW     = 255,        /* Raw IP packets            */
+  IPPROTO_MAX
+};
+</code></pre></li>
+<li><p>只有超级用户才能创建原始套接字</p>
+</li>
+</ul>
+</li>
+<li><p>可以开启<code>IP_HDRINCL</code>选项，自行构造IP首部</p>
+<pre><code>const int on = 1;
+if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &amp;on, sizeof(on)) &lt; 0)
+</code></pre></li>
+<li><p>可以调用bind设置源地址，但无法设置端口，因为原始套接字不存在端口的概念，否则内核将外出接口的主IP地址作为源地址</p>
+<ul>
+<li><code>IP_HDRINCL</code>选项不能开启</li>
+</ul>
+</li>
+<li>可以调用connect设置目标地址，但无法设置目标端口，同上。此时可以把sendto改为send/write/writev</li>
+</ol>
+<p>#三、原始套接字输出</p>
+<ol>
+<li>普通套接字通过sendto/sendmsg，已连接套接字通过write/writev/send</li>
+<li><code>IP_HDRINCL</code>选项未开启，进程操作的数据地址为IP首部后第一个字节，内核会依据协议字段构造IP首部并置于来自进程的数据之前，</li>
+<li><code>IP_HDRINCL</code>选项开启时，进程操作的数据地址为IP首部第一个字节起，所以进程写入的数据长度包括IP首部<ul>
+<li>IPv4标识字段可为0，从而告知内核设置该值</li>
+<li>IPv4首部校验和字段总是内核计算并存储</li>
+<li>IPv4选项字段可选</li>
+</ul>
+</li>
+<li>内核会依据外出接口的MTU对原始分组进行分片</li>
+<li><p>对IPv4设置IP首部之后的所含的任何首部校验，都是用户进程的责任</p>
+<blockquote>
+<p>原始套接字的输入输出各40行代码，TCP输入2000，输出700</p>
+</blockquote>
+</li>
+</ol>
+<p>#四、IPv6的差异</p>
+<ol>
+<li>原始套接字差异<ul>
+<li>协议首部的所有字段都是网络字节序<ul>
+<li>IPv4取决于内核实现<ul>
+<li>源自Berkeley的实现，<code>ip_len</code>和<code>ip_off</code>采用主机字节序</li>
+<li>Linux和FreeBSD所有字段采用网络字节序</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>IPv6没有<code>IP_HDRINCL</code>类似的选项，无法通过原始套接字构造完整的分组<ul>
+<li>几乎所有首部都可以通过套接字选项或辅助数据设置和返回</li>
+<li>进程要构造完整数据报，需要使用数据链路访问</li>
+</ul>
+</li>
+<li>校验和处理存在差异，IPv6首部不包含校验字段</li>
+</ul>
+</li>
+<li><code>IPV6_CHECKSUM</code><ul>
+<li>对ICMPv6原始套接字，首部校验和总是由内核计算并存储、校验，而ICMPv4由进程自行完成</li>
+<li>对其它IPv6原始套接字，可以使用套接字选项<code>IPV6_CHECKSUM</code>通知内核是否计算并存储外出分组的校验和<ul>
+<li>默认情况禁止，设置为非负值开启</li>
+<li>这个值指定16bit校验和自应用数据开始的便宜量</li>
+<li>开启后内核将为发送计算校验和，对接收进行验证</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>#五、原始套接字输入</p>
+<ol>
+<li>传递到原始套接字的数据报<ul>
+<li>所有的TCP和UDP分组都不递送到原始套接字<ul>
+<li>要接收它们，只能在数据链路层读取</li>
+</ul>
+</li>
+<li>多数ICMP分组在内核处理完成后递送到原始套接字<ul>
+<li>Berkeley内核处理echo、时间戳、地址掩码请求，其它返回到原始套接字</li>
+</ul>
+</li>
+<li>所有IGMP分组在内核处理完成后递送到原始套接字(能收到所有广播和多播？)</li>
+<li>内核不认识的协议字段递送到原始套接字<ul>
+<li>内核只对IP首部做最小验证：<ul>
+<li>版本</li>
+<li>IPv4首部校验和</li>
+<li>首部长度</li>
+<li>目的地址</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>分片的数据报在重组完成之后才递送到原始套接字</li>
+</ul>
+</li>
+<li>内核为每一个匹配的原始套接字递送一个数据报的副本<ul>
+<li>匹配协议字段</li>
+<li>匹配接收端bind的本地地址(数据报的目的地址)</li>
+<li>如果原始套接字已由connect指定了某个外地地址，那么接收到的数据报源地址必需匹配这个已连接地址</li>
+<li>如果一个套接字以0协议值创建，没有bind或connect过，可以收到所有原始套接字数据报的副本</li>
+</ul>
+</li>
+<li>对IPv4，收到的是包含首部在内的完整数据报，对IPv6，收到的是除IPv6shoubu和所有扩展首部的净荷(payload)<ul>
+<li>Linux所有字段为网络字节序</li>
+</ul>
+</li>
+<li><p>ICMPv6类型过滤</p>
+<ul>
+<li>ICMPv6是ICMPv4的超集，提供包含ARP和IGMP的功能</li>
+<li>过滤器由<code>struct icmp6_fileter</code>声明，通过level为<code>IPPROTO_ICMPV6</code>，的套接字选项<code>ICMP6_FILTER</code>设置和获取</li>
+<li><p>内核实现已经和书上完全不同：</p>
+<pre><code>#include&lt;netinet/icmp6.h&gt;
+/*
+ *    constants for (set|get)sockopt
+ */
+
+#define ICMPV6_FILTER            1
+
+/*
+ *    ICMPV6 filter
+ */
+
+#define ICMPV6_FILTER_BLOCK        1
+#define ICMPV6_FILTER_PASS        2
+#define ICMPV6_FILTER_BLOCKOTHERS    3
+#define ICMPV6_FILTER_PASSONLY        4
+
+struct icmp6_filter {
+    __u32        data[8];
+};
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<pre><code>static int rawv6_setsockopt(struct sock *sk, int level, int optname,char __user *optval, unsigned int optlen)
+{
+    switch (level) {
+    case SOL_RAW:
+        break;
+
+    case SOL_ICMPV6:
+        if (inet_sk(sk)-&gt;inet_num != IPPROTO_ICMPV6)
+            return -EOPNOTSUPP;
+        return rawv6_seticmpfilter(sk, level, optname, optval, optlen);
+    case SOL_IPV6:
+        if (optname == IPV6_CHECKSUM)
+            break;
+    default:
+        return ipv6_setsockopt(sk, level, optname, optval, optlen);
+    }
+
+    return do_rawv6_setsockopt(sk, level, optname, optval, optlen);
+}
+
+
+static int rawv6_seticmpfilter(struct sock *sk, int level, int optname,char __user *optval, int optlen)
+{
+    switch (optname) {
+    case ICMPV6_FILTER:
+        if (optlen &gt; sizeof(struct icmp6_filter))
+            optlen = sizeof(struct icmp6_filter);
+        if (copy_from_user(&amp;raw6_sk(sk)-&gt;filter, optval, optlen))
+            return -EFAULT;
+        return 0;
+    default:
+        return -ENOPROTOOPT;
+    }
+
+    return 0;
+}
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/Linux网络编程-六、IP基础编程/" data-id="cio5xrkin000q86fyw0g403q0" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/Linux网络编程-二、基本套接字编程/" class="pre"></a><a href="/2016/05/14/Linux网络编程-五、高级套接字编程/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

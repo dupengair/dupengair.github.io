@@ -1,0 +1,89 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 条款22 避免原地修改set和multiset的键<br>date: 2016-05-13 17:02:06<br>categories: [阅读笔记, 《Effective STL》]<br>tag: 《Effective STL》<br>toc: true</p>
+<hr>
+<p>#一、改变容器值</p>
+<ol>
+<li><p>对于map和multimap</p>
+<ul>
+<li><p>为试图改变这些容器里的一个键值的程序将不能编译，因为<code>map&lt;K, V&gt;</code>或<code>multimap&lt;K, V&gt;</code>类型的对象中元素的类型是<code>pair&lt;const K, V&gt;</code>，因为键的类型const K</p>
+<pre><code>map&lt;int, string&gt; m;
+m.begin()-&gt;first = 10;  // 错误！map键不能改变
+multimap&lt;int, string&gt; mm;
+mm.begin()-&gt;first = 20; // 错误！multimap键也不能改变
+</code></pre></li>
+</ul>
+</li>
+<li><p>对set和multiset</p>
+<ul>
+<li><p>对于set<t>或multiset<t>类型的对象来说，储存在容器里的元素类型是T，所以随便改</t></t></p>
+<pre><code>class Employee {
+public:
+    ...
+    const string&amp; name() const;         // 获取雇员名
+    void setName(const string&amp; name);     // 设置雇员名
+    const string&amp; getTitle() const;     // 获取雇员头衔
+    void setTitle(string&amp; title);         // 设置雇员头衔
+    int idNumber() const;                 // 获取雇员ID号
+    ...
+}
+
+struct IDNumberLess：public binary_function&lt;Employee, Employee, bool&gt; { 
+    bool operator()(const Employees lhs, const Employee&amp; rhs) const
+    {
+        return lhs.idNumber() &lt; rhs.idNumber();
+    }
+};
+
+typedef set&lt;Employee, IDNumberLess&gt; EmpIDSet;
+EmpIDSet se;
+</code></pre></li>
+<li><p>如果STL的实现让用于<code>set&lt;T&gt;::iterator的operator*</code>返回一个常数T&amp;。即set的迭代器解引用的结果是set元素的常量引用。在这样的实现下，将没有办法修改set或multiset的元素</p>
+<pre><code>EmpIDSet::iterator i = se.find(selectedID);
+if (i != se.end()){
+    i-&gt;setTitle(&quot;Corporate Deity&quot;); // 有些STL实现会拒绝这行
+} 
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<p>#二、正确的做法</p>
+<ol>
+<li>如果不关心移植性，想要改变set或multiset中元素的值，而且STL能实现。只是要确定不要改变元素的键部分，即会影响容器有序性的元素部分，就没有问题</li>
+<li><p>如果在乎移植性，就认为set和multiset中的元素不能被修改，至少不能在没有映射的情况</p>
+<ul>
+<li><p>将set元素映射为引用，通过const_cast修改其值</p>
+<pre><code>if (i != se.end()) { // 映射掉*i的常量性
+    const_cast&lt;Employee&amp;&gt;(*i).setTitle(&quot;Corporate Deity&quot;); 
+} 
+</code></pre><ul>
+<li>通过映射到引用，我们避免了建立一个新对象。取而代之的是，映射的结果是一个现有对象的引用，i指向的对象</li>
+</ul>
+</li>
+<li><p>错误的做法：</p>
+<pre><code>if (i != se.end()){ // 把*i映射到了匿名对象上，无法修改
+    static_cast&lt;Employee&gt;(*i).setTitle(&quot;Corporate Deity&quot;); 
+}
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<p>#三、改变元素的通常做法</p>
+<ol>
+<li>定位你想要改变的容器元素。如果你不确定最好的方法，条款45提供了关于怎样进行适当搜寻的指导。</li>
+<li>拷贝一份要被修改的元素。对map或multimap而言，确定不要把副本的第一个元素声明为const。毕竟，你想要改变它！</li>
+<li>修改副本，使它有你想要在容器里的值。</li>
+<li>从容器里删除元素，通常通过调用erase（参见条款9）。</li>
+<li><p>把新值插入容器。如果新元素在容器的排序顺序中的位置正好相同或相邻于删除的元素，使用insert的“提示”形式把插入的效率从对数时间改进到分摊的常数时间。使用你从第一步获得的迭代器作为提示。</p>
+<pre><code>EmpIDSet se;             // 同前，se是一个以ID号排序的雇员set
+Employee selectedID;     // 同前，selectedID是一个带有需要ID号的雇员        
+...
+EmpIDSet::iterator i = se.find(selectedID); // 第一步：找到要改变的元素
+if (i!=se.end()) {
+    Employee e(*i);                 // 第二步：拷贝这个元素
+    se.erase(i++);                     // 第三步：删除这个元素；注意自增这个迭代器以保持它有效            
+    e.setTitle(&quot;Corporate Deity&quot;);     // 第四步：修改这个副本
+    se.insert(i, e);                 // 第五步：插入新值；提示它的位置和原先元素的一样
+}
+</code></pre></li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-STL》-条款22-避免原地修改set和multiset的键/" data-id="cio5xrkod005j86fycp1cz41e" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款25-熟悉标准散列容器/" class="pre"></a><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款23-考虑用有序vector代替关联容器/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 三十三、继承的作用域<br>date: 2016-05-13 17:02:01<br>categories: [阅读笔记, 《Effective C++》]<br>tag: 《Effective C++》<br>toc: true</p>
+<hr>
+<p>#一、函数与全局作用域</p>
+<pre><code>int x;
+void fun()
+{
+    double x;    //local 变量隐藏全局变量
+}
+</code></pre><p>#二、继承的作用域</p>
+<pre><code>class Base {
+private:
+    int x;
+public:
+    virtual void mf1() = 0;
+    virtual void mf2();
+    void mf3();
+};
+
+class Derrived : public Base {
+public:
+    virtual void mf1();        //隐藏Base::mf1()
+    void mf4();
+};
+</code></pre><ol>
+<li>Derived class的作用域嵌套在base class内，隐藏base class的符号</li>
+<li>唯一重要的是名称，类型并不重要</li>
+</ol>
+<p>#三、重载函数的继承</p>
+<pre><code>class Base {
+private:
+    int x;
+public:
+    virtual void mf1() = 0;
+    virtual void mf1(int);        //重载mf1() 
+    virtual void mf2();
+    void mf3();
+    void mf3(double);        //重载mf3()
+};
+class Derived : public Base {
+public:
+    virtual void mf1();        //隐藏Base::mf1()、Base::mf1(int)
+    void mf3();            //隐藏Base::mf3()、Base::mf3(double)
+    void mf4();
+};
+
+Derived d;
+int x;
+
+d.mf1();    //调用 Derived::mf1()
+d.mf1(x);    //error!
+d.mf2();    //调用 Base::mf2()
+d.mf3();    //调用 Derived::mf3()
+d.mf3(x);    //error!
+</code></pre><ol>
+<li>即使base class和derived class内函数参数类型不同作用域也适用</li>
+<li>不论virtual与否都适用</li>
+<li>如果通过多态的形式访问，则不会有问题（C++Primier 15.5.4）</li>
+</ol>
+<p>#四、实质</p>
+<ol>
+<li>是为了防止在程序库或应用框架（application framework）内建立新的derived class时附带地从疏远的base class继承重载函数。</li>
+<li>实际上如果使用public继承又不继承重载函数，就违反继承的“is-a”关系。</li>
+</ol>
+<p>#五、继承重载函数</p>
+<pre><code>class Base {
+private:
+    int x;
+public:
+    virtual void mf1() = 0;
+    virtual void mf1(int);        //重载mf1() 
+    virtual void mf2();
+    void mf3();
+    void mf3(double);        //重载mf3()
+};
+class Derived : public Base {
+public:
+    using Base::mf1;        //让Base class的符号在derived class中可见
+    using Base::mf3;        //同上
+    virtual void mf1();        
+    void mf3();            
+    void mf4();
+};
+
+Derived d;
+int x;
+
+d.mf1();    //调用 Derived::mf1()
+d.mf1(x);    //调用 Base::mf1(int)
+d.mf2();    //调用 Base::mf2()
+d.mf3();    //调用 Derived::mf3()
+d.mf3(x);    //调用 Base::mf3(double)
+</code></pre><ol>
+<li>如果希望继承bass class的重载函数，又希望重新定义其中的一部分，可以引入using声明</li>
+<li>base class 内的public名称在public继承的derived class内也应该是public</li>
+</ol>
+<p>#六、private继承</p>
+<pre><code>class Base {
+public:
+    virtual void mf1() = 0;
+    virtual void mf1(int);        //重载mf1() 
+
+};
+class Derived : private Base {
+public:
+    virtual void mf1() { Base::mf1(); }     //forwarding function 自然成为inline，不用using的目的是只想mf1()        
+};
+
+Derived d;
+int x;
+
+d.mf1();    //调用 Derived::mf1()
+d.mf1(x);    //error! Base::mf1(x)被隐藏了
+</code></pre><ol>
+<li>在private继承中使用forwarding function（转交函数）使继承自Base class的符号可见</li>
+<li>forwarding function将继承得到的符号汇入derived class内</li>
+</ol>
+<pre><code>杜鹏
+2012-12-17
+2015-3-31
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-C-》-三十三、继承的作用域/" data-id="cio5xrkmn003h86fy82ivaxlz" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-C-》-三十九、private继承使用须知/" class="pre"></a><a href="/2016/05/14/阅读笔记-《Effective-C-》-三十二、牢记public继承等于is-a/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

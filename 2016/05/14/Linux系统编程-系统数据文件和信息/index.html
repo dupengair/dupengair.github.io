@@ -1,0 +1,133 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 系统数据文件和信息<br>date: 2016-05-13 17:01:55<br>categories: Linux系统编程<br>tag: Linux系统编程<br>toc: true</p>
+<hr>
+<p>﻿</p>
+<p>#一、口令文件</p>
+<ol>
+<li><p>口令文件/etc/passwd为ascii文件，按passwd结构定义</p>
+<pre><code>struct passwd {
+ char *pw_name;  （用户名）
+ char *pw_passwd; （口令）
+ uid_t pw_uid;  
+ gid_t pw_gid;
+ char *pw_gecos;  （注释）
+ char *pw_dir;  （工作目录）
+ char *pw_shell;  （初始shell）
+ ...
+}
+</code></pre><ul>
+<li>口令只是占位符，实际保存在shadow password文件中/etc/shadow</li>
+<li>阻止用户登录，可将登录shell设置为 /dev/null、/bin/false、/bin/true（登录后马上返回0终止）</li>
+</ul>
+</li>
+<li><p>获取口令文件项</p>
+<pre><code>struct passwd *getpwuid(uid_t uid);  （ls使用）
+struct passwd *getpwnam(const char* name); （login使用）
+</code></pre></li>
+<li><p>读取整个口令文件</p>
+<pre><code>void setpwent(void);   （打开文件）
+struct passwd *getpwent(void);  （读取口令项）
+void endpwent(void);   （关闭文件）
+</code></pre></li>
+</ol>
+<p>#二、阴影口令</p>
+<ol>
+<li><p>实际用户口令单向加密后保存在阴影口令/etc/shadow中，按spwd结构定义</p>
+<pre><code>sturct spwd {
+ char *sp_namp;   （登录用户名）
+ char *sp_pwdp;   （加密口令）
+ int sp_lstchg;   （上次更改口令到现在的时间）
+ int sp_min;   （经多少天后允许修改）
+ int sp_max;   （要求修改剩余天数）
+ int sp_warn;   （到期警告天数）
+ int sp_inact;   （账户不活动前的剩余天数）
+ int sp_expire;   （账户到期天数）
+ unsigned int sp_flag;  （保留）
+}
+</code></pre></li>
+</ol>
+<p>1)  至少要包含用户名和口令，其它字段用于控制口令改动频率和账户保持活动的时间</p>
+<p>#三、组文件</p>
+<ol>
+<li><p>保存在/etc/group中，按group结构定义</p>
+<pre><code>struct group {
+ char *gr_name;  （组名）
+ char *gr_passwd; （加密口令）
+ int gr_gid;  （数值组ID）
+ char **gr_mem;  （指针数组指向各用户名）
+}
+</code></pre></li>
+<li><p>查看组项</p>
+<pre><code>struct group *getgrgid(gid_t gid);
+struct group *getgrnam(const char *name);
+</code></pre></li>
+<li><p>读取整个组文件</p>
+<pre><code>void setgrent(void)
+struct group *getgrent(void);
+void endgrent(void);
+</code></pre></li>
+</ol>
+<p>#四、附加组ID</p>
+<ol>
+<li>使用附加组ID可以不必显式的经常更改用户组，以适应一个用户拥有多个组身份</li>
+<li><p>操作</p>
+<pre><code>int getgroups(int gidsetsize, gid_t grouplist[]); （获取附加组ID，gidsetsize为0时只返回ID个数）
+int setgroups(int ngroups, gid_t grouplist[]);  （超级用户调用，设置附加组ID，ngroups指定元素个数）
+int initgroups(const char *usrname, gid_t basegid); （初始化附加组ID表）
+</code></pre></li>
+</ol>
+<p>#五、数据文件汇总</p>
+<pre><code>口令： /etc/passwd pwd.h  passwd  getpwnam getpwuid
+组：     /etc/group grp.h  group  getgrnam getgrgid
+阴影： /etc/shadow shadow.h spwd  getspnam
+主机： /etc/hosts netdb.h  hostent  gethostbyname gethostbyaddr
+网络： /etc/networks netdb.h  netent  getnetbyname getnetbyaddr
+协议： /etc/protocols netdb.h  protoent getprototbyname getprotobyaddr
+服务： /etc/services netdb.h  servent  getservbyname geservbyaddr
+操作过程：set -&gt; get -&gt; end
+</code></pre><p>#六、登陆账户记录</p>
+<ul>
+<li>/var/run/utmp：登录时由login填写，注销时init删除，记录系统用户</li>
+<li>/var/run/wtmp：登录时由login填写，注销时init添加新记录，记录登陆和注销事件</li>
+</ul>
+<p>#七、系统标识</p>
+<pre><code>#include &lt;sys/utsname.h&gt;
+int uname(struct utsname *name);
+struct utsname {
+ char sysname[];
+ char nodename[];
+ char release[];
+ char version[];
+ char machine[];
+}
+#include &lt;unistd.h&gt;
+int gethostname(char *name);
+</code></pre><p>#八、时间和日期</p>
+<ol>
+<li><p>国标时间</p>
+<pre><code>#include &lt;time.h&gt;
+time_t time(time_t *calptr);  1970年1月1日00:00:00的秒数
+
+#include &lt;sys/time.h&gt;
+int gettimeofday(struct timeval *restrict tp, void *restrict tzp); us级精度，
+struct timeval {
+ time_t tv_sec;
+ long tv_usec;
+}
+</code></pre></li>
+<li><p>时间格式转换</p>
+<pre><code>                                                           - (strfime)  -&gt;      格式化字符串
+time_t     - (gmtime) -&gt;    struct tm    - (asctime) -&gt;    字符串
+               - (localtime) -&gt;                                               
+               &lt;- (mktime) -         |
+             -------------------------- (ctime) -----------------------&gt; |
+</code></pre></li>
+</ol>
+<pre><code>#include &lt;time.h&gt;
+struct tm *gmtime(const time_t *calptr);  转换为国标时间，不受TZ影响 
+struct tm *localtime(const time_t *calptr);  转换为本地时间（带TZ、夏时制）
+char *asctime(const struct tm *tmprt);   转换为可读字符串
+char *ctime(const time_t *calptr);   转换为日历时间（1970.1.1 00）
+size_t strftime(...);        转换为格式化字符串
+以上4个函数受TZ影响
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/Linux系统编程-系统数据文件和信息/" data-id="cio5xrkj3001086fyad0wjuew" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/Linux系统编程-文件IO/" class="pre"></a><a href="/2016/05/14/Linux系统编程-多线程编程注意事项/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

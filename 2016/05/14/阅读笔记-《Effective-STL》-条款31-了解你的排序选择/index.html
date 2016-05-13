@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 条款31 了解你的排序选择<br>date: 2016-05-13 17:02:07<br>categories: [阅读笔记, 《Effective STL》]<br>tag: 《Effective STL》<br>toc: true</p>
+<hr>
+<p>#一、部分排序</p>
+<ol>
+<li><p>部分排序：<code>partial_sort</code></p>
+<pre><code>bool qualityCompare(const Widget&amp; lhs, const Widget&amp; rhs)
+{
+// 返回lhs的质量是不是比rhs的质量好
+}
+...
+// 把最好的20个元素（按顺序）放在widgets的前端
+partial_sort(widgets.begin(), widgets.begin() + 20, widgets.end(), qualityCompare);
+</code></pre></li>
+<li><p>分界：<code>nth_element</code></p>
+<pre><code>// 把最好的20个元素放在widgets前端，但不关心它们的顺序
+nth_element(widgets.begin(), widgets.begin() + 19, widgets.end(), qualityCompare); 
+</code></pre><ul>
+<li>调用<code>nth_element</code>本质上等价于调用<code>partial_sort</code>。它们结果的唯一区别是<code>partial_sort</code>排序了在位置1-20的元素，<code>nth_element</code>则不，但是两个算法都把20个质量最高的Widget移动到vector前端</li>
+</ul>
+</li>
+</ol>
+<p>#二、对于有相等元素的情况</p>
+<ol>
+<li>在稳定排序中，如果一个区间中的两个元素有等价的值，它们的相对位置在排序后不改变</li>
+<li><code>partial_sort</code>、<code>nth_element</code>和sort不保证稳定性，稳定排序需要用<code>stable_sort</code></li>
+</ol>
+<p>#三、找到区间中部某个点：<code>nth_element</code></p>
+<pre><code>// 区间中部
+nth_element(widgets.begin(), widgets.begin() + widgets.size() / 2, widgets.end(), qualityCompare); 
+// 区间1/4处
+nth_element(widgets.begin(), widgets.begin() + widgets.size() * 0.25, widgets.end(), qualityCompare);
+</code></pre><p>#四、挑出部分元素：<code>partition</code></p>
+<pre><code>bool hasAcceptableQuality(const Widget&amp; w)
+{
+// 返回w质量等级是否是2或更高;
+}
+
+// 把所有满足hasAcceptableQuality的widgets移动到widgets前端，并且返回一个指向第一个不满足的widget的迭代器
+vector&lt;Widget&gt;::iterator goodEnd = partition(widgets.begin(), widgets.end(), hasAcceptableQuality);  
+</code></pre><p>#五、注意</p>
+<ol>
+<li>算法<code>sort、stable_sort、partial_sort和nth_element</code>需要随机访问迭代器，所以它们可能只能用于vector、string、deque和数组。对标准关联容器排序元素没有意义，因为这样的容器使用它们的比较函数来在任何时候保持有序</li>
+<li>list通过提供sort成员函数做了一些补偿，如果想要对list中的对象进行<code>partial_sort或nth_element</code>，必须间接完成:<ul>
+<li>一个间接的方法是把元素拷贝到一个支持随机访问迭代器的容器中，然后对它应用需要的算法</li>
+<li>另一个方法是建立一个<code>list::iterator</code>的容器，对那个容器使用算法，然后通过迭代器访问list元素</li>
+<li>第三种方法是使用有序的迭代器容器的信息来迭代地把list的元素接合到你想让它们所处的位置</li>
+</ul>
+</li>
+</ol>
+<p>#六、总结</p>
+<ol>
+<li>如果你需要在vector、string、deque或数组上进行完全排序，你可以使用sort或<code>stable_sort</code></li>
+<li>如果你有一个vector、string、deque或数组，你只需要排序前n个元素，应该用<code>partial_sort</code></li>
+<li>如果你有一个vector、string、deque或数组，你需要鉴别出第n个元素或你需要鉴别出最前的n个元素，而不用知道它们的顺序，<code>nth_element</code>是你应该注意和调用的</li>
+<li>如果你需要把标准序列容器的元素或数组分隔为满足和不满足某个标准，你大概就要找partition或<code>stable_partition</code></li>
+<li>如果你的数据是在list中，你可以直接使用partition和<code>stable_partition</code>，你可以使用list的sort来代替sort和<code>stable_sort</code>，如果你需要<code>partial_sort或nth_element</code>提供的效果，你就必须间接完成这个任务</li>
+</ol>
+<p>#七、按时空性能排序</p>
+<ol>
+<li>partition </li>
+<li>stable_partition  </li>
+<li>nth_element  </li>
+<li>partial_sort</li>
+<li>sort</li>
+<li>stable_sort</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-STL》-条款31-了解你的排序选择/" data-id="cio5xrkoi005s86fyacmcp63g" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款34-注意哪个算法需要有序区间/" class="pre"></a><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款30-确保目标区间足够大/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

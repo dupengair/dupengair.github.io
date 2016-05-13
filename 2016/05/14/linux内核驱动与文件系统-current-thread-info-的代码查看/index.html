@@ -1,0 +1,191 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: current_thread_info()的代码查看<br>date: 2016-05-13 17:01:52<br>categories: linux内核驱动与文件系统<br>tag: linux内核驱动与文件系统<br>toc: true</p>
+<hr>
+<pre><code>内核版本：2.6.38
+平台：ambarella
+————————————————————————————————————
+current_thread_info()的代码查看：
+current_thread_info()函数定义在arch/asm/include/asm/thread_info.h中，因为被头文件定义成一个内联函数，编译时不会产生这个函数符号而是将它嵌入在调用这个函数的函数体中，因此在system.map中没有这个符号可以看，就要找调用这个函数的函数，这里选择arch/asm/kenerl/process.c中void flush_thread(void)函数，因为函数一开始就调用了这个内联函数，经过反汇编的代码位置比较好找。
+
+
+[arch/asm/include/asm/thread_info.h]
+static inline struct thread_info *(void) __attribute_const__;
+
+static inline struct thread_info *current_thread_info(void)
+{
+    register unsigned long sp asm (&quot;sp&quot;);
+    return (struct thread_info *)(sp &amp; ~(THREAD_SIZE - 1));
+}
+
+
+[arch/asm/kenerl/process.c]
+void flush_thread(void)
+{
+    struct thread_info *thread = current_thread_info();
+    struct task_struct *tsk = current;
+
+    flush_ptrace_hw_breakpoint(tsk);
+
+    memset(thread-&gt;used_cp, 0, sizeof(thread-&gt;used_cp));
+    memset(&amp;tsk-&gt;thread.debug, 0, sizeof(struct debug_info));
+    memset(&amp;thread-&gt;fpstate, 0, sizeof(union fp_state));
+
+    thread_notify(THREAD_NOTIFY_FLUSH, thread);
+}
+
+
+反汇编后：
+c002eb64 &lt;flush_thread&gt;:
+c002eb64:    e1a0c00d     mov    ip, sp                       //将堆栈指针sp放入零时寄存器ip中
+c002eb68:    e92dd830     push    {r4, r5, fp, ip, lr, pc}     //入栈保护
+c002eb6c:    e24cb004     sub    fp, ip, #4                   //ip-4的内容放入浮点寄存器fp
+c002eb70:    e1a0300d     mov    r3, sp                      
+c002eb74:    e3c34d7f     bic    r4, r3, #8128    ; 0x1fc0    
+c002eb78:    e3c4403f     bic    r4, r4, #63    ; 0x3f
+c002eb7c:    e2840050     add    r0, r4, #80    ; 0x50
+c002eb80:    e594500c     ldr    r5, [r4, #12]
+c002eb84:    e3a01010     mov    r1, #16
+c002eb88:    eb081c14     bl    c0235be0 &lt;__memzero&gt;
+c002eb8c:    e2850f77     add    r0, r5, #476    ; 0x1dc
+c002eb90:    e3a01014     mov    r1, #20
+c002eb94:    eb081c11     bl    c0235be0 &lt;__memzero&gt;
+c002eb98:    e2840e12     add    r0, r4, #288    ; 0x120
+c002eb9c:    e3a0108c     mov    r1, #140    ; 0x8c
+c002eba0:    eb081c0e     bl    c0235be0 &lt;__memzero&gt;
+c002eba4:    e1a02004     mov    r2, r4
+c002eba8:    e3a01000     mov    r1, #0
+c002ebac:    e59f0004     ldr    r0, [pc, #4]    ; c002ebb8 &lt;flush_thread+0x54&gt;
+c002ebb0:    eb00f7a2     bl    c006ca40 &lt;atomic_notifier_call_chain&gt;
+c002ebb4:    e89da830     ldm    sp, {r4, r5, fp, sp, pc}
+c002ebb8:    c045e64c     subgt    lr, r5, ip, asr #12
+
+
+
+用gcc -g加入debug模式的反汇编结果：
+
+void flush_thread(void)
+{
+c002eb64:    e1a0c00d     mov    ip, sp
+c002eb68:    e92dd830     push    {r4, r5, fp, ip, lr, pc}
+c002eb6c:    e24cb004     sub    fp, ip, #4
+current_thread_info():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/include/asm/thread_info.h:97
+c002eb70:    e1a0300d     mov    r3, sp
+c002eb74:    e3c34d7f     bic    r4, r3, #8128    ; 0x1fc0
+c002eb78:    e3c4403f     bic    r4, r4, #63    ; 0x3f
+flush_thread():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/kernel/process.c:421
+    struct thread_info *thread = current_thread_info();
+    struct task_struct *tsk = current;
+
+    flush_ptrace_hw_breakpoint(tsk);
+
+    memset(thread-&gt;used_cp, 0, sizeof(thread-&gt;used_cp));
+c002eb7c:    e2840050     add    r0, r4, #80    ; 0x50
+get_current():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/include/asm/current.h:10
+c002eb80:    e594500c     ldr    r5, [r4, #12]
+flush_thread():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/kernel/process.c:421
+c002eb84:    e3a01010     mov    r1, #16
+c002eb88:    eb081c14     bl    c0235be0 &lt;__memzero&gt;
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/kernel/process.c:422
+    memset(&amp;tsk-&gt;thread.debug, 0, sizeof(struct debug_info));
+c002eb8c:    e2850f77     add    r0, r5, #476    ; 0x1dc
+c002eb90:    e3a01014     mov    r1, #20
+c002eb94:    eb081c11     bl    c0235be0 &lt;__memzero&gt;
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/kernel/process.c:423
+    memset(&amp;thread-&gt;fpstate, 0, sizeof(union fp_state));
+c002eb98:    e2840e12     add    r0, r4, #288    ; 0x120
+c002eb9c:    e3a0108c     mov    r1, #140    ; 0x8c
+c002eba0:    eb081c0e     bl    c0235be0 &lt;__memzero&gt;
+thread_notify():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/include/asm/thread_notify.h:35
+
+
+current_thread_info()的反汇编结果：
+current_thread_info():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/include/asm/thread_info.h:97
+c002eb70:    e1a0300d     mov    r3, sp                        
+c002eb74:    e3c34d7f     bic    r4, r3, #8128    ; 0x1fc0
+c002eb78:    e3c4403f     bic    r4, r4, #63    ; 0x3f
+
+THREAD_SIZE = 8192
+return (struct thread_info *)(sp &amp; ~(THREAD_SIZE - 1));
+
+c002eb70: 堆栈sp放入r3
+c002eb74: r3&amp;(~8128)的值放入r4 =&gt; r4=r3&amp;(~0x1fc0) =&gt; r4=r3&amp;1110000000111111
+c002eb78: r4&amp;(~63)的值放入r4 =&gt; r4=r4&amp;(~0x3f) =&gt; r4=r3&amp;1111111111000000
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static inline struct thread_info *current_thread_info(void)
+{
+    register unsigned long sp asm (&quot;sp&quot;);
+    return (struct thread_info *)(sp &amp; ~(THREAD_SIZE - 1));
+c0008b7c:    e1a0300d     mov    r3, sp
+c0008b80:    e3c33d7f     bic    r3, r3, #8128    ; 0x1fc0
+c0008b84:    e3c3303f     bic    r3, r3, #63    ; 0x3f
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/init/main.c:610
+    /*
+     * Disable preemption - early bootup scheduling is extremely
+     * fragile until we cpu_idle() for the first time.
+     */
+    preempt_disable();
+c0008b88:    e1a02003     mov    r2, r3
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/include/asm/thread_info.h:97
+c0008b8c:    e1a0300d     mov    r3, sp
+c0008b90:    e3c33d7f     bic    r3, r3, #8128    ; 0x1fc0
+c0008b94:    e3c3303f     bic    r3, r3, #63    ; 0x3f
+start_kernel():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/init/main.c:610
+c0008b98:    e5933004     ldr    r3, [r3, #4]
+c0008b9c:    e2833001     add    r3, r3, #1
+c0008ba0:    e5823004     str    r3, [r2, #4]
+arch_local_save_flags():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/include/asm/irqflags.h:131
+* Save the current interrupt enable state.
+*/
+static inline unsigned long arch_local_save_flags(void)
+{
+    unsigned long flags;
+    asm volatile(
+c0008ba4:    e10f3000     mrs    r3, CPSR
+c0008ba8:    e50b301c     str    r3, [fp, #-28]
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/include/asm/irqflags.h:134
+        &quot;    mrs    %0, cpsr    @ local_save_flags&quot;
+        : &quot;=r&quot; (flags) : : &quot;memory&quot;, &quot;cc&quot;);
+    return flags;
+c0008bac:    e51b301c     ldr    r3, [fp, #-28]
+start_kernel():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/init/main.c:611
+    if (!irqs_disabled()) {
+c0008bb0:    e50b302c     str    r3, [fp, #-44]    ; 0x2c
+c0008bb4:    e51b302c     ldr    r3, [fp, #-44]    ; 0x2c
+c0008bb8:    e50b3018     str    r3, [fp, #-24]
+arch_irqs_disabled_flags():
+/VMShare_Amb_fc15/Ambarella/a5s_linux_sdk3.2/a5s_linux_sdk/ambarella/kernel/linux-2.6.38/arch/arm/include/asm/irqflags.h:151
+        : &quot;memory&quot;, &quot;cc&quot;);
+}
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/linux内核驱动与文件系统-current-thread-info-的代码查看/" data-id="cio5xrkk0001v86fy973ufqp2" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/linux内核驱动与文件系统-platform阅读笔记/" class="pre"></a><a href="/2016/05/14/linux内核驱动与文件系统-modules/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

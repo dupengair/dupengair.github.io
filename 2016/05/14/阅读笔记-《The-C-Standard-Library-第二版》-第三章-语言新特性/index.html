@@ -1,0 +1,356 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 第三章 语言新特性<br>date: 2016-05-13 17:02:15<br>categories: [阅读笔记, 《The C++ Standard Library 第二版》]<br>tag: 《The C++ Standard Library 第二版》<br>toc: true</p>
+<hr>
+<p>#一、C++11新特性</p>
+<ol>
+<li><p>小而重要的语法提升</p>
+<ul>
+<li><p>template表达式允许两个关闭符号连写</p>
+<pre><code>vector&lt;list&lt;int&gt; &gt;;    // C++98
+vector&lt;list&lt;int&gt;&gt;;    // C++11
+</code></pre></li>
+<li><p>nullptr与std::nullptr_t类型</p>
+<ul>
+<li>nullptr是个新关键字，拥有类型std::nullptr_t，定义于<cstddef>，能被自动转换为各种pointer类型，而非整型。</cstddef></li>
+<li><p>这个新特性主要为了避免null pointer被解释为一个整型</p>
+<pre><code>f(0);        // call f(int)
+f(NULL);    // call f(int)
+f(nullptr);    // call f(void*)
+</code></pre></li>
+<li><p>std::nullptr_t是一个基础类型</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>auto自动类型推导</p>
+<ul>
+<li><p>必需要初始化</p>
+<pre><code>auto i = 1;
+</code></pre></li>
+</ul>
+</li>
+<li><p>一致性初始化(uniform initializtion)和初始化列表(initializer list)</p>
+<ul>
+<li><p>一致性初始化的意思是，对任何初始化都可以采用大括号语法进行。</p>
+<pre><code>int array[] {1, 2, 3};
+ std::vecor&lt;std::string&gt; name {&quot;Almond&quot;, &quot;Iris&quot;, &quot;Jesse&quot;};
+</code></pre></li>
+<li><p>初始化列表会将基础类型初始化为0或者nullptr</p>
+<pre><code>int i{};    // i = 0
+int *p{};    // p = nullptr 
+</code></pre></li>
+<li><p>初始化列表不允许精度收窄</p>
+<ul>
+<li>这依赖于初始化的实际值，而不仅仅是类型，如果存在类型转化，提供的初始化值可准确描述转化后的类型，就不算收窄，如用int初始化char</li>
+<li><p>浮点转整型，永远都是精度收窄</p>
+<pre><code>int x1(1.0);        // ok
+int x2 = 1.0;        // ok
+int x3{1.0};        // Error!
+int x4 = {1.0};        // Error!
+char c1{1};        // ok &lt;1&gt;
+char c2{99999};        // Error!
+</code></pre></li>
+</ul>
+</li>
+<li><p>用户自定义类型可用class template std::initializer_list&lt;&gt;，当它和其它构造函数同时起作用时，初始化列表优先级更高</p>
+<pre><code>struct P {
+    P(int, int);
+    P(std::initializer_list&lt;int&gt;);
+};
+P p(1, 2);        // call P(int, int) only
+P p{1, 2};        // call P(std::initializer_list&lt;int&gt;) first choice
+P p = {1, 2};        // call P(std::initializer_list&lt;int&gt;) first choice
+P p{1, 2, 3};        // call P(std::initializer_list&lt;int&gt;) only
+</code></pre></li>
+<li><p>explicit关键字会导致隐式自动类型转换失效，并且使初始化列表失去初始化不同个数的参数的能力</p>
+<pre><code>struct P {
+    P(int a, int b);
+    explicit P(int a, int b, int c);
+};
+P x1(1, 2);        // ok
+P x2{1, 2};        // ok
+P x3{1, 2, 3};        // ok
+P x4 = {1, 2};        // ok
+P x5 = {1, 2, 3};    // Error!
+
+void fp(const&amp; P);
+fp({1, 2});        // ok
+fp(P{1, 2});        // ok
+fp(P{1, 2, 3});        // ok
+fp({1, 2, 3});        // Error!
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<ol>
+<li><p>Range-Based for循环</p>
+<ul>
+<li><p>为了避免对每个元素调用拷贝构造和析构函数，通常应声明当前元素为const reference：</p>
+<pre><code>vector&lt;int&gt; v={1, 2, 3, 4, 5};    
+for(const auto&amp; i: v) {
+    cout &lt;&lt; i &lt;&lt; endl;        
+}
+</code></pre></li>
+<li><p>可以对initializer list使用range based for loop，因为class template std::initializer_list&lt;&gt;提供了成员函数begin() end()</p>
+<pre><code>int sum = 0;
+for(auto elem: {sum, sum+1, sum+2} ) {
+    cout &lt;&lt; &quot;elem&quot; &lt;&lt; endl;
+}
+</code></pre></li>
+<li><p>不能有任何类型转换</p>
+<pre><code>class C {  
+        C(const string&amp; s) {}
+};
+std::vector&lt;string&gt; vs;
+for (C&amp; c: vs) {                // Error!有隐式类型转换
+        cout &lt;&lt; &quot;c: &quot; &lt;&lt; c &lt;&lt; endl;
+    }
+</code></pre></li>
+</ul>
+</li>
+<li><p>move语义和右值引用</p>
+<ul>
+<li>move语义用于避免非必要拷贝和临时对象构造成本</li>
+<li>使用时需指明move是可行的，除非临时对象还会被使用</li>
+<li>std::move的作用是将实参转换为一个rvalue reference，这种类型使rvalue可被修改</li>
+<li>最终由type of x实现本质性的move构造和move assignment语义，所有的复杂类型都应该提供</li>
+<li>如果move语义不存在，copy语义就会被调用</li>
+<li>C++标准库的class保证了在一次move后，对象出于有效但不确定的状态。STL容器则保证了，被move过的对象内容为空</li>
+<li>任何nontrivial class都应该同时提供copy语义和move语义</li>
+<li>move语义三要素：调用时move转换，接口是使用value reference，type of x实现move构造函数</li>
+<li>std::move()意味着，优先调用move语义，否则调用copy语义</li>
+<li><p>不需要也不应该move返回值，如果返回一个nonstatic local对象，不应该返回rvalue reference引用一个不存在的对象</p>
+<pre><code>X&amp;&amp; foo() {            // Error!
+    X x;
+    return x;
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>新式字符串字面量</p>
+<ul>
+<li><p>Raw string：R”(string)”，这个string是一个所见即所得的字符串，不含转义字符，换行有效</p>
+<pre><code>&quot;\\\\n&quot;  常规string，含转义字符，内容为两个\和一个n，等价于raw string：R&quot;(\\n)&quot;
+</code></pre></li>
+<li><p>如果要在Raw string内部写出)”，要用定义符delimiter：R”delim()delim”，delim是个最多16个字符，不含反斜线、空格、小括号的字符序列</p>
+<pre><code>R&quot;nc(a\
+     b\nc()&quot;
+     )nc&quot;;
+等价于常规字符串&quot;a\\\n    b\\nc()\&quot;\n      &quot;
+</code></pre></li>
+<li><p>可通过编码前缀定义字符串编码</p>
+<ul>
+<li>u8 utf-8的const char</li>
+<li>u char16_t</li>
+<li>U char32_t</li>
+<li><p>L wchar_t</p>
+<pre><code>L&quot;Hello&quot;
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>关键字noexcept</p>
+<ul>
+<li>声明noexcept的函数中抛出异常，程序会终止，调用std::terminal()默认会调用std::abort()。</li>
+<li>noexcept不需要stack unwinding，所以没有异常检查的额外开销，C++不鼓励使用异常说明。</li>
+<li><p>noexcept中可以指定一个bool条件，满足时不抛出异常</p>
+<pre><code>void swap(T&amp; a, T b) noexcept(noexcept(x.swap(y))){
+    x.swap(y);
+}
+若x.swap(y)不会抛出异常，这个函数就不抛出异常
+</code></pre></li>
+</ul>
+</li>
+<li><p>constexpr</p>
+<ul>
+<li><p>用来让表达式核定于编译期</p>
+<pre><code>constexpr int square(int x) {
+    return x*x;
+}
+float a[square(9)];
+</code></pre></li>
+</ul>
+</li>
+<li><p>Template新特性</p>
+<ul>
+<li><p>Variadic Template</p>
+<ul>
+<li>需要有结束递归的动作</li>
+<li>在Variadic Template内， sizeof…(args)会取得实参个数</li>
+</ul>
+</li>
+<li><p>Alias Template</p>
+<ul>
+<li><p>自C++11起支持template (patial) type definition，由于关键字typename用于此处总是处于某种原因而失败，所以引入关键字using</p>
+<pre><code>template&lt;typename T&gt;
+using Vec = std::vector&lt;T, MyAlloc&lt;T&gt;&gt;;
+Vec&lt;int&gt; v1;        // 等价于 std::vector&lt;int, MyAlloc&lt;int&gt;&gt; v1;
+</code></pre></li>
+</ul>
+</li>
+<li><p>其它Template新特性</p>
+<ul>
+<li>默认template实参</li>
+<li>local type可做template实参</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Lambda</p>
+<ul>
+<li>Lambda允许inline的函数定义式被用作一个参数，或是一个local对象，这是一个功能定义式，可被定义于语句或者表达式内部，当做inline函数使用</li>
+<li>Lambda总是一个所谓的lambda introducer（[]）引入，可以在内部指明一个capture，用来在lambda内部访问nostatic外部对象</li>
+<li>在lambda introducer与body之间可以指明参数mutable、异常说明、返回类型或者attribute specifier</li>
+<li>lambda不可以是template，必需始终指明所有类型</li>
+<li><p>Capture</p>
+<ul>
+<li><strong>[=]</strong>by value，可以读取所有数据。<strong>[&amp;]</strong>by reference，可以改写所有数据</li>
+<li><p>可以声明lambda为mutable，这样就可以改写传入数据。有了mutable，lambda变得stateful，即使state是以by value的方式传递，仍然可以改写其以by value传递进来的副本。如果没有指明mutable，operator()就成为一个const成员函数</p>
+<pre><code>int id = 0;
+auto f = [id] () mutable {
+    ++id;
+    cout &lt;&lt; &quot;id = &quot; &lt;&lt; id &lt;&lt; endl;
+}
+f();        // id = 1
+f();        // id = 2
+cout &lt;&lt; &quot;after call, id = &quot; &lt;&lt; id &lt;&lt; endl;    // 注意和引用传递的区别：这里id = 0
+等同于：
+class {
+private:
+    int id;        // 这里是by value传递进来的id的copy，不是外部的id!
+public:
+    void operator() () {
+        ++id;
+        cout &lt;&lt; &quot;id = &quot; &lt;&lt; id &lt;&lt; endl;
+    }
+};
+</code></pre></li>
+</ul>
+</li>
+<li><p>注意这里by value传入的是副本，mutable改写的是副本，所以调用完成后外部的id还是不变</p>
+</li>
+<li><p>lambda的类型</p>
+<ul>
+<li>lambda的类型是个不具名函数对象，每个lambda表达式的类型都是唯一的</li>
+<li><p>标准库提供的std::function&lt;&gt;提供了明确指出函数返回类型为lambda的唯一办法</p>
+<pre><code>#include &lt;functional&gt;
+std::function&lt;int(int, int)&gt; returnLambda () {
+    return [](int x, int y) {
+        return x * y;
+    };
+}
+auto lf = returnLambda();
+lf(1, 2);
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>decltype自动类型推导</p>
+<ul>
+<li><p>目的是让编译器找出表达式类型，原有的typeof缺乏一致性且不完全</p>
+<pre><code>std::map&lt;std::string, float&gt; coll;
+decltype(coll)::value_type elem;
+</code></pre></li>
+<li><p>应用之一是声明返回值类型，有时候函数返回类型取决于某个表达式对实参的处理，可以将自动类型推导放在函数申明之后</p>
+<pre><code>template&lt;typename T1, typename T2&gt;
+auto add(T1 x, T2, y) -&gt; decltype(x+y);
+</code></pre></li>
+<li><p>主要应用是声明返回类型和元编程</p>
+</li>
+</ul>
+</li>
+<li><p>Scoped Enumeration</p>
+<ul>
+<li><p>这是C++枚举的一个干净实现，又叫strong enumeration强类型枚举，可以在enum之后指明关键字class，不会隐式转换为int</p>
+<pre><code>enum class furniture : char { desk, bench, sofa };
+</code></pre></li>
+<li><p>补充：可以保持POD类型</p>
+</li>
+<li>补充：C++定义数值的三种方式：宏定义 静态常量 枚举</li>
+</ul>
+</li>
+<li><p>新类型</p>
+<ul>
+<li>char16_t, char32_t</li>
+<li>long long, unsigned long long</li>
+<li>std::nullptr_t    </li>
+</ul>
+</li>
+</ol>
+<p>#二、旧语言特性</p>
+<ol>
+<li><p>Nontype Template Parameter非类型模板参数</p>
+<ul>
+<li>template的非类型模板参数也被视为template的一部分，参数不同，实例化的class类型也不同</li>
+</ul>
+</li>
+<li><p>Default Template Parameter默认模板参数</p>
+<ul>
+<li><p>Class template可以拥有默认模板实参，且默认模板实参可以依赖前一个实参</p>
+<pre><code>template &lt;typename T, typename container = vector&lt;T&gt;&gt;
+class MyClass
+</code></pre></li>
+</ul>
+</li>
+<li><p>typename</p>
+<ul>
+<li>用在模板中是用来指明标识符是一个类型</li>
+<li>C++的一般性规则就是template内的任何标识符都被识别为一个value，除非加上typename</li>
+</ul>
+</li>
+<li><p>Member Template</p>
+<ul>
+<li>class的成员函数可以是template，member template不能是virtual</li>
+<li>template function可以进行参数类型自动推导</li>
+<li>模板实参不支持隐式类型转换，必需严格匹配</li>
+<li><p>template构造函数通常被用于支持隐式类型转换，当copy构造时，如果类型是相同的，则生成默认copy构造函数，否则实例化一个新类型的template构造函数</p>
+<pre><code>template &lt;typename T&gt;
+class MyClass {
+public:
+    template &lt;typename U&gt;
+    MyClass(const MyClass&lt;U&gt;&amp; x);
+};
+
+MyClass&lt;int&gt; x1;
+MyClass&lt;int&gt; x2(x1);        // 类型相同，生成default copy constructor
+MyClass&lt;float&gt; x3(x1);        // 类型不同，实例化新的template构造函数
+</code></pre></li>
+<li><p>所以，当有template构造函数时，不要忘记提供必要的default构造函数</p>
+</li>
+</ul>
+</li>
+<li><p>Nested Class Template</p>
+<ul>
+<li>嵌套类也可以是template</li>
+</ul>
+</li>
+<li><p>Explicit initializtion for fundamental type</p>
+<ul>
+<li><p>一个基础类型的构造函数调用，如果没有被明确初始化，会初始化为0</p>
+<pre><code>int t1;        // undefined
+int t2 = int{};    // call constructor, 0
+int t3{};    // call constructor, 0
+template &lt;typename T&gt;
+void f() {
+    T x = T();        // T为基础类型时，会保证初始化为0
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>main()定义式</p>
+<ul>
+<li><p>根据C++标准，只有两种main的定义式具备可移植性：带参和不带参</p>
+<pre><code>int main() {} 
+int main(int argc, char* argv[]) {}
+</code></pre></li>
+<li><p>C++为main隐式定义了return 0; 所以可以不用加这句离开main()</p>
+</li>
+<li>如果不想以main()返回的方式离开程序，可以调用exit() quick_exit() 或 terminate()</li>
+</ul>
+</li>
+</ol>
+<p>2015-07-10<br>杜鹏</p>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第三章-语言新特性/" data-id="cio5xrkpy008386fywyztw93b" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第九章-STL迭代器/" class="pre"></a><a href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-8-——-无序容器/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

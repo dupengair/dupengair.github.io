@@ -1,0 +1,109 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 第十五章 Unix域套接字<br>date: 2016-05-13 17:02:19<br>categories: [阅读笔记, 《unix 网络编程 第三版》]<br>tag: 《unix 网络编程 第三版》<br>toc: true</p>
+<hr>
+<p>#一、概述</p>
+<ol>
+<li>UNIX域支持套接字<ul>
+<li>字节流套接字</li>
+<li>数据报套接字</li>
+</ul>
+</li>
+<li>用途<ul>
+<li>比TCP套接字快一倍</li>
+<li>可以传递描述符</li>
+<li>可以传递用户凭证(用户ID和组ID)，以提供额外的安全措施</li>
+</ul>
+</li>
+<li>Unix域用文件系统的路径名来标识客户端和服务端的协议地址<ul>
+<li>需要bind到套接字上</li>
+<li>如果路径已存在，会bind失败，需要先unlink路径名</li>
+</ul>
+</li>
+</ol>
+<p>#二、套接字地址结构</p>
+<pre><code>#include &lt;sys/un.h&gt;
+struct sockaddr_un {
+    sa_family_t sun_family;
+    char        sun_path[14];
+};
+</code></pre><ul>
+<li><code>sun_path</code>数组中的路径名必需以空字符结尾</li>
+</ul>
+<p>#三、socketpair</p>
+<pre><code>#include &lt;sys/socket.h&gt;
+int socketpair(int family, int type, int protocol, int sockfd[2]);
+成功返回0，失败返回-1
+</code></pre><ul>
+<li>创建两个随后连接起来的套接字，只用于Unix域套接字</li>
+<li>family必需为<code>AF_LOCAL</code>，protocol必需为0</li>
+<li>type可以为<code>SOCK_STREAM</code>或者<code>SOCK_DGRAM</code></li>
+<li>新创建的描述符作为sockfd[0]和sockfd[1]返回</li>
+<li>这样得到的结果为流管道，与PIPE的区别为流管道是全双工的</li>
+<li>书上说Berkeley的实现是半双工(？)</li>
+</ul>
+<p>#四、套接字函数</p>
+<ol>
+<li>bind绑定后的路径名默认权限是0777，并按照当前umask值进行修正</li>
+<li>路径名需要为绝对路径，不然对端就需要知道本端的应用程序路径才能成功通信</li>
+<li>connect指定的路径必需是已绑定的Unix域套接字且已打开，type也需要一致，错误条件如下：<ul>
+<li>路径未绑定到套接字</li>
+<li>路径绑定的套接字未打开(没监听)</li>
+<li>监听的套接字类型不符</li>
+</ul>
+</li>
+<li>connect连接域套接字对路径的权限测试，相当于open写打开</li>
+<li>Unix域字节流套接字类似TCP<ul>
+<li>提供无记录边界的字节流服务</li>
+<li>监听队列满时，立即返回ECONNREFUSED错误（注意TCP套接字上，监听队列满时，忽略新到达的SYN，等待客户端重试）</li>
+</ul>
+</li>
+<li>Unix域字数据报套接字类似UDP<ul>
+<li>提供有记录边界的不可靠数据报服务</li>
+<li>在未绑定的Unix域套数据报接字上发送数据报不会自动绑定一个临时路径(TCP或UDP套接字则会自动绑定一个临时端口进行发送)</li>
+<li>所以除非数据报发送端已绑定路径名到其套接字，否则接收端无法发送应答，因为服务端的recvfrom会返回空路径做对端地址，导致sendto错误</li>
+</ul>
+</li>
+</ol>
+<p>#五、描述符传递</p>
+<ol>
+<li><p>自然的传递</p>
+<ul>
+<li>fork调用返回以后，子进程共享父进程所有打开的描述符</li>
+<li>exec调用执行以后，所有描述符的打开状态不变</li>
+</ul>
+</li>
+<li><p>过程</p>
+<ul>
+<li>创建Unix字节流套接字，不推荐数据报套接字，可能被丢弃</li>
+<li>可被传递的描述符不限类型(文件、套接字…)</li>
+<li>发送进程穿件msghdr结构，通过<code>msg_control</code>成员作为辅助数据，通过sendmsg发送</li>
+<li>接收进程通过recvmsg接收消息，这个消息由内核来专门处理</li>
+<li>在sendmsg后，即使发送进程在接收进程调用recvmsg前闭了描述符，对于接收进程仍然处于打开状态</li>
+<li>接收到的描述符值与发送的不同是正常的，传递描述符的过程是创建新的描述符，指向内核中相同的文件表项</li>
+<li>如果接收进程调用recvmsg时没有可用空间，这个被传递的描述符就会被关闭</li>
+<li>接收进程调用recvmsg的过程中避免使用MSG_PEEK标志，否则后果不可预料<ul>
+<li><code>MSG_PEEK</code>：允许查看已可读取的数据，而且系统不在recv或recvfrom返回</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>#六、接收发送者的凭证(uid、pid、gid …)</p>
+<ol>
+<li><p>用于服务器验证客户端是否有权限请求相应服务</p>
+<pre><code>#include &lt;sys/socket.h&gt;
+struct cmsgcred {
+    pid_t cmcred_pid;
+    uid_t cmcred_uid;
+    uid_t cmcred_eupid;
+    gid_t cmcred_gid;
+    short cmcred_ngroups;
+    gid_t cmcred_gourps[CMGROUP_MAX];
+};
+</code></pre><ul>
+<li>FreeBSD使用</li>
+<li><code>CMGROUP_MAX</code>通常为16，<code>cmcred_groups</code>至少为1，<code>cmcred_ngroups</code>第一个元素是有效组ID</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十五章-Unix域套接字/" data-id="cio5xrkqh009286fylx7qinng" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十二章-IPv4与IPv6的互操作性/" class="pre"></a><a href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第八章-基本UDP编程/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

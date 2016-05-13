@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 第十七章 TCP：传输控制协议<br>date: 2016-05-13 17:02:14<br>categories: [阅读笔记, 《TCPIP详解（卷一）》]<br>tag: 《TCPIP详解（卷一）》<br>toc: true</p>
+<hr>
+<p>#一、服务</p>
+<ol>
+<li>TCP提供面向连接的，可靠的端到端字节流服务<ul>
+<li>面向连接：通信双方彼此交换数据前，必须建立一个TCP连接</li>
+<li>字节流服务：通信双方交换8bit字节构成的字节流，TCP不在字节流中插入记录和标识符，也不对字节流内容做任何解释</li>
+<li>端到端通信：一个TCP连接只能是端到端的双方通信</li>
+</ul>
+</li>
+</ol>
+<ol>
+<li>TCP的可靠性<ul>
+<li>数据传递给IP时被分割为适合发送的块，称为报文段</li>
+<li>超时重传，报文发出一个段会启动定时器</li>
+<li>接收端需要确认，通常会推迟几分之一秒</li>
+<li>端到端的首部+数据校验和，有差错时丢弃报文并且不确认收到，等待发送端的超时重传</li>
+<li>接收端排序，因为IP数据报可能乱序</li>
+<li>接收端排除重复数据，因为IP数据报可能重复</li>
+<li>进行流量控制，接收端只运行发送端发送接收缓冲区所能接纳的数据</li>
+</ul>
+</li>
+</ol>
+<p>#二、TCP首部</p>
+<ol>
+<li><p>不计任选字段的情况下，TCP首部为20B</p>
+<pre><code>| IP首部 20B | TCP首部 20B | TCP数据 |
+</code></pre></li>
+<li><p>报文格式</p>
+<pre><code>| 源端口 16b  | 目的端口 16b  |
+|              序号 32b          |
+|          确认序号 32b         |
+| 首部长度 4b | 保留 6b | URG | ACK | PSH | RST | SYN | FIN | 窗口大小 16b |
+| 校验和 16b  | 紧急指针 16b  |
+|           选项             |
+|           数据             |
+</code></pre><ul>
+<li>源端口、IP，目的端口、IP四元组唯一确定一个TCP连结</li>
+<li>序号标识发送的字节流，32bit无符号，到最大值后从0开始</li>
+<li>新建连接时，SYN标志变1，序号为主机选择的连结的初始序号ISN(Initial Sequence Number)，要发送数据的第一个字节序号为ISN+1，因为SYN标志会消耗一个序号</li>
+<li>确认序号为上次已成功收到的数据字节+1，只有ACK为1时确认序号字段才有效（连结建立后，ACK标志总是被置1）</li>
+<li>TCP提供全双工服务，所以每个传输方向上的序号都要保持</li>
+<li>TCP可以表述为一个没有选择确认或者否认的滑动窗口协议。缺少选择是因为TCP首部中的确认序号表示发已经成功收到字节，但不包含确认序号所在的字节</li>
+<li>首部长度为首部的32bit字的数量，4bit决定了TCP首部最多60B，正常情况下为20B，有选项字段时长度是可变的</li>
+<li><p>flags</p>
+<blockquote>
+<p>URG：紧急指针有效</p>
+<p>ACK：确认序号有效</p>
+<p>PSH：接收方尽快将报文交给应用层</p>
+<p>RST：重建连接</p>
+<p>SYN：同步序号用来发起连接</p>
+<p>FIN：发送端完成发送</p>
+</blockquote>
+</li>
+<li><p>窗口大小用于TCP流量控制，为序号段指明的字节数，这个字节数是接收端期望接收的字节大小，最多65535B</p>
+</li>
+<li>校验和覆盖整个TCP报文段，包括首部和数据，由发送端计算和存储，接收端验证</li>
+<li>紧急指针是一个正偏移量，和序号字段的值相加表示紧急数据最后一个字节的序号，用于发送端向另一端发送紧急数据</li>
+<li>最常见的可选字段是最长报文大小MSS（Maximum Segment Size），通常在通信的第一个报文段——设置SYN标志的报文段指明本端所能接收的最大长度的报文段</li>
+<li>数据部分是可选的：在建立和终止连接时，双方交换的报文段仅有TCP首部。在一方没有数据要发送时，也使用没有任何数据的首部来确认接收。在处理超时的很多情况下，报文段也不带数据。</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《TCPIP详解（卷一）》-第十七章-TCP：传输控制协议/" data-id="cio5xrkpi007l86fy3mkdxyci" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《TCPIP详解（卷一）》-第十二章-广播和多播/" class="pre"></a><a href="/2016/05/14/阅读笔记-《TCPIP详解（卷一）》-第十一章-UDP-用户数据报协议/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 第二十四章 TCP的未来和性能<br>date: 2016-05-13 17:02:13<br>categories: [阅读笔记, 《TCPIP详解（卷一）》]<br>tag: 《TCPIP详解（卷一）》<br>toc: true</p>
+<hr>
+<p>#一、引言</p>
+<ol>
+<li>长肥管道：具有很大带宽时延乘积的网络</li>
+<li>为处理长肥管道，使用新的TCP选项：窗口扩大（使窗口超过65535）和时间戳</li>
+<li>新选项：路径MTU发现、窗口扩大选项、时间戳选项、T/TCP</li>
+</ol>
+<p>#二、路径MTU发现</p>
+<ol>
+<li>在IP首部中设置DF位（不可分片），来发现当前路径上的路由器是否需要对正在发送的IP数据报进行分片</li>
+<li>如果一个待转发的IP数据报被设置DF位，其长度超过MTU时，路由器会返回ICMP不可达的差错</li>
+<li>在建立连接时，TCP使用源或目的端口的MSS中最小的MTU作为起始报文大小，如果目的端没有声明，默认536。</li>
+<li>如果收到ICMP差错，TCP减少分段大小进行重传。当这个重传发生时，拥塞窗口不变，实施慢启动。</li>
+</ol>
+<p>#三、大小分组</p>
+<ol>
+<li>大分组不一定好，在网络负载低时，小分组可以提供网络负载，让链接更有效率。（大分组可能需要等待包确认，造成网络空闲，反而降低了效率）</li>
+</ol>
+<p>#四、长肥管道</p>
+<ol>
+<li>链接的容量用带宽延时乘积来表示，表明了两端的管道大小<pre><code>capacity(b) = bandwidth(b/s) x round-trip time(s)
+</code></pre></li>
+<li>当带宽时延乘积变大时，TCP的局限性就会暴露出来</li>
+<li>LFN（Long Fat Network）——长肥网路，一个LFN上的TCP链接为长肥管道</li>
+<li>管道可以被水平拉长（长的rtt）和垂直拉高（高带宽）</li>
+<li>TCP在长肥管道暴露的问题：<ul>
+<li>滑动窗口大小为16bit，限制了窗口大小为65535B，高带宽下需要更大的窗口（窗口扩大选项）</li>
+<li>在长肥管道中的分组丢失会使吞吐量急剧减少，因为RTT很大的情况下，多个分组丢失时慢启动会严重降低吞吐量，导致管道迅速耗尽</li>
+<li>在一个LFN上需要更好的RTT测量机制，许多实现只进行一次测量，并不对每个报文段进行RTT测量（时间戳选项）</li>
+<li>TCP序号为32bit，在带宽很高时，可能一个被延迟的报文段还在MSL内时，新连接的序号就达到了该报文段序号，从而由于网路足够快引发了回绕问题（时间戳选项的PAWS算法，保护回绕的序列号）</li>
+</ul>
+</li>
+</ol>
+<p>#五、窗口扩大选项</p>
+<ol>
+<li>在syn阶段使用，建立连接时每个方向的扩大因子固定下来，可以不同</li>
+<li>如果扩大因子只是单方向存在，这个方向上的扩大因子不起作用，发送接收的位移计数器会清0，以保证兼容旧的系统</li>
+<li>TCP根据接收缓存大小自动选择，这个大小由系统设置，可以在应用层修改</li>
+</ol>
+<p>#六、时间戳选项</p>
+<ol>
+<li>允许发送方在每个报文段中放置一个时间戳，接收方在确认中返回，以使发送方为每个ACK计算RTT</li>
+<li>时间戳是一个单调递增的值，接收方只需要回显，不关心内容，也不需要主机之间进行时间同步</li>
+<li>与窗口扩大选项类似，在发起连接方的syn中指定，只有从另一方的syn也收到这个选项，才对以后的报文段进行设置</li>
+<li>对每个连接只维持一个时间戳的数值</li>
+<li>算法能处理如下两种情况：<ul>
+<li>如果ACK被时延（合并确认），回显的时间戳应该为最早一个需确认的报文段，因为发送方进行超时重传计算时间时，需要考虑ACK的延迟确认</li>
+<li>如果收到窗口范围内失序的报文，表面前面报文已经丢失，当丢失报文到达时，时间戳被回显</li>
+</ul>
+</li>
+</ol>
+<p>#七、PAWS：防止序列号回绕</p>
+<ol>
+<li>使用时间戳选项，并由发送方指定的时间戳对每个要发送窗口+1</li>
+<li>接收方将时间戳视为序列号的一个32bit扩展，出现时间戳小于最近有效时间戳时，PAWS算法将其丢弃</li>
+<li>与窗口扩大选项类似，不需要主机间的时间同步，接收方只需要看到时间戳单调递增，并且每个窗口至少+1</li>
+</ol>
+<p>#八、T/TCP：为事务的TCP扩展</p>
+<ol>
+<li>TCP是虚电路方式的运输服务，一个连接的生存时间包括建立、数据传输和终止</li>
+<li>事务需要符合的特征：<ul>
+<li>避免连接建立和终止的开销，可能的时候发生请求分组并接收应答分组</li>
+<li>等待时间应减少到RTT与SPT之和，SPT为Server Processing Time，服务器处理时间</li>
+<li>服务器能检测出重复请求，从而忽略对其的处理</li>
+</ul>
+</li>
+<li>相对事务处理，TCP提供了过多的特征，而UDP提供的不够</li>
+<li>对TCP的修改<ul>
+<li>增加3个报文段，分别用于请求、应答和确认请求、确认应答</li>
+<li>避免三次握手和缩短按TIME_WAIT状态<ul>
+<li>使用加速打开来避免3次握手</li>
+<li>基于测量RTT来动态计算TIME_WAIT延时，将其设置为8倍RTO</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>#九、TCP性能</p>
+<ol>
+<li><p>理论吞吐量</p>
+<pre><code>字段                长度(B) | ACK(B)
+Ethernet前导         8     8    
+Ethernet dist        6       6
+Ethernet src         6       6
+Ethernet type        2       2
+IP header           20      20
+TCP header          20      20
+用户数据           1460     0
+填充字符              0     6
+Ethernet crc         4     4
+分组间隙(9.6ms)      12    12
+---------------------------------
+总计                 1538    84
+</code></pre></li>
+<li><p>计算</p>
+<ul>
+<li><p>一对背对背、满长度的数据报文端（data + ack），在10M网络上，默认窗口大小(1460)下：</p>
+<pre><code>                    2 x 1460 B          10 000 000 b/s
+throughout = -------------------- x ------------------ = 1 555 063 B/s
+                22 x 1538B + 84B         8 b/B
+</code></pre></li>
+<li><p>窗口开到最大(65535)：</p>
+<pre><code>                    22 x 1460 B          10 000 000 b/s
+throughout = -------------------- x ------------------ = 1 183 667 B/s
+                22 x 1538B + 84B         8 b/B    
+</code></pre></li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《TCPIP详解（卷一）》-第二十四章-TCP的未来和性能/" data-id="cio5xrkpf007f86fymu46i8lk" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《TCPIP详解（卷一）》-第二十章-TCP的成块数据流/" class="pre"></a><a href="/2016/05/14/阅读笔记-《TCPIP详解（卷一）》-第二十三章-TCP的保活定时器/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 五十、何时重写 operator new和operator delete<br>date: 2016-05-13 17:02:03<br>categories: [阅读笔记, 《Effective C++》]<br>tag: 《Effective C++》<br>toc: true</p>
+<hr>
+<p>#一、常见的原因</p>
+<ol>
+<li><p>检测运用上的错误</p>
+<ul>
+<li>delete失败导致的内存泄露</li>
+<li>对同一段内存的多次delete导致不定义行为</li>
+<li>利用签名进行内存溢出检测</li>
+</ul>
+</li>
+<li><p>强化效能</p>
+<ul>
+<li>编译器的operator new和operator delete主要用于一般目的：<ul>
+<li>寿命（长时存在、短时存在）</li>
+<li>大小（大块、小块、大小混合）</li>
+<li>破碎问题</li>
+</ul>
+</li>
+<li>这使得默认的实现对每种情况都适度的好，但不对特定情况有最佳表现。为特定情况定制可能获得重大效能提升——多快好省的使用内存。</li>
+</ul>
+</li>
+<li><p>收集使用上的统计数据</p>
+<ul>
+<li>大小分布</li>
+<li>进出次序</li>
+<li>运用形态</li>
+<li>最大动态分配量</li>
+</ul>
+</li>
+</ol>
+<p>#二、一个初级版本的operator new实例</p>
+<ul>
+<li><p>这个实例主要体现检测overruns和underruns</p>
+<pre><code>static const int signature = 0xDEADBEEF;
+typedef unsigned char Byte;
+
+//这段代码存在若干bug
+void* operator new(std::size_t size) throw(std::bad_alloc)
+{
+    using namespace std;
+    size_t realSize = size + 2 * sizeof(int);        //增加大小用以插入signatures
+
+    void* pMem = malloc(realSize);                    //调用malloc获取内存
+    if(!pMem) throw bad_alloc
+
+    *(static_cast&lt;int *&gt;(pMem)) = signature;        //插入signatures
+    *(reinterpret_cast&lt;int *&gt;(static_cast&lt;Byte *&gt;(pMem)
+        +realSize-sizeof(int))) = signature;
+
+    return static_cast&lt;Byte *&gt;(pMem) + sizeof(int);    //返回指针指向第一个signature之后的位置
+}
+</code></pre></li>
+<li><p>这段代码有两个主要缺陷，目的在于演示如果自定义operator new：</p>
+<ul>
+<li>疏忽了身为这个特殊函数所应具备的“坚持C++规矩”的态度——所有的operator new 操作符都应该包含一个循环，在这个循环中反复调用new-handling函数，如同默认operator new的行为。</li>
+<li>内存对齐（alignment）</li>
+</ul>
+</li>
+</ul>
+<p>#三、内存对齐（alignment）</p>
+<ol>
+<li>许多计算机体系结构要求特定的类型必须放在特定的内存位置</li>
+<li>C++要求所有operator new返回的指针都适当的对齐（取决于数据类型）。</li>
+<li><p>malloc就是这样工作的，所以让程序返回一个来自于malloc的指针是安全的。</p>
+<ul>
+<li>所以上面实例中，自定义operator new返回一个来自于malloc并偏移int大小的指针，这是不安全的。如果客户调用这个操作时企图给double类型分配内存，这时候内存未能适当对齐，会导致程序崩溃或执行变慢的未定义行为。</li>
+</ul>
+</li>
+<li><p>Boost库的Pool分配器对最常见的“分配大量小型对象”很有帮助</p>
+</li>
+<li>TR1支持各类型的对齐条件</li>
+</ol>
+<p>#四、使用自定义operator new和operator delete 的目的</p>
+<ol>
+<li>为了检测运用出错（如前）</li>
+<li>为了收集动态分配内存的使用信息（如前）</li>
+<li>为了增加分配和归还速度<ul>
+<li>泛用型分配器往往（虽然并不总是）比定制分配器慢，特别是当定制性分配器专门针对某些特定类型对象设计时。Class专属分配器是“固定大小内存”分配的实例。Boost提供的Pool也是。不过在设计之前，首先应分析程序，确认程序瓶颈的确发生在那些内存函数上。</li>
+</ul>
+</li>
+<li>为了降低缺省内存管理器带来的空间额外开销<ul>
+<li>泛用型分配器往往不只比定制的慢，而且使用更多内存，因为它们常常在每一个分配区块上招来额外开销。针对小型对象开发的分配器如Boost库的Pool，本质上消除了这些额外开销。</li>
+</ul>
+</li>
+<li>为了弥补缺省分配器中的非最佳内存对齐方式（suboptimal alignment）<ul>
+<li>如果固定访问某个大小对齐的类型，定制一个operator new来保证类型内存对齐，可能大幅提高程序效率。编译器自带的operator new并不保证动态分配的内存对该类型对齐。</li>
+</ul>
+</li>
+<li>为了将相关对象集中<ul>
+<li>如果特定的某个数据结构往往被一起使用，希望在处理这些数据时将“内存页错误（page fauls）”频率降至最低，那么为这个数据结构创建另一个heap就有意义。这样可以讲它们集中在尽可能少的数据页上。new和delete的“placement”有可能完成这样的行为。</li>
+</ul>
+</li>
+<li>为了获得非传统行为<ul>
+<li>比如希望分配和回收共享内存（memory map）的区块，但唯一能管理该内存的只有C API函数。或者自定义一个operator delete将回收的内存内容覆盖为0，以增加应用程序安全性。</li>
+</ul>
+</li>
+</ol>
+<pre><code>杜鹏
+2013-01-08
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-C-》-五十、何时重写-operator-new和operator-delete/" data-id="cio5xrkn8004186fy5la2x6fd" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-C-》-五十一、编写operator-new和operator-delete须知/" class="pre"></a><a href="/2016/05/14/阅读笔记-《Effective-C-》-五、不在沉默中爆发，就在沉默中灭亡/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

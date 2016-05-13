@@ -1,0 +1,222 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: Linux学习经验<br>date: 2016-05-13 17:01:59<br>categories: 杂项<br>tag: 杂项<br>toc: true</p>
+<hr>
+<pre><code>日期        经验类型    标题                               内容
+2070-7-26    命令使用    查询已安装的软件包     
+                            rpm -qa xxx
+2010-7-28    配置服务    Fedora12 telnet安装    
+                            E:\日积月累\整理\嵌入式Linux\经验累积\Fedora12 telnet安装说明.txt
+2010-7-28    系统设置    设置IP重启有效    
+                            /etc/sysconfig/network-scripts/ifcfg-eth0
+2010-7-28    配置服务    yum 元数据无法读取    
+                            yum clean all
+2010-7-28    配置服务    Fedora12 启用Samba服务后，/home不能共享    
+                            setsebool -P use_samba_home_dirs -1
+2010-7-28    配置服务    Fedora12 Samba服务配置    
+                            E:\日积月累\整理\嵌入式Linux\经验累积\Fedora12 samba服务配置.txt
+2010-7-29    系统设置    设置服务启动有效    
+                            chkconfig serviceXXX on　
+2010-7-29    虚拟机        虚拟机disk备份恢复    
+                            直接备份disk和cfg文件，必须要有log文件，恢复时网卡变为eth1，要重新设置IP
+2010-7-30    配置服务    输出NFS文件系统    
+                            E:\日积月累\整理\嵌入式Linux\经验累积\输出NFS文件系统.txt
+2010-7-30    配置服务    检测防火墙状态    
+                            host $ /etc/init.d/iptables status
+2010-7-30    配置服务    关闭防火墙    
+                            host $ /etc/init.d/iptables stop
+2010-7-30    系统设置    设置环境变量     
+                            编辑/etc/bashrc ,添加 PATH=$PATH:路径
+2010-7-30    系统设置    使环境变量生效    
+                            source ~/etc/bashrc
+2010-8-1    配置服务    查看nfs服务状态    
+                            /etc/init.d/nfs status
+2010-8-1    配置服务    查看是否开机启动    
+                            chkconfig --list serviceXXX　
+2010-8-1    配置服务    关闭seLinux    
+                            E:\日积月累\整理\嵌入式Linux\经验累积\关闭seLinux.txt
+2010-8-2    经验心得    nfs启动无法挂载    
+                            uboot的bootargs参数里和nfs相关的ip地址及文件系统路径等信息设置，不能有回车符等非法字符
+2010-8-3    经验心得    Login incorrect，root账号无法使用，其它账号密码错误    
+                            与/etc下的passwd、shadow、securety三个文件有关，重命名或删除最后一个文件即可
+2010-8-4    Flash       Nor Flash    
+                            NOR Flash可以支持随机访问，所以代码是可以直接在Flash上执行的
+2010-8-13    系统设置    使bashrc中修改的环境变量立即生效    
+                            source ~/etc/bashrc
+2010-8-18    配置服务    查看tftp服务状态    
+                            chkconfig --list |grep tftp
+2010-8-30    命令使用    umount时显示device is busy    
+                            Fuser –m /mnt/rdmnt,找出那个进程还使用当前文件夹
+2010-9-2    命令使用    查找当前目录的文件    
+                            find -maxdepth 1 -name xxxx
+2010-9-2    命令使用    统计查找到的结果数量    
+                            find -name xxxx|wc -l
+2010-9-2    命令使用    删除查找到的文件（单进程）    
+                            find -name xxxx|xargs rm
+2010-9-2    命令使用    批量替换查找到的文件中的字符串 (xx -&gt; yy)    
+                            grep -i &apos;s/xx/yy/g&apos; find *|xargs grep xx  
+2010-11-29    linux编程     Linux网络编程    
+                            用fnctl设置connect函数为非阻塞方式以后，程序设计为跳出循环，但此时函数会立即返回，导致执行一段后面的循环体再跳出循环
+2010-11-30    系统设置    嵌入式开发板的IP地址    开
+                            发板的IP地址由uboot参数bootargs指定，内核启动时从uboot中读取
+2010-12-15    DAVINCI       在DVSDK中include内核头文件，编译时无法找到的解决办法    
+                            在应用程序MAKEFILE中加入 C_FLAGS += -I/VMShare/DM365EVM/kernel/linux-2.6.18_pro500/include/
+2010-12-28    linux编程     查看编译后程序用到的库    
+                            ldd hello
+2011-1-16    内核驱动    获得指定设备的设备号shell    
+                            awk &quot;\$2==\&quot;$MODULE_NAME\&quot; {print \$1}&quot; /proc/devices 
+2010-2-4    busybox       在做好的ramdisk中添加busybox命令    
+                            重新编译busybox后，将生成的busybox文件拷贝到ramdisk/bin/下替换原文件，再手动为新命令创建连接 ln -s busybox awk
+2010-2-21    内核驱动    开机一段时间logo消失的问题    
+                            注释掉/drivers/char/vt.c 的blank_screen_t()函数中的内容
+2010-3-6    内核驱动    上电显示logo时去掉闪烁光标    
+                            注释掉/drivers/video/fb_con.c 的fb_flashcursor()和fbcon_cursor()函数中的内容
+2011-3-25    内核驱动    锁的哲学    
+                            走别人的路,让别人无路可走.
+2011-4-4    内核驱动    usbfs记录的设备信息    
+                            /proc/bus/usb/devices
+2011-4-9    C语言         定义（bit）定长的数组    
+                            unsigned long devicemap[128/(8*sizeof(unsigned long))]
+2011-4-20    内核驱动    电源管理的精髓    
+                            开源战士范仲淹有一句话把这电源管理机制下的子设备诠释得淋漓尽致:先天下之睡而睡,后天下之醒而醒
+2011-6-3    内核驱动    EXPORT_SYMBOL后模块提示symbol undefined    
+                            确认内核目录下的module.symvers有导出的变量，否则make clean后重新编译内核
+2011-6-12    shell       系统输出到变量用反引号`    
+                            VAR=`echo &apos;abcd&apos;`
+2011-7-1    内核驱动    evbug    
+                            input设备的打开关闭在evbug模块上，否则无法使用
+2011-8-14    C语言         定义结构体的内存对齐方式    
+                            使用指令#pragma pack (n)，编译器将按照n 个字节对齐。使用指令#pragma pack ()，编译器将取消自定义字对齐方式。                                                                                         如果是单独定义结构体的对齐方式，就在typedef的结构体名称前面加__attribute__ ((packed))
+2011-9-27    命令使用    mount 
+                            --bind    使挂载过后的目录继承挂载目录的属性，如 mount --bind /old_dir /new_dir, 原来old_dir 777 new_dir 111, 挂载过后 new_dir 777
+2011-10-10    C语言         查看已编译成可执行文件的符号表    
+                            nm a.out 
+2011-10-10    C语言         定义一个符号的别名    
+                            int foo() __attribute__ ((weak, alias(”__foo”)));
+2011-10-11    C语言         打印程序编译的时间    
+                            printf(&quot;\nTI reference design host application (build on %s at %s).\n&quot;,__DATE__,__TIME__);
+2011-10-12    命令使用    在开发板上使用busybox的tftp命令    tftp 
+                            tftp [OPTION]... HOST [PORT] 
+                            Transfer a file from/to tftp server using ``octet&apos;&apos; mode
+                            Options:
+                                    -l FILE Local FILE
+                                    -r FILE Remote FILE
+                                    -g      Get file
+                                    -p      Put file
+                                    -b SIZE Transfer blocks of SIZE octets                                             tftp -g -r 1.mp3  192.168.151.52
+
+2011-11-3    linux编程      内核proc文件系统编程    
+                            编写proc_read的时候注意page参数是从内核分配页起始地址开始，要读取偏移量的地址需要page偏移lseek设定的地址
+2011-11-4    命令使用    用find同时查找多个文件    
+                            find */ -name *.mk -o -name Makefile
+2011-11-14    虚拟机         电脑重启以后虚拟机的系统无法运行，提示文件损坏    
+                            在windows下运行磁盘扫描
+2011-11-14    系统设置    查看内核printk输出消息级别低于KERN_WARNING的提示    
+                            cat /proc/kmsg
+2011-12-16    linux编程      查看线程自己的tid，top shift+H命令看到的内容    
+                            syscall(__NR_gettid)
+2011-12-22    系统应用    系统启动提示串口：-sh: can&apos;t access tty; job control turned off
+                            启动初始化文件/etc/inittab的最后一行如果调用用户脚本，需要将命令执行方式设置为respawn，表示执行完脚本后shell窗口继续使用，ttyS0::respawn:/usr/local/bin/autorun.sh
+2011-12-22    网络编程    多网卡时socket绑定指定网卡    
+                            见《对sock绑定网卡.txt》
+2012-2-17    内核调试    反汇编内核代码    
+                            1、修改源代码的顶层  Makefile：“CC =$(CROSSCOM_PILE)gcc   -g” 使成生的vmlinux中含有debug信息
+                            2、objdump -S -l -z vmlinux &gt; vmlinux.txt反汇编vmlinux到vmlinux.txt，vmlinux.txt含有汇编和c源文件的混合代码，看起来很方便。而且能一步步看linux怎么一步步运行的
+                            3、也可以不加gcc -g 然后arm-none-linux-gnueabi-objdump -D vmlinux &gt; kernel_asm.txt来调试，反汇编后没有对应的C代码
+2012-2-23    shell       脚本编程注意换行符后面的空格    
+                            脚本中使用换行符\时，注意后面不能有空格，否则会导致下一行命令执行结果异常
+2012-3-6    linux编程      流式操作文件stream(FILE *)的同步方法    
+                            要先flush stream，即先fflush() 然后才sync()，fsync，fdatasync。fflush()与后面三个的区别，在于前者是同步libc-level的buffer，而后者则是同步kernel-level buffers。
+2012-3-6    linux编程      sync、fsync、fdatasync的区别    
+                            sync把数据缓冲区放入写队列就返回，不是真正的硬件同步写
+                            fsync等数据写入磁盘才返回，会更新文件属性
+                            fdatasync只影响文件的数据部分，不更新属性
+2012-3-6    linux编程      取得文件流stream(FILE *)对应的文件描述符    
+                            FILE *fp;
+                            int fd = fileno(fp);
+2012-3-8    shell        shell中返回字符串的方法    
+                            1、用全局变量
+                            2、用进程替换
+                            func()
+                            {
+                               echo &quot;&quot;result&quot;&quot;
+                            }
+                            val=$(func)
+2012-3-8    shell       shell中使用全局变量的方法    
+                            export A=
+2012-3-19    配置服务    查看samba运行的端口    
+                            netstat -tlnp |grep smb
+2012-3-20    配置服务    挂载nfs    
+                            mount -t nfs -o nolock 192.168.125.127:/VMShare_Amb_fc15/nfs/Amb1/ /mnt/nfs
+2012-3-29    命令使用    find与cp连用    
+                            find ./* -name &quot;*.so.7.2.0&quot; -exec cp {} . \;
+2012-5-31    命令使用    查找文件中的字符串    
+                            grep -nr  &quot;CONFIG_AMBARELLA_EXPAT_SUPPORT&quot; *
+2012-6-1    网络设置    网络不通    
+                            清除TCP/IP高级设置里的地址
+2012-6-11    C++    提示   ostream does not name a type    
+                            命名空间的问题，这样写就好了 std::ostream,或using namespace std;
+2012-6-19    shell       脚本运行提示:bad interpretor /bin/sh^M    
+                            文件格式不是linux的，用dos2linux转一下,或者vi中使用set fileformat=unix命令
+2012-8-29    命令使用    将dos格式文件转换为unix格式    
+                            dos2unix */*/*/* or vi -&gt; set fileformat=unix
+2012-10-26    命令使用    在开发板上重新挂载根文件系统    
+                            mount -o rw,remount /
+2013-2-20    命令使用    直接写文件命令    
+                            echo “register time” | cat &gt;&gt; record.txt
+2013-2-21    命令使用    终端设置    
+                            stty raw 不带换行，阻塞信号
+                            stty cooked 恢复默认模式
+2013-2-25    linux编程      编译链接提示：ld: cannot find -lc    
+                            在编译时添加了 gcc -static 导致找不到libc库
+2013-9-10    linux编程      C++ gcc dename-mangling    
+                            readelf -s libxxx.so | c++filt
+2013-10-15    编译          两个静态库连有弱符号的调用关系，直接链接不会进行符号解析，程序运行时出现符号地址无法解析    
+                            将两个静态库用 ar -x 还原成.o 文件再编译链接，编译器会解析.o文件的符号
+2013-11-30    命令使用    进程与文件，lsof的使用    
+                            查看进程打开文件： lsof -p PID ;
+                            查看文件被哪个进程打开：lsof FILENAME
+                            查看进程打开的文件数：
+                            lsof -n|awk &apos;{print $2}&apos;|sort|uniq -c|sort -nr| more
+2013-12-2    命令使用    统计代码行数    
+                            1. 去掉注释和空行
+                            find -name &quot;&quot;*.[ch]&quot;&quot; -exec cat {} \; | sed &apos;/^$\|\/\/\|\/\.*|\*\//d&apos;|wc -l
+                            2. 带注释和空行一起统计
+                            find -name &quot;&quot;*.[ch]&quot;&quot; -exec cat {} \;|wc -l
+2014-1-21    编译          查看静态库文件    
+                            ar -t
+2014-2-18    shell       利用env来查找脚本解释器路径    
+                            #!/usr/bin/env python
+2014-12-27    linux知识   守护进程与僵尸进程
+                            僵尸进程：子进程退出后父进程一直不能回收资源
+                            守护进程fork两次：使父进程退出，子进程被init接管，避免僵尸进程出现
+2015-6-19    gdb            GDB启动程序    
+                            mkdir -p /tmp/nfs &amp;&amp; chmod 777 /tmp/nfs &amp;&amp;mount -t nfs -o nolock 10.82.16.75:/VMShare_Amb_fc15/nfs/Amb1/ /tmp/nfs &amp;&amp; chmod -R 777 /tmp/nfs/S2_Product
+                            (gdb) handle SIGPIPE nostop noprint ignore 
+                            (gdb) directory /tmp/nfs/S2_Product/
+
+2015-8-12    tcpdump        tcpdump抓包wireshark分析    
+                            tcpdump -i eth0 &apos;tcp port 2809&apos; -w /mnt/nfs/tcpdump/1.cap
+2016-5-7    shell        读取目录下文件名时，处理空格    
+                            使用IFS替换分隔符：
+                            process()
+                            {
+                             IFS=&apos;\
+                             &apos;
+                             local target=$1
+                             local item=$(ls &quot;&quot;$target&quot;&quot;) 
+                             local oldIFS=$IFS
+                             local prefix=$(pwd)
+
+                             for i in $item
+                             do
+                              if [ -d &quot;&quot;$prefix/$target/$i&quot;&quot; ]; then
+                               cd $prefix/$target &amp;&amp; process $i
+                              else
+                               is_md $i
+                               [ $? -eq 0 ] &amp;&amp; cd $prefix/$target &amp;&amp; add_head $i
+                              fi
+                             done
+
+                             IFS=$oldIFS
+                            }
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/杂项-Linux学习经验/" data-id="cio5xrkks002i86fytguommsn" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《C-11新特性》-四、新手易学-老兵易用/" class="pre"></a><a href="/2016/05/14/阅读笔记-《C-11新特性》-六、提高性能及硬件操作能力/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

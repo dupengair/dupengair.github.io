@@ -1,0 +1,56 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: Q&amp;A——Linux性能优化 @ 系统知识<br>date: 2016-05-13 17:01:57<br>categories: Q&amp;A<br>tag: Q&amp;A<br>toc: true</p>
+<hr>
+<pre><code>一、进程管理
+1、什么是创建进程的写时复制？它是如何完成的？（exec 进程共享 页错误 分配新页）
+2、创建线程的开销和进程有什么不同？（资源）
+3、详述Linux内核对进程优先级的操作
+4、进程上下文切换频繁会引发什么问题？为什么？（刷新reg&amp;cache）
+5、linux有哪两类中断？怎样提高中断的性能？（软硬，绑定CPU）
+6、进程有哪些状态？怎么理解每个进程在很短时间内都是Zombie？僵尸进程是怎样产生的，如何杀死？
+7、内核主要的调度算法有哪些？有什么特点？
+
+
+二、内存管理
+8、虚拟内存是否全部被映射到物理内存？（no，磁盘交换空间swap）
+9、为何linux内存管理更高效？（虚拟内存分配所有有效的空闲内存空间为磁盘缓存）
+10、linux虚拟内存管理是什么机制实现的，做了哪些事情？怎么查看？（伙伴系统，维护空闲分页，给请求分配分页，保证内存区域的连续性，/proc/buddyinfo）
+11、分页回收是谁实现的？基于什么原则？目的是什么？通过什么查看？（kswapd，LRU，分页缓存是分页被映射到磁盘上的一个文件，分页属于一个进程地址空间，被用于堆和栈，称为匿名内存，/proc/sys/vm/swappiness）
+12、swap是怎么工作的？为什么效率高？（当虚拟内存管理器发现进程的内存分页已经分配，但大量时间没有使用时，会将其移动到swap空间，以释放一个昂贵的主内存分页）
+
+
+三、文件系统
+13、日志文件系统与非日志文件系统的区别？（非日志文件系统中，内核先改变文件系统的元数据，再写实际的用户数据，如果元数据写入中发生崩溃，会损坏数据完整性，日志文件系统中，内核先将改变数据写入日志区）
+14、XFS适用于什么场合？（适合大文件的快速存储，不适合单线程密集操作巨大数量的小文件，这方面Ext4更好）
+
+
+四、IO子系统
+15、cache的实现及原理（缓存快存储器数据减少慢存储器读写，数据局部性原理）
+16、局部性原理的目的和内容（快存储器上实现更高的缓存命中率，时间局部性：最近使用过的数据，空间局部性：数据周围的数据）
+17、dirty page是如何产生的？（当一个进程试图改变数据时，首先将数据写入内存，此时内存和磁盘上数据不同，内存中的数据称为dirty page）
+18、什么是IO电梯调度？默认的调度算法是哪个？（文件系统将写操作以bio的形式提交到io队列的过程，CFQ完全公平队列）
+
+
+五、网络子系统
+19、哪个目录是调整socket buffer性能的？（/proc/sys/net/）
+20、NAPI(Network API)起什么作用？（减少CPU中断次数）
+21、内核Netfilter有哪3个主要功能？（数据包过滤、地址转换、数据包改写）
+22、TCP滑动窗口是哪一端进行控制的？什么是慢启动？（接收端，从1个数据段开始成倍增加）
+
+
+六、性能度量
+23、下面几个CPU方面的值，高好还是低好，为什么？
+    cpu usage    （持续时间内超过80%，cpu存在瓶颈）
+    user time    （高好，系统执行效率高）
+    sys time     （低好，内核被中断的时间少）
+    waiting      （低好，不应过多等待IO）
+    load average    （低好，否则得不到cpu时间的进程多）
+    可运行的进程    （低好，不应超过cpu数量的10倍）
+    阻塞的进程    （低好，反映出IO瓶颈）
+    context switch    （低好，大量的上下文切换如果与大量中断相关，意味着驱动或应用程序可能有问题）
+    中断        （低好，否则系统存在软件瓶颈，硬中断对性能影响更大，包括CPU时钟）
+
+24、空闲内存由哪些部分组成？（free+used中的buffer(缓冲)和cache(缓存)）
+25、哪些值可以体现出内存瓶颈？（Swap In/Out）
+26、哪些值可以体现出块设备瓶颈？（IO等待时间、平均队列长度）
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/Q-A-Q-A——Linux性能优化-系统知识/" data-id="cio5xrkjg001b86fyc1y8awg2" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/Q-A-Q-A——Linux基础-高级IO/" class="pre"></a><a href="/2016/05/14/Q-A-Q-A——Linux网络编程-TCPIP协议基础/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

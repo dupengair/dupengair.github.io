@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 二十四、不受人待见的member——如果所有的参数都需要类型转换，须采用non-member函数<br>date: 2016-05-13 17:02:03<br>categories: [阅读笔记, 《Effective C++》]<br>tag: 《Effective C++》<br>toc: true</p>
+<hr>
+<p><em>member函数确实不受待见，又来一条鄙视它的法制——如果所有参数都需类型转换，请采用non-member函数。</em></p>
+<p>#一、看一个实例</p>
+<ol>
+<li><p>让class支持隐式类型转换通常不是好主意，不过常见的例外是建立数值类型时。</p>
+<pre><code>如一个有理数类：
+class Rational {
+public:
+    Rational(int numerator = 0, int denominator = 1);
+    int numerator() const;
+    int demoninator() const;
+private:
+    …
+};
+
+对有理数实现operator*操作，当它为member函数时：
+class Rational {
+public:        
+    …
+    const Rational operator* (const Rational&amp; rhs) const;
+};
+</code></pre></li>
+</ol>
+<p>#二、问题</p>
+<ul>
+<li><p>实际应用中的有理数乘法：</p>
+<pre><code>Rational oneEighth(1, 8);
+Rational oneHalf(1, 2);
+Rational result = oneEighth * oneHalf;        // OK!
+result = oneHalf * 2;                // OK! 隐式转换
+result = 2 * oneHalf;                // Bomb!
+</code></pre></li>
+<li><p>不满足乘法交换律，分析一下原因，将上面的表达式写成函数形式：</p>
+</li>
+</ul>
+<pre><code>Rational result = oneEighth.operator*(oneHalf);        // OK!
+result = oneHalf.operator*(2);                // OK! 隐式转换
+result = 2.operator*(oneHalf);                // Bomb!
+</code></pre><ul>
+<li>很明显，整数2不存在class，也就没有<code>operator*()</code>成员函数。</li>
+<li><p>对于<code>operator*()</code>成员函数来说，2为左操作数，因此2并不在其参数列表中，也就无法进行隐式类型转换。虽然此时编译器会在global作用域内寻找这样形式的non-member函数：</p>
+<pre><code>const Rational operator* (const Rational&amp; rhs, const Rational&amp; rhs);
+</code></pre></li>
+<li><p>很可惜没有找到，所以报错。而对于第二个表达式，由于整数2经过隐式转换已经成了Rational对象，其运算过程可以解析如下：</p>
+<pre><code>const Rational temp(2);
+result = oneHalf.operator*(temp);
+</code></pre></li>
+<li><p>而如果把class的构造函数声明为explicit，不允许进行隐式类型转换，那么上面后两个整数参与计算的表达式都无法通过编译。</p>
+</li>
+</ul>
+<p>#三、结论</p>
+<ul>
+<li>以上的事实表明，之所以无法进行类型转换，是因为参数不在参数列表中。</li>
+</ul>
+<p>#四、解决办法</p>
+<ul>
+<li><p>要解决这个问题，很明显要让operator*()成为一个non-member函数，这样所有的参数才会在参数列表中，能够进行类型转换：</p>
+<pre><code>class Rational {
+public:        
+    …
+};
+
+const Rational operator* (const Rational&amp; rhs, const Rational&amp; rhs)
+{
+    return Rational( lhs.numerator() * rhs.numerator(),
+             lhs.denominator() * rhs.denominator() );
+}
+
+result = oneHalf * 2;                // OK! 隐式转换
+result = 2 * oneHalf;                // OK! 隐式转换
+</code></pre></li>
+</ul>
+<p>#五、观察</p>
+<ol>
+<li>member函数的反面是non-member函数，不是friend函数。假设“如果一个与某class相关的函数不该成为一个member，就该是个friend”是不成立的。</li>
+<li>无论何时，可以避免friend函数就应该避免</li>
+<li>不能够因为一个函数不成为member，就自动让它成为friend</li>
+</ol>
+<p>#六、结论<br><strong>如果需要为某个函数的所有参数进行类型转换，这个函数必须是个non-member。</strong></p>
+<pre><code>杜鹏
+2012-09-06
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-C-》-二十四、不受人待见的member——如果所有的参数都需要类型转换，须采用non-member函数/" data-id="cio5xrkn7003z86fy09ay5qwr" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-C-》-五、不在沉默中爆发，就在沉默中灭亡/" class="pre"></a><a href="/2016/05/14/阅读笔记-《Effective-C-》-二十五、关于swap的种种——模板的应用/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 第十二章 广播和多播<br>date: 2016-05-13 17:02:14<br>categories: [阅读笔记, 《TCPIP详解（卷一）》]<br>tag: 《TCPIP详解（卷一）》<br>toc: true</p>
+<hr>
+<p>#一、引言</p>
+<ol>
+<li>广播和多播仅应用于UDP</li>
+<li>TCP是一个面向连接的协议，分别运行于两主机内的进程之间存在一条连接</li>
+<li>通常网卡仅接收目的地址为网卡MAC或广播地址的帧，当设置为混杂模式时，能接收所有帧</li>
+<li>MAC地址最高字节的最低位为1时，为广播地址</li>
+<li>网卡接收到以太网帧后传给设备驱动，设备驱动进行帧过滤。首先，帧类型必需指定协议，其次，检查主机是否属于多播地址说明的多播组进行多播过滤。然后传给协议栈。</li>
+<li>IP根据源地址和目的地址过滤，UDP根据源端口和目的端口进行过滤，如果端口号没有被任何当前进程使用，丢弃数据并产生ICMP不可达报文，如果数据报有错则直接丢弃</li>
+<li>使用广播的问题在于增加了对广播不感兴趣的主机处理负荷，广播报直到UDP层才被丢弃</li>
+<li>多播减小了主机负荷，主机可以加入一个或多个多播组，仅接收到主机所在多播组的帧</li>
+</ol>
+<p>#二、广播</p>
+<ol>
+<li><p>受限广播</p>
+<ul>
+<li>广播地址255.255.255.255</li>
+<li>任何情况下路由器都不转发，仅出现在本地网络中</li>
+</ul>
+</li>
+<li><p>指向网络的广播</p>
+<ul>
+<li>主机号与网络全1，如A类：netid.255.255.255</li>
+<li>默认必需转发指向网络的广播，也必需可以选择不进行转发</li>
+</ul>
+</li>
+<li><p>指向子网的广播</p>
+<ul>
+<li>主机号为全1且有特定子网地址，如128.1.2.255/24</li>
+</ul>
+</li>
+<li><p>指向所有子网的广播</p>
+<ul>
+<li>子网号和主机号都为全1，有特定网络号，如128.1.255.255/24（2和4有什么区别？）</li>
+</ul>
+</li>
+</ol>
+<p>#三、多播</p>
+<ol>
+<li><p>多播提供两类服务：</p>
+<ul>
+<li>向多个目的地址传送数据</li>
+<li>客户对服务器的请求</li>
+</ul>
+</li>
+<li><p>多播组地址</p>
+<pre><code>D类：  1110 | 28bit多播组号
+</code></pre><ul>
+<li>多播组地址从224.0.0.0到239.255.255.255</li>
+<li>一个主机组可以跨越多个网络，不属于同一个主机组的主机可以向该组发送信息</li>
+</ul>
+</li>
+<li><p>多播组地址到以太网地址的转换</p>
+<ul>
+<li><p>以太网地址块：00:00:5e:00:00:00 - 00:00:5e:ff:ff:ff，<br>其中的一半用作多播地址，即：00:00:5e:00:00:00 - 00:00:5e:7f:ff:ff，<br>以太网地址首字节必需为01：即与IP多播对应的以太网地址范围：00:00:5e:00:00:00 - 00:00:5e:7f:ff:ff</p>
+</li>
+<li><p>通过将IP多播组号中低23bit映射到以太网地址低23bit，将以太网多播地址与IP多播组号对应</p>
+</li>
+<li>IP多播组号高5bit被忽略，使得每个以太网地址可以对应32个不同的多播地址<br>如 224.168.64.32(e0.80.80.20) 与 224.0.64.32(e0.00.40.20) 都被映射为以太网地址：01:00:5e:00:40:20</li>
+<li>因此设备驱动或者IP层必需对数据报进行过滤</li>
+<li>当一个主机收到多播数据报时，必须向属于多播组的每个进程都传输一个复制，使得一个主机上可以存在多个属于同一多播组的进程</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《TCPIP详解（卷一）》-第十二章-广播和多播/" data-id="cio5xrkpi007m86fyeqd61fol" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《TCPIP详解（卷一）》-第十九章-TCP的交互数据流/" class="pre"></a><a href="/2016/05/14/阅读笔记-《TCPIP详解（卷一）》-第十七章-TCP：传输控制协议/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

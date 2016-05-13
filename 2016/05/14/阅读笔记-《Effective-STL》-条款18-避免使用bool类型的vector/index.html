@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 条款18 避免使用bool类型的vector<br>date: 2016-05-13 17:02:06<br>categories: [阅读笔记, 《Effective STL》]<br>tag: 《Effective STL》<br>toc: true</p>
+<hr>
+<p>#一、<code>vector&lt;bool&gt;</code>的两个问题</p>
+<ol>
+<li>它不是一个STL容器</li>
+<li>它并不容纳bool</li>
+</ol>
+<p>#二、作为STL容器</p>
+<ol>
+<li>一个东西要成为STL容器就必须满足所有在C++标准23.1节中列出的容器必要条件</li>
+<li><p>其中有一条：如果c是一个T类型对象的容器，且c支持operator[]，<br>那么以下代码必须能够编译：</p>
+<pre><code>T *p = &amp;c[0];         // 无论operator[]返回什么，都可以用这个地址初始化一个T*
+</code></pre><ul>
+<li>换句话说，如果使用operator[]来得到Container<t>中的一个T对象，可以通过取它的地址而获得指向那个对象的指针</t></li>
+</ul>
+</li>
+<li><p>而对于<code>vector&lt;bool&gt;</code>，下面代码编译不过</p>
+<pre><code>vector&lt;bool&gt; v;
+bool *pb = &amp;v[0];    // 用vector&lt;bool&gt;::operator[]返回的东西的地址初始化一个bool*
+</code></pre><ul>
+<li>因为<code>vector&lt;bool&gt;</code>是一个伪容器，并不保存真正的bool</li>
+<li>每个元素只有1bit，在内部，<code>vector&lt;bool&gt;</code>使用了与位域（bitfield）等价的思想来表示它假装容纳的bool</li>
+</ul>
+</li>
+<li><p>与位域（bitfield）的区别</p>
+<ul>
+<li>可以创建指向真的bool的指针，但却禁止有指向单个比特的指针或引用</li>
+<li>因此，<code>vector&lt;bool&gt;::operator[]</code>返回一个对象，其行为类似于比特的引用，也称为代理对象</li>
+</ul>
+</li>
+<li><p>本质来看，<code>vector&lt;bool&gt;</code>看起来像这样：</p>
+<pre><code>template &lt;typename Allocator&gt;
+vector&lt;bool, Allocator&gt; {
+    public:
+        class reference {...};                 // 用于产生引用独立比特的代理类
+        reference operator[](size_type n);    //operator[]返回一个代理
+    ...
+}
+</code></pre><ul>
+<li><p>因此如下代码无法编译通过</p>
+<pre><code>vector&lt;bool&gt; v;
+bool *pb = &amp;v[0]; // 错误！右边的表达式是vector&lt;bool&gt;::reference*类型，不是bool*
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<p>#三、标准库提供的两个替代品</p>
+<ol>
+<li><p><code>deque&lt;bool&gt;</code></p>
+<ul>
+<li>deque提供了几乎所有vector所提供的操作，除了reserve和capacity</li>
+<li><code>deque&lt;bool&gt;</code>是一个STL容器，它保存真正的bool值</li>
+<li>当然，deque内部内存不是连续的。所以不能传递<code>deque&lt;bool&gt;</code>中的数据给一个希望得到bool数组的C API，但也不能让<code>vector&lt;bool&gt;</code>做这一点，因为没有可移植的取得<code>vector&lt;bool&gt;</code>中数据的方法。</li>
+</ul>
+</li>
+<li><p>bitset</p>
+<ul>
+<li>不是一个STL容器，但它是C++标准库的一部分</li>
+<li>与STL容器不同，它的大小（元素数量）在编译期固定，因此不支持插入和删除元素</li>
+<li>此外，因为不是一个STL容器，它也不支持iterator</li>
+<li>类似<code>vector&lt;bool&gt;</code>，它使用一个压缩的表示法，使得包含的每个值只占用1bit</li>
+<li>并且提供<code>vector&lt;bool&gt;</code>特有的flip成员函数，还有一系列其他操作位集（collection of bits）所特有的成员函数</li>
+<li>如果不在乎没有迭代器和动态改变大小，也许bitset正合适</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-STL》-条款18-避免使用bool类型的vector/" data-id="cio5xrkob005f86fyrzj8s859" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款21-永远让比较函数对相等的值返回false/" class="pre"></a><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款2-小心对容器无关代码的幻想/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

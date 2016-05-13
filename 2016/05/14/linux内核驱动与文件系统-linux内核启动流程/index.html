@@ -1,0 +1,123 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: linux内核启动流程<br>date: 2016-05-13 17:01:52<br>categories: linux内核驱动与文件系统<br>tag: linux内核驱动与文件系统<br>toc: true</p>
+<hr>
+<pre><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt; 内核启动初始化汇编代码段流程: &gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+
+内核启动流程的程序段定义在\arch\arm\boot\compressed\vmlinux.lds中：
+
+.text : {
+    _start = .;
+    *(.start)
+    *(.text)
+    *(.text.*)
+    *(.fixup)
+    *(.gnu.warning)
+    *(.rodata)
+    *(.rodata.*)
+    *(.glue_7)
+    *(.glue_7t)
+    *(.piggydata)
+    . = ALIGN(4);
+  }
+
+1、设置内核映像的入口地址
+   位置：\arch\arm\boot\compressed\head.S
+   入口： Line 134 - 157 -&gt; .start段, 取得内核magic number和映像地址
+
+
+2、解压缩内核代码
+   位置：\arch\arm\boot\compressed\head.S
+   入口：Line 263 - 276 -&gt; 检测解压缩地址，调用decompress_kernel()解压缩内核
+   位置：\arch\arm\boot\compressed\head.S
+   入口：Line 307 - 310 -&gt; 检测是否会覆盖当前运行地址
+   位置：\arch\arm\boot\compressed\Misc.c
+   入口：Line 345 - 361 -&gt; 调用gnuzip()解压缩内核
+   位置：\arch\arm\boot\compressed\head.S
+   入口：Line 287 - 299
+      Line 511 - 530    -&gt; 存放解压后的内核
+
+3、进入内核代码、初始化处理器，进入C代码
+   位置：\arch\arm\kernel\head.S
+   入口：Line 72 - 94  -&gt; 初始化处理器模式，调用下述4个子程序，进入C代码
+   位置：\arch\arm\kernel\head-common.S
+   入口：Line 146 - 216  -&gt; 检测处理器类型
+   位置：\arch\arm\mm\proc-arm926.S
+   入口：Line 467 - 489  -&gt; 初始化arm926处理器信息
+   位置：\arch\arm\kernel\head.S
+   入口：Line 147 - 189 -&gt; 打开MMU
+   位置：\arch\arm\kernel\head-common.S
+   入口：Line 14 - 55 -&gt; 进入C代码start_kernel（main.c）
+
+&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt; 内核启动init进程代码流程: &gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+
+1、start_kernel()：CPU初始化完成，调用rest_init()
+   位置：\init\main.c
+   入口： Line 461 - 601 -&gt; start_kernel(), 初始化完成CPU后调用rest_init()创建内核init进程
+
+2、rest_init()：调用kernel_thread()创建init进程
+   位置：\init\main.c
+   入口： Line 394 - 411 -&gt; rest_init(), 调用kernel_thread()创建init进程，建立内存管理策略，cpu进入空闲状态
+
+3、kernel_thread()：调用init()创建init进程
+   位置：\arch\arm\kernel\Process.c
+   入口： Line 430 - 447 -&gt; kernel_thread(), do_fork()调用init()创建init进程
+
+
+4、init()：启动init进程，初始化系统，执行启动脚本
+   位置：\init\main.c
+   入口： Line 707 - 846 -&gt; init(), 调用populate_rootfs()     -&gt; 初始化文件系统映像
+                    do_basic_setup()      -&gt; 设置各种驱动，
+                                        prepare_namespace()   -&gt; 挂载根文件系统到VFS，                                                                                   free_initmem()        -&gt; 释放启动内存，
+                    run_init_process(&quot;&quot;)  -&gt; 执行启动脚本，
+                                        启动init进程
+
+5.1、do_basic_setup()：注册系统设备、设置驱动函数
+   位置：\init\main.c
+   入口： Line 684 - 672 -&gt; do_basic_setup(), 调用driver_init()注册系统设备，调用do_initcalls()设置各种驱动
+
+5.1.1、driver_init()：注册系统设备
+   位置：\drivers\base\init.c
+   入口： Line 23 - 40 -&gt; driver_init(), 调用地xxx_init()函数，注册系统设备
+
+5.1.2、do_initcalls()：设置各种驱动
+   位置：\init\main.c
+   入口： Line 616 - 663 -&gt; do_initcalls(), 调用地址位于__initcall_start~end段的初始化函数，其地址定义在\arch\arm\kernel\vmlinux.lds.S链接脚本.init段中__initcall_start~end部分（Line 47 - 55）：
+    __initcall_start = .;
+        *(.initcall1.init)
+        *(.initcall2.init)
+        *(.initcall3.init)
+        *(.initcall4.init)
+        *(.initcall5.init)
+        *(.initcall6.init)
+        *(.initcall7.init)
+    __initcall_end = .;
+
+
+5.2、prepare_namespace()：挂载根文件系统到虚拟文件系统
+   位置：\init\Do_mounts.c
+   入口： Line 396 - 432 -&gt; prepare_namespace(), 挂载根文件系统到VFS的过程
+
+5.3、free_initmem()：释放启动内存
+   位置：\arch\arm\mm\init.c
+   入口： Line 470 - 477 -&gt; free_initmem(), 释放启动内存
+
+&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt; 挂载文件系统的过程: &gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+
+1、临时挂载根文件系统
+   位置：\init\main.c
+   入口： Line 580 -&gt; start_kernel() 中调用 vfs_caches_init(num_physpages) -&gt; mnt_int()
+-&gt;位置：\init\namespace.c
+   入口： Line 580 -&gt; mnt_int(num_physpages)中调用init_rootfs()注册根文件系统，调用init_mount_tree()挂载根文件系统
+
+1.1、注册根文件系统
+   位置：\fs\ramfs\inode.c
+   入口： Line 225 -&gt; init_rootfs() 中调用 register_filesystem(&amp;rootfs_fs_type)注册根文件系统
+
+1.2、挂载文件系统
+   位置：\fs\namespace.c
+   入口： Line 1790 -&gt; init_mount_tree() 中调用do_kern_mount()临时挂载根文件系统，然后分配名字空间，最后设置当前目录为根目录，此挂载具体的文件系统
+
+2、检测是否是initramfs或initrd格式
+   位置：\init\main.c
+   入口： Line 740 -&gt; ini() 中调用 populate_rootfs()检测是否是initramfs，或者initrd格式。前者直接放到根目录，如果是initrd则放到 /initrd,image，其它格式的根文件系统一律不作处理.然后在Line809 free_initmem()中释放initrd映像文件所占内存。
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/linux内核驱动与文件系统-linux内核启动流程/" data-id="cio5xrkk3001x86fyl3i6rq4d" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/linux内核驱动与文件系统-ppc的uboot命令解析过程/" class="pre"></a><a href="/2016/05/14/linux内核驱动与文件系统-platform阅读笔记/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

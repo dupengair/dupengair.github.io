@@ -1,0 +1,72 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 条款34 注意哪个算法需要有序区间<br>date: 2016-05-13 17:02:07<br>categories: [阅读笔记, 《Effective STL》]<br>tag: 《Effective STL》<br>toc: true</p>
+<hr>
+<p>#一、算法有自己适用的区间</p>
+<ol>
+<li>remove需要前向迭代器和可以通过这些迭代器赋值的能力，所以它不能应用于由输入迭代器划分的区间，也不能是map或multimap</li>
+<li>很多排序算法需要随机访问迭代器，所以不可能在一个list的元素上调用这些算法</li>
+<li><p>只能操作有序空间的算法：</p>
+<pre><code>binary_search     
+lower_bound
+upper_bound     
+equal_range
+set_union         
+set_intersection
+set_difference     
+set_symmetric_difference
+merge             
+inplace_merge
+includes
+</code></pre><ul>
+<li>需要有序区间的算法为了比它们用于可能无序区间提供更好的性能而这么做</li>
+</ul>
+</li>
+<li><p>一般用于有序区间的算法</p>
+<pre><code>unique 
+unique_copy
+</code></pre></li>
+</ol>
+<p>#二、内部</p>
+<ol>
+<li>搜索算法<code>binary_search、lower_bound、upper_bound和equal_range</code><ul>
+<li>因为它们使用二分法查找来搜索值，这些算法保证了对数时间的查找，但必须给它们已经排过序的值</li>
+</ul>
+</li>
+<li>算法<code>set_union、set_intersection、set_difference和set_symmetric_difference</code><ul>
+<li>提供线性时间设置的操作性能</li>
+</ul>
+</li>
+<li>merge和<code>inplace_merge</code><ul>
+<li>执行有效的单遍合并排序算法：读取两个有序区间，然后产生一个包含了两个源区间所有元素的新有序区间</li>
+<li>以线性时间执行，如果它们不知道源区间已经有序就不能完成</li>
+</ul>
+</li>
+<li>includes<ul>
+<li>检测是否一个区间的所有对象也在另一个区间中</li>
+<li>includes可能假设它的两个区间都已经有序，所以它保证了线性时间性能</li>
+</ul>
+</li>
+<li>unique和<code>unique_copy</code><ul>
+<li>在无序区间上也提供了定义良好的行为</li>
+<li>标准描述unique的行为：从每个相等元素的连续组中去除第一个以外所有的元素</li>
+<li>如果要unique从一个区间去除所有重复值（也就是让区间中所有值“唯一”），必须先确保所有重复值一个接着一个</li>
+<li>所以总是要确保你传递给unique（或unique_copy）的区间是有序的</li>
+</ul>
+</li>
+</ol>
+<p>#三、排序一致性</p>
+<ol>
+<li>因为有很多不同的方式来排序，所以保证给STL所使用的排序相关信息一致是很重要的</li>
+<li><p>如果传一个区间给一个也带有比较函数的算法，确保传递的比较函数行为和用于排序这个区间的一样</p>
+<pre><code>vector&lt;int&gt; v;
+... 
+sort(v.begin(), v.end(), greater&lt;int&gt;()); // 降序排列
+bool a5Exists = binary_search(v.begin(), v.end(), 5); // 在这个vector中搜索5假设它是升序排列！
+</code></pre><ul>
+<li><p>使用一致的排序准则</p>
+<pre><code>bool a5Exists = binary_search(v.begin(), v.end(), 5. greater&lt;int&gt;()); // 把greater作为比较函数
+</code></pre></li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-STL》-条款34-注意哪个算法需要有序区间/" data-id="cio5xrkoj005t86fyidal2bod" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款32-如果你真的想删除东西的话就在类似remove的算法后接上/" class="pre"></a><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款31-了解你的排序选择/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

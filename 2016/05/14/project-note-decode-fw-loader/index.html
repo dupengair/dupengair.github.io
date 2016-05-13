@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: fw+loader<br>date: 2016-05-13 17:01:56<br>categories: [project note, decode]<br>tag: decode<br>toc: true</p>
+<hr>
+<ol>
+<li><p>源文件</p>
+<pre><code>FwLoader:
+SRC_FILES =  /common/shared/procutils.c framework/Loader/LoaderApp.cpp
+
+LoaderApp.cpp:
+#include &quot;Framework.h&quot;
+#include &quot;Loader.h&quot;
+#include &quot;MemoryHelper.h&quot;
+#include &quot;NetHelper.h&quot;
+#include &quot;EventHelper.h&quot;
+#include &quot;procutils.h&quot;
+</code></pre></li>
+</ol>
+<ol>
+<li><p>命令参数</p>
+<pre><code>FwLoader - Framework loader
+Usage: FwLoader [options]
+Flags meaning :
+--cfg            - set the config file
+--ctx            - set the context implementation library
+--sng            - run in single mode\n(the loader and the modules run in the same process)
+--name &lt;NAME&gt;    - framework instance name
+--pre &lt;PREFIX&gt;   - prefix added to setup files name\n(useful when more instance are executed from the same path)
+</code></pre></li>
+</ol>
+<p>3、内存检测</p>
+<pre><code>include &lt;malloc.h&gt;
+include &quot;MemProfiler.h&quot;
+#include &quot;FSHelper.h&quot;
+
+1)
+MemProfiler* MemProf = MemProfiler::GetProfiler();
+if (MemProf) MemProf-&gt;ResetData();
+2)
+struct mallinfo MI = mallinfo();
+printf(&quot;Ar = %u - MMap = %u - Mem uordblks = %u - Free fordblks = %u (ordblks %u)\n&quot;, MI.arena, MI.hblkhd, MI.uordblks, MI.fordblks, MI.ordblks);
+3)
+MemProfiler::Destroy();
+</code></pre><ol>
+<li>小记</li>
+</ol>
+<ul>
+<li>stricmp 不分大小写比较</li>
+</ul>
+<ol>
+<li>流程</li>
+</ol>
+<ul>
+<li><p>main() [Framework/Loader/loaderApp.cpp]</p>
+<pre><code>ALREADY_RUNNING                        -&gt; 如果已经运行，退出
+Evt.reset(new Event::MultiEvent(1));   -&gt; Evt指针指向新的MultiEvent对象，主要是处理可中断的系统等待
+Run(argc,argv);                        -&gt; 完成主要工作
+</code></pre></li>
+<li><p>Run() [Framework/Loader/loaderApp.cpp]</p>
+<pre><code>Net::InitSocketLayer(Err);             -&gt; windows 下初始化socket
+ProcessLoaderPtr-&gt;Run();           -&gt; 运行CLoader::Run()函数初始化系统
+while (!ToQuit &amp;&amp; !ProcessLoaderPtr-&gt;ProcessToClose())    -&gt; 主循环检测内存使用情况
+    {
+    struct mallinfo MI = mallinfo();
+    print()...
+    Evt-&gt;Wait(1000);
+    }
+ProcessLoaderPtr-&gt;Close();             -&gt; 唤醒线程wait，释放线程指针，等待线程结束，清理HostMap、Data，结束进程、卸载模块
+ProcessLoaderPtr-&gt;DestroyStaticData(); -&gt; 释放log的shared_ptr、FrameworkContext的shared_ptr
+Net::FreeSocketLayer(Err);           -&gt; windows 下释放socket
+</code></pre></li>
+<li><p>Run() [Loader.cpp]</p>
+<pre><code>ReadConfig();                          -&gt; 读取FwConfig.xml文件CONFIG字段下的所有配置
+ApplyConfig();                   -&gt; 配置FwLoader，检测config/modules/defaults三个文件夹的存在性，不存在就创建
+                                  新建Log、加载context library取得context interface callbacks
+Library-&gt;LoadLibrary();                -&gt; 解析ResourceLibrary.xml，设置资源的各种属性，每个资源的共享指针都放到ResourceTypeLibrary的Map容器里
+                                          解析ModuleLibrary.xml，设置对应的模块实体属性时会判断平台和操作系统
+
+Framework.reset(new CFramework(Library, loader));
+                        -&gt; 通过上面加载的library和输入的loader来初始化Framework对象
+UtilityThreadEvt.reset()           -&gt; 初始化MultiEvent对象
+UtilityThread = Thread::Create(UtilityThreadFnc, this);
+                       -&gt; 创建UtilityThread线程，寻找listener，如果找到listener，更新Host、Mod、Res的status
+                                          调用RemoteHostsList上存在的RemoteHost的StatusChanged()，通知远端Host，休眠250ms
+Framework-&gt;LoadSetup()                -&gt; (1)调用RestoreSetup()解析Setup.xml，先对SETUP进行CRC校验,
+                      如果入口Tag是Host执行LoadHostSetup,读取配置文件里一系列Host相关的配置，
+                                          其中最重要的是发现process时进行LoadProcessSetup，这个过程主要是解析PROCESS标签下面的MODULE标签，
+                      发现一个MODULE时，解析MODULE标签中的&quot;LIB&quot;字段，从ModulesLibrary.xml中寻找对应module的属性，
+                          主要是找到SOURCE.DFL标签的内容，定义了模块对应的.so文件名，然后调用LoadModuleSetup继续解析Setup.xml
+                      Module标签下的属性值，其中最重要的又是RESOURCE标签，通过type字段内容，从Resources.xml找到资源
+                      然后调用LoadResourceSetup解析Resources.xml的资源属性，建立资源对象，初始被引用的资源。
+                      然后是HardwareInfo、AuthInfo等
+                                          如果入口Tag是SETUP Host/Module/Resource/user执行相应的setup
+                                          (2)如果是local host要ValidateHostData
+                                          (3)如果第一次没找到Setup.xml就尝试bak文件，第二次也没找着用默认文件恢复，最多尝试3次
+                                          (4)调用RestoreSetup()解析Resources.xml
+                      根据每个resource的type字段，在ResourceTypeLibrary中找到对应资源的属性，
+                      然后调用LoadResourceSetup解析Resources.xml中RESOURCE字段下各属性值，包括应用的Ref资源
+                      如果资源内部还有别的资源，把自身设置内部资源的父节点
+                      (5)CheckAutoconfigModules()，检测每个元素的GUID，GetOrigGuid不为空的，重设OrigGuid，根据新Guid，遍历每个                                             模块查找它所属的那个，删除这个模块拥有的资源（owner资源指针和map资源对象）、资源拥有和引用的资源
+                      (6)UpdateElements(),遍历所有新元素，如果是要删除的（配置文件可以把资源配置为DELETE属性）
+                      如果是资源，把它从从属的资源或模块中删除，并且查找所链接的模块，把资源从模块的链接中删除。如果是其它模块                                              创建的资源，直接destroy资源；如果是模块，把它从Process中和loader中删除，如果它link到其它模块，删除它的                                                      links。最后把元素从Framework的Elements中删除。反之，如果不是删除的，先找以前是否存在相同的模块，存在的话                                              先删除以前的。如果不存在，对于资源，从Elements中找资源的所有者，没找到就从初始化的元素中找，找到后，把资                                            源从Elements的所有者中删除。对于模块，从loader的localHost中找到和模块对应的Process，设置为模块指向的                                                  process和process拥有的模块（和前面的RestoreSetup重复？）。对于Host，把它设置到Env对应的Host。                                    最后把这个新元素添加到Framework的Elements中。最后的最后，如果新加入的元素是模块，且是需要立即加载的                      (ModuleToLoad,启动时为false，不加载模块)，调用Framework的AddModule，将模块加载到Framework中，并且初始化                      、运行模块。最后的最后的最后，调用ResolveReferences()，遍历新发现的每一个elements，如果是module，更新新                      加入的模块和其资源之间的引用关系（使一个引用链上的资源都设置为同一个拥有它模块）。
+
+                      (7)SaveSetup() 如果(4)和(1)中解析和配置Env成功，先保存xml并生成备份的bak文件，
+                      (8)调用RestoreUsersSetup解析USER.xml。将解析到的USER和GROUP信息放入Framework的Users和UserGroups中。
+                      (9)调用ResolveUsersReference解析USER所属的GROUP，将每个User对应的Group挂接到User的Groups指针上
+</code></pre></li>
+</ul>
+<pre><code>Framework-&gt;SetHostInitStatus()         -&gt; 设置Host的HostStatus。
+                      (1)status-&gt;SetStatus
+                      IntSetStatus()，先初始化Host中所有元素的status，找出Listener中的Host Listeners，再找出其它Listeners,检测                                            status的变化情况
+                      IntNotify()，向listeners中的ModuleInt（加载的模块）发送status变化
+                                          (2)NotifyStatus() 最终通过CLoader::NotifyStatusToHosts()将Res/Host/Mod的status保存到Loader里
+                      (3)NotifyStatusByType() 通知listener中TStatusModuleRef里的mod status变化
+
+
+if (FrameworkInstance)
+{
+    SingleProcessMode||RunInLoader
+    {
+                       -&gt; 遍历进程内的所有模块，检测是否为VirtualModules，
+                       -&gt; 不是的话运行LoadModule,加载模块的动态库
+                       -&gt; 是的话调用SetFrameworkInterface()，将Framework的接口设置到模块中
+                       -&gt; 启动supervisor module
+                       -&gt; 如果不是ToClose，执行Process-&gt;Startup()启动进程，其内部运行每个Module的startup（所以P1在Loader内部）
+                       -&gt; 遍历每个模块，运行SerializeModuleSetup()，调用模块自己的Serialize()记录当前状态，运行Autoconfig()配置模块
+                       -&gt; 如果没有Setup Version，随机产生一个
+                       -&gt; 遍历每个模块，找到SuperVisor模块，运行SendSetupToModule()先检查每个元素的配置是否变化，再调用每个模块内部                                           的Validate函数进行验证
+                       -&gt; 遍历Process中每个模块，运行SendSetupToModule()先检查模块的配置是否变化，再调用每个模块内部的Validate 函数                              进行验证
+                       -&gt; 验证结果配置有变化时Framework-&gt;SaveSetup()保存配置
+                       -&gt; 再调用Framework-&gt;SendSetupToModule()，通过调用ModuleInt-&gt;ModuleSetupChanged()将配置改变通知到每个模块
+                       -&gt; 再调用每个模块的ModuleInt-&gt;Resume
+    }
+    else
+    {
+    ExecuteProcess(Process);       -&gt; fork自身去运行指定的Process
+    }
+}
+else
+{
+                       -&gt; 如果当前指定的Process在LocalHost的配置中，调用CHost::SetProcessToRun将其作为MainProcess
+    if (LocalHost-&gt;MainProcess)
+    {                 
+                       -&gt; 运行LoadModule加载这个Process中的Mod
+                       -&gt; 遍历每个模块，运行SerializeModuleSetup()，调用模块自己的Serialize()记录当前状态，运行Autoconfig()配置模块
+                       -&gt; 如果没有Setup Version，随机产生一个
+                       -&gt; 遍历每个模块，找到SuperVisor模块，运行SendSetupToModule()先检查每个元素的配置是否变化，再调用每个模块内部                                           的Validate函数进行验证
+                       -&gt; 遍历Process中每个模块，运行SendSetupToModule()先检查模块的配置是否变化，再调用每个模块内部的Validate 函数                              进行验证
+                       -&gt; 验证结果配置有变化时Framework-&gt;SaveSetup()保存配置
+                       -&gt; 执行LocalHost-&gt;MainProcess-&gt;Startup()启动进程
+    }
+                       -&gt; CreateProcessPipe()建立一个Pipe对象，准备用命名管道与loader通讯   
+
+}
+
+Create(AcceptingThreadFnc, this)       -&gt; 创建线程AcceptingThreadFnc()，监听外部链接，判断连接数，建立链接成功后创建一个NewHost和它的RemoteHostData                              ，并且startup这个RemoteHostData，在start过程中会建立sender和receiver线程与外部通讯
+</code></pre><ol>
+<li><p>资源共享关系</p>
+<pre><code>CFramework Framework.Loader(LoaderWPtr)        -&gt; ProcessLoaderPtr(LoaderPtr)        Run()[LoaderApp.cpp]
+CFramework Framework.Library(LibraryPtr)    -&gt; Library(CLibrary)                 CLoader::Run()[Loader.cpp]
+CEnvironment Environment.Framework(FrameworkWPtr) -&gt; Framework(CFramework)        CFramework::LoadSetup()[Framework.cpp]
+CHost Host.Environment(EnvironmentWPtr)        -&gt; Environment(CEnvironment)         CFramework::RestoreSetup()[Framework.cpp]
+CProcess Process.Host(HostWPtr)                -&gt; Host(CHost)                         CHost::LoadHostSetup()[Host.cpp]
+ModulePtr Module.
+</code></pre></li>
+<li><p>程序目录结构</p>
+<p> ./modules<br> ./defaults<br> /flashrw/videosphere/config</p>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/project-note-decode-fw-loader/" data-id="cio5xrkm6002u86fyqd1u72o6" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/project-note-decode-correct/" class="pre"></a><a href="/2016/05/14/project-note-decode-stat/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

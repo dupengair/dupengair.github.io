@@ -1,0 +1,106 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 条款5 尽量使用区间成员函数代替它们的单元素兄弟<br>date: 2016-05-13 17:02:09<br>categories: [阅读笔记, 《Effective STL》]<br>tag: 《Effective STL》<br>toc: true</p>
+<hr>
+<p>#一、问题</p>
+<ol>
+<li><p>问题</p>
+<ul>
+<li><p>给定两个vector，v1和v2，使v1的内容和v2的后半部分一样的最简单方式：</p>
+<pre><code>v1.assign(v2.begin() + v2.size() / 2, v2.end());
+</code></pre></li>
+</ul>
+</li>
+<li><p>assign方法对于所有标准序列容器（vector，string，deque和list）都有效</p>
+</li>
+</ol>
+<p>#二、区间成员函数</p>
+<ul>
+<li>区间成员函数是一个像STL算法的成员函数，使用两个迭代器参数来指定元素的一个区间来进行某个操作</li>
+</ul>
+<p>#三、尽量避免手写显式循环</p>
+<ol>
+<li>效率低下</li>
+<li><p>使用算法代替</p>
+<pre><code>v1.clear();
+copy(v2.begin() + v2.size() / 2, v2.end(), back_inserter(v1));
+</code></pre><ul>
+<li>涉及到的工作也比区间成员函数更多</li>
+<li>copy算法中隐含了一个循环</li>
+<li>语义晦涩，这里是要插入元素</li>
+</ul>
+</li>
+<li><p>使用insert的区间版本代替：</p>
+<pre><code>v1.clear();
+v1.insert(v1.end(), v2.begin() + v2.size() / 2, v2.end());
+</code></pre><ul>
+<li>语义比copy明确</li>
+</ul>
+</li>
+</ol>
+<p>#四、几乎所有目标区间被插入迭代器指定的copy的使用都可以用调用的区间成员函数的来代替</p>
+<ol>
+<li>可以输入更少的代码，避免错误</li>
+<li>代码更清晰，语义更明确</li>
+<li>对于标准序列容器，单元素成员函数比区间成员函数需要<pre><code>+ 更多地内存分配、移动
++ 更频繁地拷贝对象
++ 造成多余操作
+</code></pre></li>
+<li>效率<ul>
+<li>多次函数调用(insert)</li>
+<li>内存移动与拷贝(调整元素位置)</li>
+</ul>
+</li>
+</ol>
+<p>#五、区间函数</p>
+<ol>
+<li><p>区间构造</p>
+<ul>
+<li><p>所有标准容器都提供这种形式的构造函数：</p>
+<pre><code>container::container(InputIterator begin, // 区间的起点
+InputIterator end);                         // 区间的终点
+</code></pre></li>
+</ul>
+</li>
+<li><p>区间插入</p>
+<ul>
+<li><p>所有标准序列容器都提供这种形式的insert：</p>
+<pre><code>void container::insert(iterator position, // 区间插入的位置
+InputIterator begin,                       // 插入区间的起点
+InputIterator end);                       // 插入区间的终点
+</code></pre></li>
+<li><p>某些形式的单元素插入：</p>
+<ul>
+<li><code>push_front和push_back</code>都把单元素插入容器</li>
+<li>一个循环调用<code>push_front或push_back</code>，或如果一个算法——比如copy——的参数是<code>front_inserter</code>或者<code>back_inserter</code>，就应该将insert的区间形式应该作为优先策略的地方</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>区间删除</p>
+<ul>
+<li>每个标准容器都提供了一个区间形式的erase</li>
+<li><p>但是序列和关联容器的返回类型不同，标准认为关联容器版本返回一个迭代器（被删除的那个元素的下一个）会招致一个无法接受的性能下降</p>
+<ul>
+<li><p>序列容器提供：</p>
+<pre><code>iterator container::erase(iterator begin, iterator end);
+</code></pre></li>
+<li><p>关联容器提供这个：</p>
+<pre><code>void container::erase(iterator begin, iterator end);
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>区间赋值</p>
+<ul>
+<li><p>所有标准列容器都提供了区间形式的assign：</p>
+<pre><code>void container::assign(InputIterator begin, InputIterator end);
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<p>#六、总结</p>
+<ul>
+<li>区间成员函数更容易写，它们更清楚地表达你的意图，而且它们提供了更高的性能。那是很难打败的三驾马车</li>
+</ul>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-STL》-条款5-尽量使用区间成员函数代替它们的单元素兄弟/" data-id="cio5xrkot006e86fyadyuklnx" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款50-让你自己熟悉有关STL的网站/" class="pre"></a><a href="/2016/05/14/阅读笔记-《Effective-STL》-条款6-警惕C-令人恼怒的解析/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

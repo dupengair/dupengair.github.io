@@ -1,0 +1,90 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 三十七、绝不重新定义继承来的缺省参数值<br>date: 2016-05-13 17:02:01<br>categories: [阅读笔记, 《Effective C++》]<br>tag: 《Effective C++》<br>toc: true</p>
+<hr>
+<p>#一、前提</p>
+<ul>
+<li>有了前面的条款36，即只应该重新定义继承的virtual函数，所以这里讨论局限于“继承一个带有缺省参数的virtual函数”</li>
+</ul>
+<p>#二、实例<br>    类型定义：<br>    class Shape {<br>    public:<br>        enum ShapeColor { Red, Green, Blue };<br>        virtual void draw(ShapeColor color = Red) const = 0;<br>        …<br>    };</p>
+<pre><code>class Rectangle: public Shape {
+public:
+    virtual void draw(ShapeColor color = Green) const = 0;        //重新定义继承的缺省参数
+    ...
+};
+
+class Circle: public Shape {
+public:
+    virtual void draw(ShapeColor color) const = 0;                  //重新定义继承的缺省参数
+    ...
+};
+
+对象定义：
+Rectangle r;                //r的静态类型为Rectangule，  无动态类型
+Circle c;                    //c的静态类型为Circle，      无动态类型
+Shape *pr = new Rectangle;    //pr的静态类型为Shape*，     动态类型为Rectangule*
+Shape *pc = new Circle;     //pr的静态类型为Shape*，     动态类型为Circle*
+
+调用：
+r.draw();        //默认参数来自派生类：Green，静态绑定
+pr-&gt;draw();        //默认参数继承自基类：Red，  动态绑定
+c.draw();        //error! 静态绑定的参数来自派生类，不提供默认参数
+pc-&gt;draw();        //默认参数继承自基类：Red，  动态绑定
+</code></pre><ul>
+<li>由此可见，<strong>静态绑定下的参数来自派生类，动态绑定下参数继承自基类，如果重新定义了继承来的缺省参数，会导致同一个对象不同绑定方式下的表现不一致。</strong></li>
+</ul>
+<p>#二、动态绑定与静态绑定</p>
+<ol>
+<li>virtual函数为动态绑定，缺省参数却是静态绑定</li>
+<li>对象的动态类型（dynamic type）是指“目前所指对象的类型”，即动态类型可以表现出一个对象将会有什么样的行为</li>
+<li>动态类型可以在程序执行过程中改变</li>
+<li>virtual函数为动态绑定，在调用时的实现方式由调用对象的动态类型决定，即pointer或reference所指的对象。</li>
+<li>缺省参数为静态绑定，意思是在调用一个定义于derived class内的virtual函数时，可能使用base class所指定的缺省参数</li>
+<li>动态绑定，包括pointer或reference的方式</li>
+</ol>
+<p>#三、inside C++技术内幕</p>
+<ol>
+<li>C++的virtual函数与其默认参数的绑定方式不一致的原因，在于运行期效率。</li>
+<li>如果缺省参数是动态绑定，编译器就必须有办法在运行期~为virtual函数决议适当的默认参数值，这比virtual函数本身采用的滞后联编方式更复杂。为了程序执行速度和编译器实现的简易度，C++语言做了一定的取舍，结果就是提高效率但采用不一致的绑定方式。</li>
+</ol>
+<p>#四、同时提供默认参数给base和derived class</p>
+<pre><code>class Shape {
+public:
+    enum ShapeColor { Red, Green, Blue };
+    virtual void draw(ShapeColor color = Red) const = 0;
+    ...
+};
+
+class Rectangle: public Shape {
+public:
+    virtual void draw(ShapeColor color = Red) const = 0;      //提供相同的缺省参数
+    ...
+};
+...
+</code></pre><ul>
+<li>可以看出，代码重复且有依赖性，如果base class内的缺省参数发生变化，derived class也必须改写</li>
+</ul>
+<p>#五、替代设计——NVI手法</p>
+<pre><code>class Shape {
+public:
+    enum ShapeColor { Red, Green, Blue };
+    draw(ShapeColor color = Red) const             //non-virtual
+    {
+        doDraw(color);                            //调用一个virtual
+    }
+private:
+    virtual void doDraw(ShapeColor color) const = 0;        //完成真正的工作
+    ...
+};    
+
+class Rectangle: public Shape {
+private:
+    virtual void doDraw(ShapeColor color) const;              //不须指定缺省参数
+    ...
+};
+</code></pre><ul>
+<li>由于条款36，non-virtual函数绝不应该被改写，所以draw函数的缺省参数color总是为Red，同时派生类可以定义自己的实现方式。</li>
+</ul>
+<p>#六、总结<br><strong>绝不要重新定义一个继承来的缺省参数，因为缺省参数值都是静态绑定，virtual函数才是唯一应该改写的东西——它是动态绑定的。</strong></p>
+<pre><code>杜鹏
+2012-12-28
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/阅读笔记-《Effective-C-》-三十七、绝不重新定义继承来的缺省参数值/" data-id="cio5xrkmo003j86fyzs3hjkw0" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/阅读笔记-《Effective-C-》-三十六、绝不重新定义继承来的non-virtual函数/" class="pre"></a><a href="/2016/05/14/阅读笔记-《Effective-C-》-三十九、private继承使用须知/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

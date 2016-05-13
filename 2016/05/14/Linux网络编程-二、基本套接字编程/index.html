@@ -1,0 +1,378 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Original</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 14, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 二、基本套接字编程<br>date: 2016-05-13 17:01:55<br>categories: Linux网络编程<br>tag: Linux网络编程<br>toc: true</p>
+<hr>
+<hr>
+<h1 id="套接字编程基础"><a href="#套接字编程基础" class="headerlink" title="套接字编程基础"></a>套接字编程基础</h1><hr>
+<h1 id="一、套接字地址结构"><a href="#一、套接字地址结构" class="headerlink" title="一、套接字地址结构"></a>一、套接字地址结构</h1><ol>
+<li>可以在两个方向上传递：内核 &lt;-&gt; 进程</li>
+<li>套接字地址结构总是以引用的方式传递void *</li>
+<li><p>IPv4 套接字地址结构 </p>
+<pre><code>#include &lt;netinet/in.h&gt;
+struct sockaddr_in {
+    uint8_t        sin_len;        /* length of structure(14) */
+    sa_family_t    sin_family;    /* unsigned short, AF_INET */
+    in_port_t      sin_port;    /* uint16_t */
+    struct in_addr sin_addr;    /* uint32_t */
+    char           sin_zero[8];    /* unused, should always be 0 */
+};
+
+struct in_addr {
+    in_addr_t     s_addr;        /* IPv4 uint32_t */
+};
+</code></pre></li>
+<li><p>通用套接字地址结构 </p>
+<pre><code>#include &lt;sys/socket.h&gt;
+struct sockaddr {
+    uint8_t        sa_len;
+    sa_family_t    sa_family;
+    char        sa_data[14];
+};
+</code></pre></li>
+</ol>
+<ul>
+<li>用于对指向特定于协议的套接字地址结构指针进行强制类型转换</li>
+</ul>
+<ol>
+<li><p>IPv6 套接字地址结构</p>
+<pre><code>#include &lt;netinet/in.h&gt;
+struct sockaddr_in {
+    uint8_t         sin6_len;    /* uint8_t, length of structure(28) */
+    sa_family_t     sin6_family;    /* unsigned short, AF_INET6 */
+    in_port_t       sin6_port;    /* uint16_t */
+
+    uint32_t        sin6_flowinfo    /* flow infomation L20, undefined H12 */
+    struct in6_addr sin6_addr;    
+    uint32_t    sin6_scope_id;    /* set of interfaces for a scope */
+};
+
+struct in6_addr {
+    uint8_t     s_addr[16];    /* IPv4 uint32_t */
+};
+</code></pre></li>
+<li><p>新的通用套接字地址结构 </p>
+<pre><code>#include &lt;netinet/in.h&gt;
+struct sockaddr_storage {
+    uint8_t        ss_len;
+    sa_family_t    ss_family;
+};
+</code></pre><ul>
+<li>满足任何对齐要求</li>
+<li>足够大，支持任何套接字地址结构</li>
+<li>其它字段对用户透明，要访问必需强制转换</li>
+</ul>
+</li>
+<li><p>套接字比较</p>
+<pre><code>IPv4            IPv6            UNIX            数据链路            存储
+-----------------------------------------------------------------------------------
+sockaddr_in{}    sockaddr_in6{}    sockaddr_un{}    sockaddr_dl{}    sockaddr_storage{}    
+-------------   --------------  -------------   -------------   -------------------
+len|AF_INET        len|AF_INET6    len|AF_LOCAL    len|AF_LINK        len|AF_XXX
+-------------   --------------  -------------   -------------   -------------------
+16bit Port        16bit Port         路径名           接口索引         用户透明
+-------------   -------------- （最多104Byte）   -------------   
+IPv4 addr        flow label                        类型
+                                                名字长度
+                                                地址长度 
+                                                选择符长度
+32bit             32bit                              32bit 
+-------------   --------------                  -------------
+未用             128bit IPv6 addr               接口名称
+                                                链路层地址
+                ----------------             
+                32bit 范围ID
+-------------   ---------------  ------------   --------------   ------------------
+16Byte固定长度  28Byte固定长度   可变长度        可变长度              系统最大长度
+</code></pre></li>
+</ol>
+<h1 id="二、值-结果参数"><a href="#二、值-结果参数" class="headerlink" title="二、值-结果参数"></a>二、值-结果参数</h1><ol>
+<li>参数的传递方式取决于调用函数对结构体的传递方向</li>
+<li><p>进程-&gt;内核：指向结构体的指针 + 大小（整型）</p>
+<ul>
+<li>因为内核要知道需要从用户层拷贝多少数据，所以需要传入大小</li>
+<li><p>bind、connect、sendto</p>
+<pre><code>struct sockaddr_in cli;
+connect(sockfd, (sockaddr*)&amp;cli, sizeof(cli));
+</code></pre></li>
+</ul>
+</li>
+<li><p>内核-&gt;进程：指向结构体的指针 + 指向大小的指针</p>
+<ul>
+<li>内核需要返回大小到用户层，以便用户知道拷贝的数据量</li>
+<li><p>accept、recvfrom、getsockname、getpeername</p>
+<pre><code>struct sockaddr_in serv;
+socklen_t len;
+accept(sockfd, (sockaddr*)&amp;serv, &amp;len);
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="三、大端和小端"><a href="#三、大端和小端" class="headerlink" title="三、大端和小端"></a>三、大端和小端</h1><ol>
+<li><p>表示字节值的哪一端存储在起始地址</p>
+<pre><code>little-endian    MSB    LSB
+big-endian        LSB    MSB
+mem addr        H   L
+</code></pre></li>
+<li><p>转换函数</p>
+<pre><code>#include &lt;netinet/in.h&gt;
+uint16_t htons(uint16_t value16);
+uint32_t htonl(uint32_t value32);
+uint16_t ntohs(uint16_t value16);
+uint32_t ntohl(uint32_t value32);
+</code></pre></li>
+</ol>
+<h1 id="四、字节处理"><a href="#四、字节处理" class="headerlink" title="四、字节处理"></a>四、字节处理</h1><ol>
+<li>当dst与src字符串重叠时，bcopy能正确处理，memcpy不能</li>
+</ol>
+<p>#五、地址转换<br>1、IPv4专用</p>
+<pre><code>#include &lt;arpa/inet.h&gt;
+</code></pre><p>1)    <code>int inet_aton(const char *strptr, struct in_addr *addptr)</code></p>
+<ul>
+<li>点分十进制字符串 -&gt; IP二进制值</li>
+</ul>
+<p>2)    <code>in_addr_t inet_addr(const char *strptr)</code></p>
+<ul>
+<li>点分十进制字符串 -&gt; IP二进制值    </li>
+<li>IP全255的结果与出错相同，所以无法转换</li>
+<li>已废弃</li>
+</ul>
+<p>3)    <code>char *inet_ntoa(struct in_addr inaddr)</code></p>
+<ul>
+<li>IP二进制值 -&gt; 点分十进制字符串</li>
+<li>不可重入，结果指向静态内存</li>
+<li>传入结构体而不是指针（sucks）</li>
+</ul>
+<p>2、通用</p>
+<pre><code>#include &lt;arpa/inet.h&gt;
+int inet_pton(int family, const char *strptr, void *addptr)
+const char *inet_ntop(int family, const void *addptr, char *strptr, size_t len)
+</code></pre><ul>
+<li>p代表表示presentation，n代表数值numeric</li>
+<li><p>family参数错误时返回EAFNOSUPPORT</p>
+<p>   IPv4: AF_INET<br>   IPv6: AF_INET6</p>
+</li>
+<li><p>len大小用于防止用户缓冲区溢出，空间不够时返回ENOSPC</p>
+<p>   #include <netinet in.h=""><br>   #define INET_ADDRSTRLEN    16<br>   #define INET6_ADDRSTRLEN 46</netinet></p>
+</li>
+</ul>
+<hr>
+<h1 id="基本TCP编程"><a href="#基本TCP编程" class="headerlink" title="基本TCP编程"></a>基本TCP编程</h1><hr>
+<h1 id="一、socket函数"><a href="#一、socket函数" class="headerlink" title="一、socket函数"></a>一、socket函数</h1><p>##1、 socket</p>
+<pre><code>#include &lt;sys/socket.h&gt;
+int socket(int family, int type, int protocol)
+成功fd，出错-1
+
+family:
+    AF_INET        IPv4
+    AF_INET6    IPv6
+    AF_LOCAL    UNIX域套接字
+    AF_ROUT        路由套接字
+    AF_KEY        秘钥套接字
+    * AF_表示地址族，用于套接字地址结构，PF_表示协议族，用于创建套接字，头文件&lt;sys/socket.h&gt;中PF_与总相等
+type:
+    SOCK_STREAM        流式套接字
+    SOCK_DGRAM        数据报套接字
+    SOCK_SEQPACKET    有序分组套接字
+    SOCK_RAW        原始套接字
+protocol:    
+    IPPROTO_TCP        
+    IPPROTO_UDP
+    IPPROTO_SCTP
+    * 默认为0，由系统选择
+</code></pre><p>##2、connect</p>
+<pre><code>#include &lt;sys/socket.h&gt;
+int connect(int sockfd, const struct sockaddr*, int protocol)
+成功0，出错-1
+</code></pre><ol>
+<li>套接字地址结构必需包含服务器IP和端口</li>
+<li>调用connect前不是必须调用bind，内核会确定源地址并选择临时端口</li>
+<li>调用connect时触发三次握手，建立连接成功或出错才返回</li>
+<li>关于返回值<ol>
+<li>返回ETIMEOUT：发出的SYN超时，没收到ACK，总共会等75s</li>
+<li>返回ECONNREFUSED：硬错误，收到RST响应，说明接收方指定的端口没有监听，内核马上返回错误</li>
+<li>返回EHOSTUNREACH或ENETUNREACH：软错误，发送的SYN引发了ICMP不可达错误，内核尝试重发，超时才返回错误</li>
+</ol>
+</li>
+<li>关于RST状态<ol>
+<li>建立连接时发送SYN，接收方指定的端口没有监听</li>
+<li>TCP取消一个已建立的连接（？）</li>
+<li>TCP收到一个不存在的连接上的分节</li>
+</ol>
+</li>
+<li>状态转换 <ul>
+<li>CLOSED-&gt;SYN_SENT-&gt;ESTABLISHED 成功建立连接</li>
+<li>CLOSED-&gt;SYN_SENT-&gt;CLOSED 建立连接失败，必需要手动调用close，不能对套接字重复执行connect</li>
+</ul>
+</li>
+</ol>
+<p>##3、bind</p>
+<pre><code>#include &lt;sys/socket.h&gt;
+int bind(int sockfd, const struct sockaddr*, socklen_t addrlen)
+成功0，出错-1
+</code></pre><ol>
+<li>不通过bind指定端口情况下，内核会在调用connect和listen时分配临时端口。一般客户端会使用临时端口，服务端会bind到固定端口</li>
+<li>对于绑定IP的情况，客户端绑定的是套接字的源IP，客户端不绑定时由内核根据外发的接口选择IP。服务端绑定的是listen所接收的客户端IP，服务端不绑定时根据客户端SYN的目的地址作为服务器IP</li>
+<li>对于端口为0，内核在bind调用的时候选择临时端口，绑定的端口需要调用getsockname来获取，如果IP为通配地址，内核等到TCP建立连接或者UDP数据报发出时才选择IP地址</li>
+<li>bind非通配地址的好处是，内核能够给指定IP地址分配服务进程(只accept指定的客户端IP)</li>
+</ol>
+<p><em>IPv4</em></p>
+<pre><code>struct sockaddr_in servaddr;
+servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+</code></pre><p><em>IPv6</em></p>
+<pre><code>struct sockaddr_in6 serv;
+serv.sin6_addr = in6addr_any;
+</code></pre><ul>
+<li>对于IPv4，INADDR<em>ANY的值为0，htonl不是必须的，按照习惯所有INADDR</em>系的常量都是主机字节序定义的，应该加上htonl以符合规范</li>
+<li>直接赋值对IPv4是可行的，其IP为32bit值，而128bit的IPv6地址为结构体，in6addr_any这个值被内核的宏IN6ADDY_ANY_INIT初始化</li>
+</ul>
+<p>##4、listen</p>
+<pre><code>#include &lt;sys/socket.h&gt;
+int listen(int sockfd, int backlog)
+成功0，出错-1
+</code></pre><ol>
+<li>socket创建套接字时，为connect主动连接状态，需要调用listen转换为被动接受连接状态（CLOSED-&gt;LISTEN）</li>
+<li>backlog规定了内核监听队列的个数，<ul>
+<li>内核维护2个队列：<ul>
+<li>未完成队列: 正处于三次握手过程中，三次握手正常完成的情况下，队列中各项的存活时间是一个RTT</li>
+<li>已完成队列：已经完成三次握手，套接字处于ESTABLISHED状态，应用程序调用accept时返回队列头项</li>
+</ul>
+</li>
+<li>如果不允许客户连接，不应将backlog设置为0，而应该关闭该套接字</li>
+<li>当backlog设置值超过内核支持时，内核会自行截断，而不会向应用程序返回错误</li>
+</ul>
+</li>
+<li>当SYN到达时，如果队列已满，会忽略这个SYN，以便客户端超时重连</li>
+</ol>
+<p>##5、accept</p>
+<pre><code>#include &lt;sys/socket.h&gt;
+int accept(int sockfd, struct sockaddr *cliaddr, socklen_t *addrlen)
+成功clifd，出错-1
+</code></pre><ol>
+<li>从已完成队列里返回一个连接，如果队列为空就睡眠</li>
+<li>参数1为监听套接字，返回的是已连接套接字</li>
+<li>参数部分返回客户端的协议地址和大小</li>
+</ol>
+<p>##6、close</p>
+<pre><code>#include &lt;unistd.h&gt;
+int close(int sockfd)
+成功0，出错-1
+</code></pre><ol>
+<li>调用时TCP将尝试发送缓冲区数据，然后执行握手过程</li>
+<li>可以通过套接字选项SO_LINGER改变默认行为</li>
+</ol>
+<p>##7、getsockname和getpeername</p>
+<pre><code>#include &lt;sys/socket.h&gt;
+int getsockname(int sockfd, struct sockaddr *localaddr, socklen_t *addrlen)
+int getpeername(int sockfd, struct sockaddr *peeraddr, socklen_t *addrlen)
+成功0，出错-1
+</code></pre><ol>
+<li>getsockname用于返回本地端口IP，getpeername用于返回对端端口IP</li>
+<li>对于bind后accept返回的连接，调用getsockname时需要填已连接套接字fd，而不是监听套接字</li>
+<li>getpeername用于获得对端连接端口IP，典型的用法是exec以后，套接字地址接口在新进程环境中已经不存在，但此时内核维护的套接字仍然有效，可以依此获取对端端信息</li>
+<li>客户端可以在connect返回后，调用获取连接的信息</li>
+</ol>
+<h1 id="二、-POSIX信号处理"><a href="#二、-POSIX信号处理" class="headerlink" title="二、 POSIX信号处理"></a>二、 POSIX信号处理</h1><ol>
+<li>Unix信号默认不排队</li>
+<li>fork了子进程而不在父进程捕获SIGCHLD对其进行处理，将导致子进程成为僵尸进程</li>
+<li>设置僵尸状态的目的是维护子进程信息，以便父进程在以后某个时刻获取，包括子进程pid，终止状态以及资源信息。已终止进程的僵尸子进程的父进程pid将置为1，被init进程继承并回收</li>
+<li>处理僵尸进程的可移植方法是捕获SIGCHLD，并调用wait或waitpid</li>
+<li>当阻塞于某个慢系统调用的进程<strong>捕获信号且相应的信号处理函数返回时</strong>，该系统调用可能返回一个EINTR错误，应用程序要对这个信号进行处理，重启系统调用。对于connect函数除外，其返回EINTR时不能再次调用，否则会立即返回错误，其被中断时，需要调用select来等待操作完成。</li>
+</ol>
+<h1 id="三、wait和waitpid"><a href="#三、wait和waitpid" class="headerlink" title="三、wait和waitpid"></a>三、wait和waitpid</h1><pre><code>#include &lt;sys/wait.h&gt;
+pid_t wait(int *statloc)
+pid_t waitpid(pid_t pid, int *statloc, int options)
+返回终止进程pid，出错返回0或-1
+</code></pre><ol>
+<li>statloc返回终止状态（一个整数）</li>
+<li>waitpid允许等待指定进程，-1表示第一个终止的子进程。options附加选项，常用WNOHANG，告诉内核没有已终止子进程时不要阻塞<ul>
+<li>有多个子进程时，对SIGCHLD的信号处理中调用wait无法避免僵尸进程出现，因为Unix信号不排队，多个子进程终止时，一次信号处理函数中wait可能只会执行一次，导致信号丢失。</li>
+<li>正确的办法是调用waitpid，同时指定WNOHANG选项，而不是在循环内调用wait导致阻塞。</li>
+</ul>
+</li>
+<li>处理信号时要注意的三种情况：<ul>
+<li>当fork子进程时，必须捕获SIGCHILD信号</li>
+<li>捕获信号时，必须处理被中断的系统调用</li>
+<li>可能存在有多个子进程同时，要用waitpid捕获已停止的子进程，并设置WNOHANG选项避免阻塞</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、终止"><a href="#四、终止" class="headerlink" title="四、终止"></a>四、终止</h1><ol>
+<li>调用accept之前，如果收到RST，会导致accept返回<strong><em>ECONNABORTED</em></strong></li>
+<li>调用read时，如果对端连接已关闭（收到FIN），会返回0（EOF），如果收到对端连接的RST，则返回<strong><em>ECONNRESET</em></strong>错误</li>
+<li>对一个已经close的连接执行写操作时，会收到RST响应，如果进程向已收到RST的socket执行写操作，会收到SIGPIPE信号</li>
+<li>如果发出的数据出现超时错误，写操作返回<strong><em>ETIMEOUT</em></strong>错误，如果中间路由器已经判断对端不可达而返回了“destination unreachable”错误，则返回<strong><em>EHOSTUNREACH</em></strong>或<strong><em>ENETUNREACH</em></strong>错误</li>
+</ol>
+<hr>
+<h1 id="基本UDP编程"><a href="#基本UDP编程" class="headerlink" title="基本UDP编程"></a>基本UDP编程</h1><hr>
+<h1 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h1><ol>
+<li>有些场合更适合用UDP，如DNS、NFS、SNMP</li>
+<li>UDP发不需要建立连接，直接发送和接受数据，发送前先指明目的地址</li>
+</ol>
+<h1 id="二、recvfrom和sendto"><a href="#二、recvfrom和sendto" class="headerlink" title="二、recvfrom和sendto"></a>二、recvfrom和sendto</h1><pre><code>#include&lt;sys/socket.h&gt;
+ssize_t recvfrom(int sockfd, void *buff, size_t nbytes, int flags, struct sockaddr* from, socklen_t* addrlen) 
+ssize_t sendto(int sockfd, const void *buff, size_t nbytes, int flags, struct sockaddr* to, socklen_t addrlen) 
+成功返回读写的字节数，失败返回-1
+</code></pre><ol>
+<li>recvfrom通过sockaddr返回发送数据报的源地址(UDP)或发起链接端的地址信息(TCP)</li>
+<li>recvfrom的addrlen返回了接收到的数据长度</li>
+<li>可以sendto一个长度为0的数据报，此时只有20Byte的IP(v4)首部和8Byte的UDP首部，此时recvfrom返回的长度为0</li>
+<li>这两个函数都可以用于TCP，但通常不这么做</li>
+</ol>
+<h1 id="基本编程知识点"><a href="#基本编程知识点" class="headerlink" title="基本编程知识点"></a>基本编程知识点</h1><ol>
+<li>TCP服务器可以做到并发，UDP没有链接，单个服务器要处理所有客户，所以多数是迭代的</li>
+<li>UDP层隐含有排队，每个套接字有接收缓冲区</li>
+<li>对于recvfrom仅仅设置超时，无法判断超时原因是发送端超时，还是接收端没有应答</li>
+<li>异步错误：对于UDP套接字，由它引发的异步错误并不返回，除非已连接。如ICMP不可达的异步错误，由sendto引起，但接口成功返回，从UDP写操作返回仅表示数据放到输出队列</li>
+<li>可以使用SO_RCVBUF修改接收缓冲区的大小</li>
+</ol>
+<h1 id="三、端口与IP地址"><a href="#三、端口与IP地址" class="headerlink" title="三、端口与IP地址"></a>三、端口与IP地址</h1><ol>
+<li>客户端的临时端口是第一次调用sendto时一次性选定，不能改变，源IP地址可随每个数据报变化（客户端有多个地址的情况下）</li>
+<li>如果客户绑定IP先，但内核选定的外出地址在另一个链路，则IP数据报将包含一个不同于外出链路IP的源IP</li>
+<li><p>对于服务端，客户端的目的地址只能通过设置IP_RECVDSTADDR(IPv4)或者IPV6_PKTINFO选项然后调用recvmsg获取，由于UDP是无连接的，目的地址可能随数据报变化</p>
+<pre><code>               TCP服务器     UDP服务器
+(客户端)源IP     accept        recvfrom    
+(客户端)源端口    accept        recvfrom
+(客户端)目的IP    getsockname   recvmsg
+(客户端)目的端口  getsockname   getsockname
+</code></pre></li>
+</ol>
+<h1 id="四、connect"><a href="#四、connect" class="headerlink" title="四、connect"></a>四、connect</h1><ol>
+<li>对于UDP的connect，内核只做两件事：<ul>
+<li>检查是否存在立即可知的错误（如显然不可达IP之类的参数）</li>
+<li>记录目的IP和端口</li>
+</ul>
+</li>
+<li>对于已连接UDP套接字<ul>
+<li>不能给sendto指定目的地址（参数5地址为空指针，参数6长度为0），或采用write、read、</li>
+<li>内核只返回connect指定的目的地址的数据报</li>
+</ul>
+</li>
+<li><p>已连接套接字引发的异步错误会返回给进程，未连接的不会</p>
+<pre><code>套接字类型    write         不指定目的         指定目的的
+            read          sendto         sendto
+TCP            Y              Y                 EISCONN
+UDP已连接    Y             Y              EISCONN
+UDP未连接    EDESTADDRREQ  EDESTADDRREQ   Y
+</code></pre></li>
+<li>UDP在只与确定端通信的情况下，才调用connect</li>
+<li>在客户端/etc/resolv.conf下列出的DNS服务器为单个主机时可调用connect，为多个主机时不能调用</li>
+<li>断开连接：再次调用connect时把sockaddr的地址族sa_family设置为AF_UNSPEC，可能会返回EAFNOSUPPORT错误，已连接的UDP套接字上的进程会断开连接，Linux会把本地IP设为全0，端口号保持不变</li>
+<li>指定新地址：可以重复调用connect来为UDP套接字指定新的地址，TCP套接字则只能调用一次</li>
+<li>获得本地地址：调用connect可以让内核选择本地地址，然后调用getsockname可以获得本地IP和端口</li>
+<li>性能差异<ul>
+<li>已连接套接字只连接一次就可以直接发送数据，内核对于目的地址只复制一次</li>
+<li>未连接套接字每次调用都要复制并且断开连接，这种临时连接的消耗占每个UDP传输的1/3 </li>
+<li>未连接套接字<ul>
+<li>连接套接字</li>
+<li>输出数据报</li>
+<li>断开套接字</li>
+</ul>
+</li>
+<li>已连接套接字<ul>
+<li>连接套接字</li>
+<li>输出数据报</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/Linux网络编程-二、基本套接字编程/" data-id="cio5xrkio000r86fyo081vr1m" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/14/Linux系统编程-test-cond-cpp/" class="pre"></a><a href="/2016/05/14/Linux网络编程-六、IP基础编程/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap/">阅读笔记-《The-C-Standard-Library-第二版》-第七章-STL容器-7-——-Map和MultiMap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO/">阅读笔记-《unix-网络编程-第三版》-第十四章-高级IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6/">阅读笔记-《unix-网络编程-第三版》-附录-IPv4、IPv6、ICMPv4、ICMPv6</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
