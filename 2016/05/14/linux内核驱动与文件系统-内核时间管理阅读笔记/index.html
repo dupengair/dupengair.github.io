@@ -1,0 +1,277 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>内核时间管理阅读笔记 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">内核时间管理阅读笔记</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">内核时间管理阅读笔记</h1><div class="post-meta">May 14, 2016<span> | </span><span class="category"><a href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#平台：ambarella"><span class="toc-number">1.</span> <span class="toc-text">平台：ambarella</span></a></li></ol></div></div><div class="post-content"><p>内核版本：2.6.38</p>
+<h2 id="平台：ambarella"><a href="#平台：ambarella" class="headerlink" title="平台：ambarella"></a>平台：ambarella</h2><ul>
+<li>安霸平台使用的38版本内核与TI的18版本内核时间tick的初始化过程差别非常大，18版本没有使用通知链技术来处理时钟事件<code>clockevents_chain</code>，而是通过clockevents.c中定义的<code>global_eventdevice</code>变量来维护全局时钟事件，davinci平台的多个时钟设备由plat-davinci中定义的一个<code>timer_s</code>结构体timers来维护，在<code>timers_ini</code>t函数中手工注册时钟设备，时钟设备结构体是直接被register函数初始化，通过功能位caps来挂接中断执行函数。</li>
+<li>38版本内核中，时钟设备与时钟事件是分开处理的。对于内核来说所有的时钟设备，时钟事件的响应方法是一样的，主要完成软硬件定时器的操作，并且通过内核计时来维护进程的时间片，而具体时钟设备的硬件操作对于不同平台则是不一样的。于是内核采用了通知链技术，在平台中定义时钟设备并初始化其硬件操作，然后向内核发布时钟设备添加的通知。订阅该通知的模块，在响应通知的过程中将内核中定义好的时钟事件的响应方法挂接到当前的时钟设备上。这样，对于不同平台，不同的时钟设备，完成了一系列统一的时钟事件响应方法，对于硬件来说，其实就是不同的定时器都挂上了同一个中断响应函数。内核的时钟设备处理方式体现了内核对设备和方法的高度抽象化思想，同一类设备有高度统一的操作方式。   </li>
+<li><p>时钟设备的添加是通过内核的notify机制，事先在clockevents.c中定义好时钟事件通知链<code>clockevents_chain</code>。在时钟事件产生时，由<code>clockevents_do_notify()</code>来发布通知，而tick-commonc.c中订阅了<code>CLOCK_EVT_NOTIFY_ADD</code>的通知。<code>plat-ambarella-&gt;timer.c</code> 中添加安霸平台的时钟设备时，<code>ambarella_timer_init()</code>中由<code>clockevents_register_device()</code>调用<code>clockevents_do_notify()</code>发布一<code>个CLOCK_EVT_NOTIFY_ADD</code>类型的通知。订阅该通知的<code>tick-commonc.c</code>中回调<code>tick_notify()</code>来响应该消息，将时钟事件处理函数的实体<code>tick_handle_periodic()</code>挂接到时钟设备的中断处理函数<code>event_handler()</code>上，从而完成注册。</p>
+</li>
+<li><p>即是如下结构：</p>
+<pre><code>clockevents.c管理时钟事件的通知链
+tick-commonc.c实现时钟事件的处理方法
+plat-ambarella-&gt;timer.c触发具体的时钟事件
+</code></pre></li>
+<li><p>先看内核时间的初始化过程，主要涉及三个函数：<code>tick_init()、time_init()、init_timers()</code>这三个函数都在<code>init/main.c的start_kernel()</code>中系统初始化时在建立init进程之前运行。</p>
+</li>
+</ul>
+<hr>
+<p>#一、内核时钟事件通知的订阅过程</p>
+<hr>
+<pre><code>start_kernel()[init/main.c]-&gt;
+tick_init()[tick-common.c]-&gt;
+clockevents_register_notifier()[clockevents.c]-&gt;
+raw_notifier_chain_register()[notifier.c]-&gt;
+notifier_chain_register()[notifier.c]
+</code></pre><ul>
+<li><code>start_kernel()</code>调用<code>tick_init()</code>通过<code>clockevents_register_notifier()</code>将<code>tick_notifier</code>结构体注册进内核时钟事件通知链<code>clockevents_chain</code>，即订阅了时钟事件的通知，其中包含<code>CLOCK_EVT_NOTIFY_ADD</code>这一类型通知用于添加时钟设备。</li>
+<li><code>notifier_block</code>结构的<code>.notifier_call</code>成员初始化为<code>tick_notify()</code>函数。t<code>ick_notify()</code>函数会响应在平台初始化时钟设备时，通过<code>clockevents_register_device()</code>函数发布的<code>CLOCK_EVT_NOTIFY_ADD</code>类型的通知，这个通知表示添加时钟设备。响应过程中会check时钟设备<code>clock_event_device</code>，并且设置该设备结构体中的<code>event_handle</code>r回调函数。</li>
+<li>在ambarella平台中，被设置的结构体对应<code>/arch/arm/plat-ambarella/generic/time.c</code>中定义的<code>ambarella_clkevt</code>结构体，这个结构体的<code>event_handler</code>即被上述过程设置为内核的时钟事件响应函数<code>tick_handle_periodic()</code>，在平台中被初始化为定时器的中断处理函数。</li>
+</ul>
+<hr>
+<p>#二、平台的时钟设备和时钟中断初始化过程</p>
+<hr>
+<ol>
+<li><p>时钟设备</p>
+<ul>
+<li><p>时钟设备定义在/arch/arm/plat-ambarella/generic/time.c中：</p>
+</li>
+<li><p>时钟源设备，用作内核硬件时钟源：</p>
+<pre><code>static struct clocksource ambarella_cs_timer_clksrc = {
+    .name        = &quot;ambarella-cs-timer&quot;,
+    .shift        = 24,
+    .rating        = AMBARELLA_TIMER_RATING,
+    .read        = ambarella_cs_timer_read,
+    .mask        = CLOCKSOURCE_MASK(32),
+    .flags        = CLOCK_SOURCE_IS_CONTINUOUS,
+};
+</code></pre></li>
+<li><p>时钟事件设备，用作响应内核时钟事件(中断响应)，如定时器产生的操作，内核tick计数：</p>
+<pre><code>static struct clock_event_device ambarella_clkevt = {
+    .name        = &quot;ambarella-clkevt&quot;,
+    .features    = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
+    .shift        = 32,
+    .rating        = AMBARELLA_TIMER_RATING,
+    .cpumask    = cpu_all_mask,
+    .set_next_event    = ambarella_ce_timer_set_next_event,
+    .set_mode    = ambarella_ce_timer_set_mode,
+    .mode        = CLOCK_EVT_MODE_UNUSED,
+    .irq        = AMBARELLA_CE_TIMER_IRQ,
+};
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<ol>
+<li><p>时钟设备的注册：</p>
+<pre><code>start_kernel()[main.c]-&gt;
+time_init()[/arch/arm/kernel/time.c]-&gt;
+ambarella_timer_init()[/arch/arm/plat-ambarella/generic/time.c]-&gt;
+
+时钟源设备：
+clocksource_register()[kernel/time/clockevents.c]-&gt;
+{
+clocksource_enqueue()[kernel/time/clockevents.c]
+clocksource_select()[kernel/time/clockevents.c]-&gt;
+    {
+    tick_oneshot_mode_active()[kernel/time/tick-oneshot.c]
+    }
+}
+
+时钟事件设备：
+clockevents_register_device()[clockevents.c]-&gt;
+clockevents_do_notify()[clockevents.c]-&gt;
+raw_notifier_call_chain()[notifier.c]-&gt;
+__raw_notifier_call_chain()[notifier.c]-&gt;
+notifier_call_chain()[notifier.c]-&gt;
+</code></pre></li>
+</ol>
+<pre><code>* 内核注册时钟设备的过程，系统启动进入`start_kernel()`阶段调用`time_init()`，这个函数会通过平台注册到内核的硬件描述符machine_desc来调用平台自己的时间初始化函数，即`ambarella_timer_init()`。
+
+
+* 内核硬件描述符机制： 
+    + 在平台各通用硬件模块中定义各硬件自己的处理过程：
+
+           如：
+            arck/arm/plat-ambarella/generic/timer.c中定义系统定时器
+            struct sys_timer ambarella_timer = {
+            .init        = ambarella_timer_init,
+            };
+
+    + 在平台初始化模块arch/arm/mach-xxxx.c中调用`MACHINE_START`宏将硬件平台相关的信息填入`machine_desc`结构体，如安霸的椰子：
+
+            MACHINE_START(COCONUT, &quot;Coconut&quot;)
+                .boot_params    = CONFIG_AMBARELLA_PARAMS_PHYS,
+                .map_io        = ambarella_map_io,
+                .reserve    = ambarella_memblock_reserve,
+                .init_irq    = ambarella_init_irq,
+                .timer        = &amp;ambarella_timer,
+                .init_machine    = ambarella_init_coconut,
+            MACHINE_END
+
+    + 这样的好处是把内核必须的平台相关的硬件操作，如定时器、中断、内存管理等处理抽象成平台无关的软件方法，在内核的其它模块中使用
+
+
+* 时钟源设备的注册很简单, 平台自身的`ambarella_timer_init()`调用clocksource_register(),这个函数先通过`clocksource_enqueue()`将时钟源设备加入时钟源链表`clocksource_list`中，然后经过`clocksource_select()-&gt;tick_oneshot_mode_active()`的调用将新的时钟源设置为当前cpu的系统时钟。
+
+* `ambarella_timer_init()`接下来的代码是注册时钟事件设备，先安装其中断响应函数到内核，然后调用`clockevents_register_device()`将设备注册进内核时钟事件设备链表`clockevent_devices`里，然后发布`CLOCK_EVT_NOTIFY_ADD`的通知。
+
+* 通知最终通过`notifier_call_chain()`函数的`ret = nb-&gt;notifier_call(nb, val, v)`语句回调在`clockevents_chain`中的订阅者定义的回调函数，也即是调用上述订阅时间事件通知时注册进内核的`tick_notifier`结构的`tick_notify()`函数。（为什么`notifier_call`回调了`tick_notify()`? 看nb指向的对象可以看出，nb指针的传递过程如下：
+
+        【notifier_call_chain(**nl,...)的参数nl】&lt;-【__raw_notifier_call_chain(*nh,...)的参数nh】&lt;-【raw_notifier_call_chain(*nh,...)的参数nh】&lt;-【raw_notifier_call_chain(&amp;clockevents_chain,...)】,
+
+* 最终是`clockevents_do_notify()`在调用`raw_notifier_call_chain()`时把时钟事件链表`clockevents_chain`对象的地址传递下去）
+
+        tick_notify()函数的执行过程如下：
+        notifier_call_chain()[notifier.c]-&gt;
+        tick_check_new_device[tick-common.c]-&gt;
+        tick_setup_device()[tick-common.c]-&gt;
+
+* 在`setup_device`的过程中，`tick_check_new_device()`主要处理多cpu的情况，保证每个cpu只有一`tick_cpu_device`设备，然后调用`tick_setup_device()`完成主要的注册过程。如果是第一个时钟设备会初始化为PERIODIC类型，并初始化时钟中断的间隔时间`tick_period`，这个参数记录的是系统时钟滴答计时的间隔时间，系统每产生一次时间滴答，会触发软件中断进行进程上下文切换和时间片管理，换句话说，内核进程调度的最小时间也就是这个值。
+* 否则如果已经有时钟事件设备注册的话，直接把新设备的`event_handler`挂接在已存在的时钟设备`event_handler`后。函数最后会调用`tick_setup_periodic()`函数设置时钟设备结构体`ambarella_clkevt`的`event_handler`成员，这个成员在下面的中断处理函数中被调用，设置过程如下：
+
+        tick_setup_device()[tick-common.c]-&gt;
+        tick_setup_periodic()[tick-common.c]-&gt;
+        tick_set_periodic_handler()[tick-internal.h]
+
+       + 可以看到中断处理的回调函数`event_handler`被设置为`tick_handle_periodic()`函数（`tick-common.c`）。同时在`tick_setup_periodic()`函数中还会调用`clockevents_set_mode`()函数设置时钟设备的时钟事件类型，这个函数里面回调了时钟设备结构体的`set_mode`成员函数，这个成员函数在前述结构定义时定义为`ambarella_ce_timer_set_mode()`。
+
+            tick_setup_periodic()[tick-common.c]-&gt;
+            clockevents_set_mode()[clockevents.c]-&gt;
+            ambarella_ce_timer_set_mode()[arch/arm/plat-ambarella/generic/timer.c]-&gt;
+            {
+            ambarella_ce_timer_disable()[arch/arm/plat-ambarella/generic/timer.c]
+            ambarella_ce_timer_set_periodic()[arch/arm/plat-ambarella/generic/timer.c]
+            ambarella_ce_timer_enable()[arch/arm/plat-ambarella/generic/timer.c]
+            }
+</code></pre><ol>
+<li>时钟中断</li>
+</ol>
+<p>中断函数的定义同上：</p>
+<pre><code>static irqreturn_t ambarella_ce_timer_interrupt(int irq, void *dev_id)
+    {
+        ambarella_clkevt.event_handler(&amp;ambarella_clkevt);
+
+        return IRQ_HANDLED;
+    }
+
+static struct irqaction ambarella_ce_timer_irq = {
+        .name        = &quot;ambarella-ce-timer&quot;,
+        .flags        = IRQF_DISABLED | IRQF_TIMER | IRQF_TRIGGER_RISING,
+        .handler    = ambarella_ce_timer_interrupt,
+    };
+</code></pre><p>时钟中断的注册：</p>
+<pre><code>ambarella_timer_init()[/arch/arm/plat-ambarella/generic/time.c]-&gt;
+setup_irq(ambarella_clkevt.irq, &amp;ambarella_ce_timer_irq);
+</code></pre><p>设置到内核的时钟中断函数ambarella_ce_timer_irq()中调用的eventhandler()实际上在前面注册时钟事件设备时被挂接到了tick_handle_periodic()上。</p>
+<hr>
+<p>#三、定时器初始化过程</p>
+<hr>
+<pre><code>start_kernel()[init/main.c]-&gt;
+init_timers()[tick-common.c]
+</code></pre><ul>
+<li>这个函数在内核启动时将<code>timers_nb</code>结构注册进<code>cpu_chain</code>通知链，即订阅了<code>cpu_chain</code>上的通知消息。<code>cpu_chain</code>上的通知由<code>__cpu_notify</code>发布，主要用于<code>cpu_up和cpu_down</code>时内核处理一些和cpu操作相关的数据结构。这里订阅该通知的<code>timers_nb</code>结构注册了回调函数<code>timer_cpu_notify()</code>，用于根据系统的cpu初始化内核定时器相关的数据结构，即初始化每个cpu的定时器数据结构<code>tvec_base</code>里面的5个定时器管理数据结构tvec和<code>tvec_root</code>。</li>
+<li>在初始化定时器过程中还安装了一个软件中断<code>TIMER_SOFTIRQ</code>，对应的中断函数<code>run_timer_softirq()[kernel/timer.c]</code>，在每次硬件时钟计数更新时由时钟中断函数<code>tick_periodic()</code>中调用<code>update_process_times()</code>触发，目的是硬件时钟更新后找到所有到期的软件定时器。</li>
+</ul>
+<hr>
+<p>#四、硬件时钟定时时间初始化</p>
+<hr>
+<ol>
+<li><p>cpu的外部时钟频率 <code>CLOCK_TICK_RATE</code>定义在arch/arm/plat-ambarella/include/match/timex.h中：</p>
+<pre><code>#define CLOCK_TICK_RATE REF_CLK_FREQ
+</code></pre><ul>
+<li><p>这个值在A5S的硬件平台文件中被初始化为外部时钟的频率：</p>
+<pre><code>#define REF_CLK_FREQ    24000000          [rch/arm/plat-ambarella/include/ambhw/rtc.h]
+</code></pre></li>
+</ul>
+</li>
+<li><p>时钟滴答的频率 HZ</p>
+<ul>
+<li>指1秒时间内硬件定时器所产生的时钟滴答次数，每次产生滴答会使内核中表示时钟滴答的全局变量jiffies加1。这个值也是由硬件计数器初值决定。Linux内核用宏HZ来表示时钟滴答的频率，而且在不同的平台上HZ有不同的定义值。对于ALPHA和IA62平台HZ的值是1024，对于SPARC、MIPS、ARM和i386等平台HZ的值都是100。</li>
+<li><p>在<code>arch/arm/include/asm/param.h</code>中看到，HZ被定义成编译时配置内核配置产生的值<code>CONFIG_HZ</code>：</p>
+<pre><code># define HZ  CONFIG_HZ    /* Internal kernel timer frequency */
+</code></pre></li>
+<li><p>这个值一般默认配置为100，在<code>include/generated/autoconfig.h</code>中：</p>
+<pre><code>#define CONFIG_HZ 100
+</code></pre></li>
+</ul>
+</li>
+<li><p>内核时间滴答的频率 LATCH</p>
+<ul>
+<li><p>有了前面两个值，就可以根据CPU的外部频率和内核希望的滴答频率计算出硬件定时器的定时时间(中断频率)，也即是经过多少个外部时钟，产生一个频率为100HZ的内核时间滴答，这个滴答在内核中用全局变量jiffies表示，jiffy英文单词的意思是“片刻、一瞬间”。 在<code>include/linux/jiffies.h</code>中定义：</p>
+<pre><code>/* LATCH is used in the interval timer and ftape setup. */
+#define LATCH  ((CLOCK_TICK_RATE + HZ/2) / HZ)    /* For divider */
+</code></pre></li>
+</ul>
+</li>
+<li><p>内核时间滴答的中断间隔时间 <code>tick_period</code></p>
+<ul>
+<li><p>在前面内核添加硬件时钟事件设备的时候，可以看到如果是第一个时钟设备，会初始化<code>tick_period</code>变量：</p>
+<pre><code>tick_setup_device()[kernel/time/tich-common.c] -&gt;
+tick_period = ktime_set(0, NSEC_PER_SEC / HZ);
+</code></pre></li>
+<li><p>可以看到这个值被初始化成<code>NSEC_PER_SEC / HZ = 1000000000 / 100 = 10000000ns = 10ms</code></p>
+</li>
+<li>在每次硬件时钟中断时内核时间滴答会加上一个<code>tick_period</code>，也即是每次系统时间中断间隔为10ms(100HZ)，详见下面时钟中断的执行过程。</li>
+</ul>
+</li>
+</ol>
+<hr>
+<p>#五、时钟中断的执行过程</p>
+<hr>
+<ol>
+<li><p>中断函数的执行过程：</p>
+<pre><code>ambarella_ce_timer_interrupt()[/arch/arm/plat-ambarella/generic/time.c]-&gt;
+tick_handle_periodic()[tick-common.c]-&gt;
+tick_periodic()[tick-common.c]-&gt;
+{
+ktime_add()[ktime.h]
+do_timer()[timer.c]
+update_process_times()[timer.c]
+profile_tick()[profile.c]
+}
+</code></pre><ul>
+<li>时钟中断主要执行过程在<code>tick_periodic()</code>函数中，这个函数主要做了三件事，分别是调用<code>ktime_add()</code>来增加内核的时间，每一次加10ms，调用<code>do_timer()</code>更新内核时钟数据，调用<code>update_process_times()</code>管理进程时间片。</li>
+<li>这三件事的前两件系统是全局处理，仅在一个的cpu上进行处理，这个<code>tick_do_timer_cpu</code>类型的cpu维护系统时间，其结果对全系统生效。后面一件调用<code>update_process_times()</code>处理需要在每个cpu上都运行，为局部处理。</li>
+<li>最后一次中断事件处理完成后，还要根据当前的处理结果调用<code>profile_tick()</code>处理多cpu的情况。</li>
+</ul>
+</li>
+</ol>
+<ol>
+<li><p><code>ktime_add()</code>与100HZ、为神马内核的task切换时间是10ms？</p>
+<ul>
+<li>中断里对调用ktime_add()滴答计数增加，每次中断将<code>tick_next_period</code>加上<code>tick_period，tick_period</code>在<code>tick_setup_device()</code>函数中初始化为<code>NSEC_PER_SEC / HZ=1000,000,000 / 100 = 10m</code>s ,其中HZ在<code>param.h</code>中定义为100。这个100可以在编译内核时进行配置，<code>system type-&gt;generic platform configuration-&gt;kernel HZ</code>。</li>
+</ul>
+</li>
+<li><p><code>do_timer()</code></p>
+<ul>
+<li>这个函数里又完成了三件和内核时钟数据有关的事情，首先使滴答数jiffies加1，然后调用<code>update_wall_time()</code>更新系统时间xtimer（这是一个timeval结构类型的变量，用来表示当前时间距UNIX时间基准1970-01-01 00:00:00的相对秒数值），最后调用<code>calc_global_load()</code>根据ticks计算cpu负载<code>avenrun[]</code>，这个负载被<code>do_sysinfo()-&gt;get_avenrun()</code>计算系统信息。</li>
+</ul>
+</li>
+<li><p><code>update_process_times()</code>函数</p>
+<ul>
+<li><code>account_process_tick</code>()<ul>
+<li>这个函数根据当前进程所处的状态（用户态、内核态、休眠态），更新进程的时间片信息，当进程处于用户态时调用<code>account_user_time()</code>更新进程用户态的时间片信息utime，如果进程nice值大于0，就把utime加到nice上，否则加到user上。对于处于内核态的进程，则会调用<code>account_system_time()</code>更新进程内核态时间stime，然后还要加上当前运行进程的cpu处于软件中断或硬件中断态或普通运行状态下的时间。如果是空闲态，调用<code>account_idle_time()</code>判断进程是否处于等待IO的状态或idle的状态，加上相应的时间。</li>
+</ul>
+</li>
+<li><code>run_local_timers</code><ul>
+<li>这个函数唤醒之前在<code>start_kernel()</code>里由<code>init_timers()</code>安装的软件中断<code>TIMER_SOFTIRQ</code>，会执行对应的中断函数<code>run_timer_softirq()</code>，这个中断函数先处理高精度时钟hrtimer，然后判断如果jiffies大于cpu本地的<code>timer_jiffies</code>，即内核时间滴答大于本地定时器的计时滴答时说明本地cpu有定时器时间到期，会调用<code>__run_timers()</code>处理。在_<code>_run_timers()</code>里系统会用cascade调整所有软件时钟的计时时间，将马上就要到期的软件时钟从其所在的链表中删除，重新计算到期时间的相对值（到期时间 - <code>timer_jiffies</code>），然后根据该值重新插入到 base 中。</li>
+</ul>
+</li>
+<li><p><code>rcu_check_callbacks</code></p>
+<ul>
+<li>对于RCU锁来说，CPU发生了上下文切换和softirq的执行完毕认为是一个<code>quiescent state</code>，此时RCU的垃圾收集器会调用回调函数完成最后的数据释放或修改操作。这个函数执行的操作如下：</li>
+<li>如果当前进程运行在用户态或者当前进程为idle且当前不处在运行softirq状态，也不处在运行IRQ处理函数的状态，则标记该CPU的数据结构<code>rcu_sched_data和rcu_bh_data</code>的标记字段<code>passed_quiesc</code>，以记录该CPU已经经历一个<code>quiescent state</code>。有趣的是这里用到了之前才看到的著名的barrier指令，说明这个函数的执行过程不是流水线的。</li>
+<li>否则，如果当前不处在运行softirq状态，那么，只标记该CPU的数据结构<code>rcu_bh_data</code>的标记字段<code>passed_quiesc</code>，以记录该CPU已经经历一个<code>quiescent state</code>(CPU正在经历上下文切换)。该标记只对<code>rcu_bh_data</code>有效。</li>
+<li>最后 ，触发一个<code>RCU_SOFTIRQ</code>类型的软中断，会执行<code>rcu_process_callbacks()</code>函数，处理<code>grace period</code>期间(所有CPU都经历一次<code>quiescent state</code>的时间)的垃圾收集工作。这个函数做了3件事：<ul>
+<li>如果<code>grace period</code>还没开始，调用<code>rcu_start_gp()</code>开始新的<code>grace period</code></li>
+<li>检查是否处于<code>quiescent state</code>，如果是最后一个qs，就结束gp，通过<code>rcu_check_quiescent_state()</code>实现</li>
+<li>如果有完成的<code>grace period</code>，就通过<code>rcu_do_batch()</code>启动回调函数</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><code>printk_tick</code></p>
+</li>
+<li><code>scheduler_tick</code></li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/14/linux内核驱动与文件系统-内核时间管理阅读笔记/" data-id="cio5ykc5v0077yqfyn0irtbm8" class="article-share-link">分享到</a><div class="tags"><a href="/tags/linux内核驱动与文件系统/">linux内核驱动与文件系统</a></div><div class="post-nav"><a href="/2016/05/14/linux内核驱动与文件系统-内核模块/" class="pre">内核模块</a><a href="/2016/05/14/linux内核驱动与文件系统-v4l2驱动阅读笔记-pdev的注册-2-38-dm365-vpfe/" class="next">v4l2驱动阅读笔记_pdev的注册(2.38-dm365_vpfe)</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">235</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-Templates》/">《C++ Templates》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C-11新特性》/">《C++11新特性》</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《C程序设计语言》/">《C程序设计语言》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-C-》/">《Effective C++》</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Effective-STL》/">《Effective STL》</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Inside-the-C-Object-Model》/">《Inside the C++ Object Model》</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux性能优化大师》/">《Linux性能优化大师》</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《Linux设备驱动程序》/">《Linux设备驱动程序》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《More-Effective-C-》/">《More Effective C++》</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《TCPIP详解（卷一）》/">《TCPIP详解（卷一）》</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第一版》/">《The C++ Standard Library 第一版》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《The-C-Standard-Library-第二版》/">《The C++ Standard Library 第二版》</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《http权威指南》/">《http权威指南》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《unix-网络编程-第三版》/">《unix 网络编程 第三版》</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《wireshark数据包分析实战》/">《wireshark数据包分析实战》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《实战Linux-Shell-编程与服务器管理》/">《实战Linux Shell 编程与服务器管理》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《程序员的自我修养——链接、装载与库》/">《程序员的自我修养——链接、装载与库》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《网络安全基础——网络攻防、协议与安全》/">《网络安全基础——网络攻防、协议与安全》</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《面向模式的软件体系结构-卷1-模式系统》/">《面向模式的软件体系结构 卷1-模式系统》</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/《高级C、C-编译技术》/">《高级C、C++编译技术》</a><span class="category-list-count">1</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/《Effective-C-》/" style="font-size: 15px;">《Effective C++》</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think about</a> <a href="/tags/《C-11新特性》/" style="font-size: 15px;">《C++11新特性》</a> <a href="/tags/《C-Templates》/" style="font-size: 15px;">《C++ Templates》</a> <a href="/tags/《C程序设计语言》/" style="font-size: 15px;">《C程序设计语言》</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/《Effective-STL》/" style="font-size: 15px;">《Effective STL》</a> <a href="/tags/《Inside-the-C-Object-Model》/" style="font-size: 15px;">《Inside the C++ Object Model》</a> <a href="/tags/《Linux性能优化大师》/" style="font-size: 15px;">《Linux性能优化大师》</a> <a href="/tags/《Linux设备驱动程序》/" style="font-size: 15px;">《Linux设备驱动程序》</a> <a href="/tags/《More-Effective-C-》/" style="font-size: 15px;">《More Effective C++》</a> <a href="/tags/《TCPIP详解（卷一）》/" style="font-size: 15px;">《TCPIP详解（卷一）》</a> <a href="/tags/《The-C-Standard-Library-第二版》/" style="font-size: 15px;">《The C++ Standard Library 第二版》</a> <a href="/tags/《The-C-Standard-Library-第一版》/" style="font-size: 15px;">《The C++ Standard Library 第一版》</a> <a href="/tags/《unix-网络编程-第三版》/" style="font-size: 15px;">《unix 网络编程 第三版》</a> <a href="/tags/《http权威指南》/" style="font-size: 15px;">《http权威指南》</a> <a href="/tags/《wireshark数据包分析实战》/" style="font-size: 15px;">《wireshark数据包分析实战》</a> <a href="/tags/《实战Linux-Shell-编程与服务器管理》/" style="font-size: 15px;">《实战Linux Shell 编程与服务器管理》</a> <a href="/tags/《网络安全基础——网络攻防、协议与安全》/" style="font-size: 15px;">《网络安全基础——网络攻防、协议与安全》</a> <a href="/tags/《程序员的自我修养——链接、装载与库》/" style="font-size: 15px;">《程序员的自我修养——链接、装载与库》</a> <a href="/tags/《面向模式的软件体系结构-卷1-模式系统》/" style="font-size: 15px;">《面向模式的软件体系结构 卷1-模式系统》</a> <a href="/tags/《高级C、C-编译技术》/" style="font-size: 15px;">《高级C、C++编译技术》</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/开发环境搭建-安装Hexo搭建github-blog/">安装Hexo搭建github blog</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《高级C、C-编译技术》-《高级C、C-编译技术》阅读笔记/">《高级C、C++编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《程序员的自我修养——链接、装载与库》-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《网络安全基础——网络攻防、协议与安全》-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《实战Linux-Shell-编程与服务器管理》-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/阅读笔记-《wireshark数据包分析实战》-《wireshark数据包分析实战》阅读笔记/">《wireshark数据包分析实战》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/14/开发环境搭建-wireshark在mac下找不到网卡/">wireshark在mac下找不到网卡</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
