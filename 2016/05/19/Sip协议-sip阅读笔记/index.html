@@ -1,0 +1,633 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>sip阅读笔记 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">sip阅读笔记</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">sip阅读笔记</h1><div class="post-meta">May 19, 2016<span> | </span><span class="category"><a href="/categories/Sip协议/">Sip协议</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、消息结构"><span class="toc-number">1.</span> <span class="toc-text">一、消息结构</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、应答：transport-gt-transaction-gt-TU"><span class="toc-number">2.</span> <span class="toc-text">二、应答：transport -> transaction -> TU</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、UAS处理过程"><span class="toc-number">3.</span> <span class="toc-text">三、UAS处理过程</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四-CANCEL"><span class="toc-number">4.</span> <span class="toc-text">四 CANCEL</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、REGISTER"><span class="toc-number">5.</span> <span class="toc-text">五、REGISTER</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、查询-OPTIONS"><span class="toc-number">6.</span> <span class="toc-text">六、查询 OPTIONS</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、对话dialog"><span class="toc-number">7.</span> <span class="toc-text">七、对话dialog</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#八、建立会话"><span class="toc-number">8.</span> <span class="toc-text">八、建立会话</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#九、更改已经存在的会话"><span class="toc-number">9.</span> <span class="toc-text">九、更改已经存在的会话</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十、结束会话"><span class="toc-number">10.</span> <span class="toc-text">十、结束会话</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十一、proxy"><span class="toc-number">11.</span> <span class="toc-text">十一、proxy</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十二、事务-Transactions"><span class="toc-number">12.</span> <span class="toc-text">十二、事务 Transactions</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十三-通讯-Transport"><span class="toc-number">13.</span> <span class="toc-text">十三 通讯 Transport</span></a></li></ol></div></div><div class="post-content"><h1 id="一、消息结构"><a href="#一、消息结构" class="headerlink" title="一、消息结构"></a>一、消息结构</h1><pre><code>合法的SIP请求必须至少包含：TO, FROM, Cseq, Call-ID, Max-Forwards, Via
+
+请求行: [ 方法 + 接收者URI + SIP版本号 ]
+example：INVITE sip:bob@biloxi.com SIP/2.0
+
+
+To: [ 姓名 + 接收者URI ]
+”逻辑”接收地, 第一次INVITE时不能包含tag，因为会话还没有建立，tag不存在。(会话建立前的INVITE，TO无tag，FROM为发起者tag，ACK中TO为接收者tag，FROM同前)
+example：To: Bob &lt;sip:bob@biloxi.com&gt;
+
+
+From: [ 姓名 + 发起者URI ]
+必须包含一个由UAC产生的新的”tag”参数。
+example：From: Alice &lt;sip:alice@atlanta.com&gt;;tag=1928301774
+
+
+Call-ID: [ ID + @主机名 ]
+是区分一组消息的唯一标志。对话中必须一致。每次注册都应该一样。由UAC产生一个全局（在时间和空间上都是）唯一的Call-ID。大小写敏感，并且通过简单字节/字节的来进行比较。
+example：Call-ID: a84b4c76e66710@pc33.atlanta.com
+
+
+Cseq: [ 顺序号码 + 方法（method）]
+区分事务。32位的无符号整数，必须小于2^31
+example：CSeq: 314159 INVITE
+
+
+Max-Forwards: 70
+缺省值应该是70，如果这个数字要变小，则必须保证UA知道整个网络的拓扑结构。
+每隔一个跳转就自动减一, 在到达目的之前减到0，返回一个483(太多的路由)错误回应。
+example：Max-Forwards: 70
+
+
+Via：[ SIP/2.0/协议名 + 应答送回的地址（发起者URI） + branch（z9hG4bK****） ]
+标志了用于事务传输的传输设备，应答送回的地址。只有当需要通过选择传输设备到达下一个节点(hop)的时候，才需要在头域中包含Via域。branch用于区分请求创建的事务，CANCEL请求必须和取消请求的branch参数一致。根据本标准产生的branch ID必须用”z9hG4bK”开头。
+example：Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bK776asdhds
+
+
+Contact: （发起者）URI
+必须有效。访问后续请求的特定UA实例的联系方法。作用域全局性。
+example：Contact: &lt;sip:alice@pc33.atlanta.com&gt;
+</code></pre><h1 id="二、应答：transport-gt-transaction-gt-TU"><a href="#二、应答：transport-gt-transaction-gt-TU" class="headerlink" title="二、应答：transport -&gt; transaction -&gt; TU"></a>二、应答：transport -&gt; transaction -&gt; TU</h1><pre><code>1、transaction 层的错误
+timeout:408（请求timeout）
+严重错误：503（服务未提供）
+
+2、未知应答
+431（不认识的应答）
+400（非法请求）
+183（非终结应答响应）
+一个UAC必须能够处理100和183应答。
+
+3、Vias
+不只一个Via存在，丢弃
+
+4、3XX
+重定向
+&gt;399: 请求失败
+
+5、4XX
+重新请求采用一个新的transaction并且应该有和上次请求相同的Call-ID,TO,From头域，Cseq应该有一个新的顺序号码（比原有顺序号码更大）
+401（未授权）
+407（Proxy认证需要）
+-&gt;UAC重新发送带认证信息的请求
+413（请求过大）
+-&gt;尝试重新retry这个请求
+415（不支持的媒体类型）
+-&gt;重新请求，包含应答中的Accept头域所指明的媒体类别，并且采用Accept-Encoding头域中指明的encoding方法，还有Accept-Language指明的语言。
+416（不支持的URI Scheme）
+-&gt;重新请求，并且换用SIP URI
+420（非法扩展）
+-&gt;重新请求，去掉应答中的Unsupported头域中列出的扩展
+</code></pre><h1 id="三、UAS处理过程"><a href="#三、UAS处理过程" class="headerlink" title="三、UAS处理过程"></a>三、UAS处理过程</h1><pre><code>身份认证 -&gt; 方法判定 -&gt; 头域 -&gt; 消息体
+
+1、方法判定
+UAS不能处理请求的方法，应答405（方法不支持）。应答中增加一个Allow头域。这个Allow头域必须列明哪些方法UAS支持。
+
+2、包头判断
+不认识的头域，略掉头域继续处理请求
+1) TO的URI
+URI地址不相符，自行决定，建议处理，如果拒绝请求，应答403（禁止访问）。
+URI方案不支持（比如tel:URI），拒绝请求，应答416（不支持的URI方案）。
+URI没有指明本UAS来处理这个请求，应答404（未找到）。
+2) 合并的请求
+To头域中没有tag，刚接收到的请求和正在处理的请求中的头域From tag,Call-ID,CSeq精确匹配，但是并不匹配事务，这是由于相同的请求通过不同的路径到达UAS，应答482（检测到循环）。
+3) Require
+请求用Require指定SIP扩展，如果UAS不支持Require中的option-tag列表，应答420（错误的扩展），添上Unsupported头域，里边填上请求的Require头域中不支持的options。
+
+3、内容处理
+不支持消息体的类型（Content-Type指明），语言（Content-Language指明），编码（Content-Encoding指明），并且消息体部分并非可选的消息体（Content-Disposition头域指明）, 应答415错误（不支持的媒体类型）
+如果不支持请求中包含的消息体的正文类型，那么在应答中必须包含UAS所支持的消息体的类型列表（在Accept头域中指明）。
+如果不支持请求包含的消息体的encoding方式，那么应答中必须包含Accept-Encoding头域列明服务端支持的encoding方式。如果请求中的语言部分不支持，那么就必须在应答中包含Accept-Language头域列明支持的语言。
+
+4、应用扩展
+如果UAS不用扩展就无法处理请求，应答421（需要扩展支持），在Require头域中指出需要的扩展。
+
+5、处理请求
+REGISTER、OPTIONS、INVITE、BYE
+
+6、产生应答
+1) 临时应答
+非INVITE请求的情况下，UAS不应该发送临时应答，应该尽快发送一个终结应答。
+应答100（Trying），请求包头的Timestamp域 + 延时值(接收请求和发送应答的时间，用秒来计数)。
+2) 包头和tags
+TO, FROM, Cseq, Call-ID, Via必须相等，To头域没有tag增加一个，有则使用原来的
+</code></pre><h1 id="四-CANCEL"><a href="#四-CANCEL" class="headerlink" title="四 CANCEL"></a>四 CANCEL</h1><pre><code>1) 它请求UAS去终止上一个请求并且对上一个请求产生一个错误的应答，对UAS已经给出终结应答的请求无效。最大用处是取消需要服务器长时间处理的请求。
+2) 当INVITE还没有得到终结应答的时候，UAS会”停止振铃”，并且给INVITE请求一个错误的应答（487）
+3) CANCEL是一个”点对点”（hop-by-hop）的请求，也就是说，CANCEL需要每一个有状态的proxy节点进行处理和应答。一个无状态的proxy会转发这个请求，一个有状态的proxy可能会响应。
+
+1、客户端
+1) 不应该取消除了INVITE之外的请求。因为其它请求都是立即响应的，所以，取消一个非INVITE请求总是形成一种赛跑的局面（就是说，cancel先到还是被取消的请求先到）。
+2) Request-URI , Call-ID , To , Cseq的数字部分，From和被取消的请求一样，包含tags。
+3) 必须只有一个Via头，和被取消的请求的最上一个Via头域值相同。
+4 )Cseq请求头域的method部分必须是一个CANCEL方法。
+5) 客户端等到了第一个临时应答才能发送CANCEL请求
+6) 如果允许在接收应答之前发送CANCEL请求，那么服务端必须支持在接收原始请求之前接收到CANCEL请求。
+7) 如果原始请求经过了64*T1秒还没有应答，客户端应当认为原始请求已经取消，并且应当销毁对应原始请求的客户端事务。
+
+2、服务器端
+1) UAS不能找到与CANCEL请求相匹配的事务，应答481（调用的Leg/Transaction不存在 会话/事务不存在）
+2) 如果终结应答已经发出了，不会对原始请求做任何处理。
+3) 如果原始请求方法是INVITE，UAS立刻应答487（请求终止）。
+</code></pre><h1 id="五、REGISTER"><a href="#五、REGISTER" class="headerlink" title="五、REGISTER"></a>五、REGISTER</h1><pre><code>如果一个用户希望建立和其他用户的会话，SIP必须查找能够找到对方用户正在使用的当前主机(hosts)，基于这个用户的位置信息来判定当前消息应该发送到哪里。
+位置服务是通过对特定地区提供地址绑定来实现的。这些地址绑定转换输入的SIP或者SIPS URI，到一个或者一组更加”接近”目标用户的URI。
+注册服务为特定地区的位置服务创建绑定关系。
+
+1、构造请求
+REGISTER请求用来增加、删除、查询绑定资料，一个REGISTER请求并不建立一个对话。UA在没有收到上一个注册请求的应答或者上一个REGISTER请求超时之前，禁止发送新的注册请求。
+
+字段：
+Request-URI: 指明位置服务所在的区域（比如sip:chicago.com）。”userinfo”和”@”元素在SIP URI中不能出现。
+To： 包含address-of-record，和Request-URI头域通常是不同的。由用户名组成，必须是一个URI.
+From: 包含提交注册信息的用户的address-of-record资料。和To头域的值相同，除非这个请求是第三方发起的注册请求。
+Call-ID: 同一UAC应该相同。如果同一UAC的Call-ID不同，注册服务器就不能检测是否一个REGISTER请求因为延时导致了故障。
+Cseq: 保证了REGISTER请求的正确顺序。每一个Call-ID相同的REGISTER请求，Cseq顺序递增。
+*Contact: 可选，可以有0个或者多个包含绑定地址信息的值。
+
+2、增加绑定
+1) REGISTER请求是向注册服务器（registrar）发送SIP请求的实际联系地址，包含在To中，Contact中是完整的绑定列表。
+2) 客户端设置有效期的方法有两种：Expires头域（全局），”expires”contact头域（单地址）。 两个都没有，服务器决定。
+3) 一个REGISTER请求包含多个Contact，说明这些Contact地址都和To头域中指定的地址绑定起来。用”q”参数来区分优先级。
+
+3、删除绑定
+1) 一个UA可以通过发出有效期为”0”的REGISTER请求，使某一个联系地址立刻失效。
+2) Contact头域为”*”则表示操作所有的注册项。但是也只能在具有一个Expires头域并且这个头域为’0’的情况下能够使用。（这就是说，只能够在要删除所有的注册项的时候使用”*”）。
+
+4、访问绑定
+无论请求是否包含了Contact头域，给任何REGISTER请求的成功应答都包含了一个完整的绑定列表。
+
+5、刷新绑定
+在注册服务器（registrar）给出的200（OK）应答中，包含了的Contact头域中列明了所有的当前绑定信息。UA要挨个比较，绑定信息过期前为每个绑定发出REGISTER请求更新expires参数。
+
+6、设置内部时钟
+如果REGISTER请求的应答中包含一个Date头域，客户端可以用这个头域来校正当前内部的时钟。
+
+7、寻找注册服务器
+三种：通过配置，使用address-of-record,广播方式
+UA可以通过监听广播的形式来获得注册服务器地址。”全部SIP 服务器”广播地址”sip.mcast.net”(224.0.1.74)。
+
+8、传送一个请求
+超时不要立即重发
+
+9、错误响应
+收到423（间隔太简略）应答，更改有效期大于等于423应答头中的Min-Expires头域中的有效期，重新请求
+
+10、处理请求
+注册服务器禁止产生6xx应答，可以适当的转发REGISTER请求。通常用于一个注册服务器（registar）监听一个多点广播，并且通过302应答（临时转移）转发这个多点广播的REGISTER请求到它正确的处理位置。
+1) 区域检查URI
+2) 处理Require头
+3) 对UAC身份认证
+4) 检查用户登记权限
+5) 解析TO头是否在Request-URI中-&gt;标准格式-&gt;绑定列表
+6) 检查Contact头域是否为”*”
+7) 处理contact中的地址
+8) 返回一个200（OK）应答，必须包含带expires参数的Contact头域，列举所有绑定信息，必须包含Date头域。
+</code></pre><h1 id="六、查询-OPTIONS"><a href="#六、查询-OPTIONS" class="headerlink" title="六、查询 OPTIONS"></a>六、查询 OPTIONS</h1><pre><code>OPTIONS用来查询一下UAS，通过检查OPTIONS返回的Supported头域，可以知道是否支持这个选项。
+应答没有消息体
+Allow，Accept,Accept-Encoding,Accept-Language,和Supported头域应当在200（OK）应答中出现，Contact头域可以出现。
+
+OPTIONS请求的例子：
+OPTIONS sip: carol@chicago.com
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9Hg4bKhjhs8ass877
+Max-Forwards: 70
+To: &lt;sip:carol@chicago.com&gt;
+From: Alice &lt;sip:alice@atlanta.com&gt;;tag=1928301774
+Call-ID: a84b4c76e66710
+Cseq : 63104 OPTIONS
+Contact: &lt;sip:alice@pc33.atlanta.com&gt;
+Accept: application/sdp
+Content-Length: 0
+
+UAS生成的OPTIONS应答例子。
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bKhjhs8ass877
+; received = 192.0.2.4
+To: &lt;sip:carol@chicago.com&gt;;tag=93810874
+From: Alice &lt;sip:alice@atlanta.com&gt;;tag=1928301774
+Call-ID: a84b4c76e66710
+Cseq: 63104 OPTIONS
+Contact: &lt;sip:carol@chicago.com&gt;
+Contact: mailto:carol@chicago.com
+Allow: INVITE,ACK,CANCEL,OPTIONS,BYE
+Accept: application/sdp
+Accept-Encoding: gzip
+Accept-Language: en
+Supported: foo
+Content-Type: application/sdp
+Content-Length:274
+(SDP not shown)
+</code></pre><h1 id="七、对话dialog"><a href="#七、对话dialog" class="headerlink" title="七、对话dialog"></a>七、对话dialog</h1><pre><code>dialog IDID由Call-ID，本地tag和远程tag组成。各个UA的dialog ID在对话中是不一样的。
+UAC：dialog ID:Call-ID -&gt; 消息:Call-ID ; 远程tag、URI -&gt; To:tag、URI   ; 本地tag、URI - &gt; From:tag、URI
+UAS：dialog ID:Call-ID -&gt; 消息:Call-ID ; 远程tag、URI -&gt; From:tag、URI ; 本地tag、URI - &gt; To:tag、URI
+(UAC是本地，UAS是远程)
+
+特定状态：dialog ID + 本地序列号（用来排序UA到对方的请求的序列）+ 远程序列号（用来排序请求从远端到本UA）+　本地URI + 远端URI + remote target + 布尔类型的标记”secure” + 路由集合（一组有序的URI）
+
+对话状态：
+early：收到临时应答而创建，
+confirmed：收到了2xx终结应答。对于其他应答，或者没有应答，early对话将会终结。
+
+1、创建
+由对一组特定请求的没有失败的应答创建，包含To tag的2xx和101－199应答，并且请求是INVITE。
+UAS：
+拷贝所有的请求中的Record-Route头域到应答中去（包括URI,URI参数，和其他任何Record-Route头域的参数，无论UAS是不是认识的参数都需要原样拷贝），并且必须维持这些参数的顺序。增加一个Contact头域，包含一个UAS在后续对话请求中接收请求的地址。远程序列号必须设置成为请求中的Cseq头域的序列号。本地序列号必须设置成为空。
+UAC：
+请求必须在Contact中提供URI
+本地序列号必须设置成为请求中的Cseq头域的序列号。远程序列号必须设置成为空
+
+2、对话中的请求
+INVITE建立的对话来，唯一的能够刷新target的请求就是re-INVITE
+刷新target请求只会更改对话的remote target URI，并且更改由Record-Route指定的路由集合。
+UAC：
+1)产生请求
+2)应答
+481（呼叫/事务不存在Call/Transaction Does Not Exits）或408(请求超时)：终止对话
+2xx应答：如果对话的remote target URI存在，用应答的Contact头域的值来替换对话的remote target URI。
+UAS：
+校验Call-ID，匹配tag-&gt;对话中
+拒绝请求：应答481（呼叫/事务不存在。Call / Transaction不存在）
+Cseq非顺序（比原来的小）：应答500（服务器内部错误）
+
+3、终止对话
+非2xx终结应答终止”早期对话”(early dialogs)
+BYE方法终结对话
+</code></pre><h1 id="八、建立会话"><a href="#八、建立会话" class="headerlink" title="八、建立会话"></a>八、建立会话</h1><pre><code>终结应答前临时应答：1xx
+接收请求：应答2xx
+拒绝邀请：应答3xx，4xx，5xx或者6xx
+对于在300到699的终结应答，ACK是在transaction层处理的。对于2xx应答，ACK是由UAC处理核心产生的。
+INVITE的一个2xx应答会建立一个会话，支持INVITE的UA也一定同时支持ACK,CANCEL和BYE。
+
+UAC处理：
+
+1、创建INVITE
+Allow头域：dialog的方法
+Supported头域：UAC支持的扩展部分
+Accept头域：后续对话兼容的Content-Type，支持不同会话描述格式（session descrioption format）时用
+Expire头域：有效期，时间到了没收到终结应答，产生CANCEL请求
+此外还有Subject、Organization、User-Agent头域
+
+请求和应答（协商）的限制：
+o 初始化请求必须在INVITE中，如果不在INVITE请求中，就必须在UAS回送给UAC的第一个非失败的可靠消息中, 即2xx应答。
+o 如果初始的请求是一个INVITE，那么应答必须是可靠的非失败的消息, 即2xx应答。UAC必须把收到的第一个会话描述当作是应答，并且忽略对此INVITE请求后续的会话描述。
+o 给2xx应答ACK确认
+o 上一个请求尚未收到应答情况下不能发起下一个请求
+o 禁止UAS在应答初始的INVITE请求的中产生后续的请求（协商会话描述请求）
+
+媒体协商的请求既可以在UAC发起的INVITE请求中，也可以在UAS回应的2xx应答中。
+媒体协商的应答既可以在UAS的2xx应答或者1xx应答中，也可以在ACK确认请求中。
+所UA都必须支持会话描述协议（session description protocol sdp）
+
+2、处理应答
+UAS处理INVITE客户事务层返回一个超时，同408（请求超时）
+
+1XX：临时应答
+1) 终结应答之前收到，建立”early dialogs”。
+2) 如果临时应答To头域中有tag，并且dialog ID并不是已经存在的对话的ID，创建新对话。如果一个UAC需要在完成初始的INVITE3) 事务之前，给对方发送一个对话内的请求的时候，就需要early dialog。在临时应答中的头域可以在当对话是early state的时候都有效。
+4) 一个临时应答的Allow 头域包含的方法，在对话状态是early state的时候都是有效的。由于Allow是允许的方法集合，所以，当对话状态是早期对话的时候，这个Allow的集合是不会改变的，但是当创建正式的dialog之后，Allow的集合可能会改变。
+
+3xx:重定向应答
+可能包含一个或者多个Contact头域，提供了被叫方可能存在的地址。UAC可以根据应答的状态码来决定是否尝试新地址。
+
+4xx,5xx,6xx：
+1) 如果包含Contact头域，那么这个头域值指示了错误的详细信息的解释地点。后续的终结应答必须被忽略掉。
+2) 所有的早期对话都会由于接收到非2xx终结应答而结束。UAC处理核心就认为INVITE事务结束了。INVITE客户事务处理生成对这个应答的ACK。
+
+2xx:
+1) 单个INVITE请求可能产生多个2xx应答，因为proxy可以分支。每一个应答由To中的tag参数进行区分，代表一个独立的对话，具备单独的对话ID。
+2) 如果在2xx应答中的对话ID和一个现存的对话匹配，那么这个对话必须切换到”confirmed”状态，并且对话的路由集合由于需要向后兼容必须基于2xx的应答进行重新计算（其它部分比如对话内的最大的序列号（远程的和本地的）等都不需要重新计算）。如果不匹配，那么必须创建一个具备”confirmed”状态的新对话。（UAS还是UAC？）
+3) UAC核心必须为每一个2xx应答产生一个ACK请求。除了在Cseq和身份认证相关的头域之外，ACK请求的头域的创建和在对话中的请求创建的方法一样。Cseq头域的序列号部分和INVITE请求一样，方法部分是ACK。ACK必须包含和INVITE请求相同的信任状。如果2xx包含一个媒体协商请求（基于上述的规则），ACK必须在包体中包含一个媒体协商应答。如果2xx应答的媒体协商请求不能被接收，UAC核心必须产生一个应答ACK，并且立刻发送一个BYE请求。
+4) ACK创建以后，检测对方地址，端口和transport，直接交给通讯层，由UAC核心直接处理ACK的重发，不是事务层。
+5) UAC核心认为INVITE事务在接收到第一个2xx应答后的64×T1秒后完成。以后所有没有转换成为建立连接状态的早期对话都会被终止。一旦UAC确认INVITE事务完成了，那么缺省认为不会收到新的2xx应答了。如果，在响应全部应答之后，UAC并不希望创建这个对话，那么UAC必须发送BYE请求来结束对话。
+
+UAS处理：
+
+1、过程
+1) INVITE请求包含Expires头域，UAS核心就设置一个时钟计数＝这个头域值。时钟到了邀请过期。如果在UAS尚未产生终结应答的时候就超时了，应答487（请求终止）。
+2) 对话中的请求
+3) 请求的To头域包含tag，但是Call-ID与现存的不匹配，可能是UAS重启，或者请求错误，处理方式由UAS决定。
+4) INVITE请求并没有包含会话描述（session description），表示UAS被邀请创建一个会话，返回2xx应答包含offer。
+
+2、提示进度
+1) 如果不能马上接受或者拒绝邀请，返回101到199的临时应答以建立早期对话（early dialog）表示进度，内容如回铃声等。
+2) 如果打算延长响应时间，UAS需要请求一个”extension”来防止proxy来取消这个事务。proxy有权利来取消超过3分钟未完成的事务。要防止这个取消，UAS必须每分钟发送一个非100临时应答，防止由于1xx临时应答的非可靠传输导致的临时应答丢失。
+3) 如果呼叫处于等待状态或者这个呼叫正在通讯，一个INVITE事务可以被延长处理时间。
+
+3、请求转发
+UAS转发请求，应答3xx。300（多重选择），301（永久转移），302（临时转移）应答中应当包含一个Contact头域，表明需要重试的URI新地址。由服务端事务层负责应答的重发。
+
+4、拒绝请求
+不接收：应答486（用户忙）
+无响应终端：应答600（Busy Everywhere）
+拒绝的请求包含的媒体协商offer：应答488（Not Acceptable Here），包含Warning头域进行解释
+
+5、接受请求
+1) 应答2xx建立一个对话，包含Allow头域和Supported头域，并且可能包含Accept头域，目的是说明UAS的特性以及UAS的扩展支持
+2) 2xx应答必须包含这个媒体协商offer。
+3) 在没有收到ACK的时候，间隔一定的时间重发。时间间隔从T1秒开始，并且每次发送后就加倍，直到到达T2秒的时间间隔。
+重发经过了64×T1秒还没有收到ACK请求，那么dialog就认为是confirmed，会话应当终止。
+</code></pre><h1 id="九、更改已经存在的会话"><a href="#九、更改已经存在的会话" class="headerlink" title="九、更改已经存在的会话"></a>九、更改已经存在的会话</h1><pre><code>在一个现存对话中发出INVITE请求就是re-INVITE，单个的re-INVITE请求可以同时更改对话和会话的参数。
+
+UAC行为：
+1) re-INVITE请求中的To,From,Call-ID,Cseq,Request-URI头域和INVITE一样
+2) INVITE可以分支,re-INVITE不能分支，只会有一个终结应答。
+3) 在相同的对话中，UAC不能在上一个INVITE请求完成前（无论是那一方发起的INVITE）再次发起一个新的INVITE。
+4) UA可以同时处理INVITE事务和普通事务。
+5) 如果UA接收到一个针对re-INVITE的非2xx终结应答，则会话参数不能改变
+   481（Call/Transaction Does Not Exists）
+   408（Request Timeout）
+   完全没有re-INVITE请求的应答（从INVITE客户事务端返回一个超时）:
+   UAC会终止这个对话。
+   491:
+   启动一个值为T的时钟,如果UAC是这个dialog ID的Call-ID的拥有者，T取2.1到4秒的随机数，否则取0到2秒的随机数，单位是10ms。时钟到期前，如果UAC还希望再次尝试更改会话参数，应当再次尝试re-INVITE。
+
+UAS行为：
+1) UAS在发送第一个INVITE的终结应答之前，收到第二个INVITE请求，并且这个请求的Cseq序列号大于第一个INVITE请求，那么就应当给第二个INVITE请求返回一个500（服务器内部错误）应答，并且必须包含一个Retry-After头域，这个头域中应当包含一个0－10秒的随机数。
+2) 收到了一个在同一个对话上的INVITE请求，应答491（Request Pending）
+3) 收到现存的对话的re-INVITE，检查关会话描述(session description)的版本标志（version identifiers）和正文，调整会话参数。
+4) 拒绝接受新的会话描述，应答488（Not Acceptable Here），包含Warning头域（说明拒绝的原因）
+5) 没有收到对2xx应答的ACK，产生BYE结束对话
+</code></pre><h1 id="十、结束会话"><a href="#十、结束会话" class="headerlink" title="十、结束会话"></a>十、结束会话</h1><pre><code>1) INVITE请求产生的非2xx终结应答，会终结由本次请求创建的任何会话和对话。
+2) UA禁止在对话外发送BYE请求。
+3) 在一个建立好的对话中，被叫方的UA不能在接收到对应2xx应答的ACK请求前发送BYE请求。
+4) CANCEL是尝试强制给INVITE请求一个非2xx应答。，一般情况下，如果UAC希望cancel 这个INVITE请求，那么就会发出CANCEL请求，如果接收到了非2xx的终结应答，就意味着CANCEL掉了，但是如果接收到的还是2xx应答，就说明没有CANCEL掉，没有CANCEL掉呢，就可以选择继续建立会话，或者说发送一个BYE来终结会话
+5) 允许用户在不摘机的情况下拒绝呼叫，可以用403（Forbidden）来作为INVITE的应答，在这样的情况下，BYE不能发送。
+
+UAC:
+如果BYE请求的应答是481（Call/Transaction Does Not Exists）或者408（Request Timeout）或者BYE请求压根没有应答（就是说客户端事务返回一个超时），UAC必须认为会话和对话都已经结束。
+
+UAS:
+1) 匹配对话，失败则应答481（Call / Transaction Does Not Exists ），说明BYE请求可能没有带tag。
+2) 多方会话可选择不终止对话，返回200 ok
+</code></pre><h1 id="十一、proxy"><a href="#十一、proxy" class="headerlink" title="十一、proxy"></a>十一、proxy</h1><pre><code>U1:example.com
+U2:domain.com
+P1:example.com
+P2:domain.com
+
+U1-&gt;P1-&gt;P2-&gt;U2的过程:
+
+U1 -&gt; P1 : INVITE
+INVITE sip:callee@domain.com SIP/2.0
+Contact: sip:caller@u1.example.com
+
+P1 -&gt; P2 : INVITE
+INVITE sip:callee@domain.com SIP/2.0
+Contact: sip:caller@u1.example.com
+Record-Route: &lt;sip:p1.example.com; lr&gt;
+
+P2 -&gt; U2 : INVITE
+INVITE sip:callee@u2.domain.com SIP/2.0
+Contact: sip:caller@u1.example.com
+Record-Route: &lt;sip:p2.domain.com; lr&gt;
+Record-Route: &lt;sip:p1.example.com; lr&gt;
+
+U2 -&gt; U1 : 200 OK
+SIP/2.0 200 OK
+Contact: sip: callee@u2.domain.com
+Record-Route: &lt;sip:p2.domain.com;lr&gt;
+Record-Route: &lt;sip:p1.example.com;lr&gt;
+
+U2回复200 ok后设置remote target URI和route集合：
+sip: caller@u1.example.com
+&lt;sip:p2.domain.com;lr&gt;,&lt;sip:p1.example.com;lr&gt;
+
+U1收到200 ok后设置remote target URI和route集合：
+sip:callee@u2.domain.com并且它的路由集合是：
+&lt;sip:p1.example.com;lr&gt;,&lt;sip:p2.domain.com;lr&gt;
+
+U1 -&gt; U2 : BYE
+BYE sip:callee@u2.domain.com SIP/2.0
+Route: &lt;sip:p1.example.com;lr&gt;,&lt;sip:p2.domain.com;lr&gt;
+</code></pre><h1 id="十二、事务-Transactions"><a href="#十二、事务-Transactions" class="headerlink" title="十二、事务 Transactions"></a>十二、事务 Transactions</h1><pre><code>SIP基于事务处理，事务 = 请求 + 临时应答...（1xx） + 终结应答（2xx ~ 6xx）
+特别的，对于INVITE：事务 = INVITE + 非2xx应答 + ACK ， 2XX应答不算Tracsaction的部分，因为ACK由UAC负责重传，200 ok由UAS负责重传
+
+UAC：状态机
+1、INVITE：多方、延时长
+1) 三方握手 ： UAC : INVITE -&gt; UAS : 应答 -&gt; UAC : ACK
+2) 每隔T1重发请求，每次重发时间加倍，收到1xx应答重发停止，等待进一步应答。
+3) T1：估计循环时间（round-trip time，RTT），default = 500ms。64T1 = 7次重发。
+4) 客户端事务进入”terminate”状态以后必须立刻销毁。
+5) ACK：2xx（UAC核心，UAS已销毁）、 非2xx
+
+                               |INVITE from TU
+             Timer A fires     |INVITE sent
+             Reset A,          V                      Timer B fires
+             INVITE sent +-----------+                or Transport Err.
+               +---------|           |---------------+inform TU
+               |         |  Calling  |               |
+               +--------&gt;|           |--------------&gt;|
+                         +-----------+ 2xx           |
+                            |  |       2xx to TU     |
+                            |  |1xx                  |
+    300-699 +---------------+  |1xx to TU            |
+   ACK sent |                  |                     |
+resp. to TU |  1xx             V                     |
+            |  1xx to TU  -----------+               |
+            |  +---------|           |               |
+            |  |         |Proceeding |--------------&gt;|
+            |  +--------&gt;|           | 2xx           |
+            |            +-----------+ 2xx to TU     |
+            |       300-699    |                     |
+            |       ACK sent,  |                     |
+            |       resp. to TU|                     |
+            |                  |                     |      NOTE:
+            |  300-699         V                     |
+            |  ACK sent  +-----------+Transport Err. |  transitions
+            |  +---------|           |Inform TU      |  labeled with
+            |  |         | Completed |--------------&gt;|  the event
+            |  +--------&gt;|           |               |  over the action
+            |            +-----------+               |  to take
+            |              ^   |                     |
+            |              |   | Timer D fires       |
+            +--------------+   | -                   |
+                               |                     |
+                               V                     |
+                         +-----------+               |
+                         |           |               |
+                         | Terminated|&lt;--------------+
+                         |           |
+                         +-----------+
+
+2、非INVITE：双方、迅速
+不应答ACK，不对2xx应答做特别处理
+
+
+                                   |Request from TU
+                                   |send request
+               Timer E             V
+               send request  +-----------+
+                   +---------|           |-------------------+
+                   |         |  Trying   |  Timer F          |
+                   +--------&gt;|           |  or Transport Err.|
+                             +-----------+  inform TU        |
+                200-699         |  |                         |
+                resp. to TU     |  |1xx                      |
+                +---------------+  |resp. to TU              |
+                |                  |                         |
+                |   Timer E        V       Timer F           |
+                |   send req +-----------+ or Transport Err. |
+                |  +---------|           | inform TU         |
+                |  |         |Proceeding |------------------&gt;|
+                |  +--------&gt;|           |-----+             |
+                |            +-----------+     |1xx          |
+                |              |      ^        |resp to TU   |
+                | 200-699      |      +--------+             |
+                | resp. to TU  |                             |
+                |              |                             |
+                |              V                             |
+                |            +-----------+                   |
+                |            |           |                   |
+                |            | Completed |                   |
+                |            |           |                   |
+                |            +-----------+                   |
+                |              ^   |                         |
+                |              |   | Timer K                 |
+                +--------------+   | -                       |
+                                   |                         |
+                                   V                         |
+             NOTE:           +-----------+                   |
+                             |           |                   |
+         transitions         | Terminated|&lt;------------------+
+         labeled with        |           |
+         the event           +-----------+
+         over the action
+         to take
+
+3、事务匹配
+1) Via头branch域和创建时相同，Cseq头的方法参数和创建时相同
+
+4、处理通讯错误
+通知TU通讯失败，直接转到”Terminate”状态
+
+UAS：状态机
+1、INVITE事务
+1) 应答100（Trying）时，如果接收的请求头中的To头域没有tag标志，也不应该增加tag标志。
+2) TU可以给服务端事务任意数量个临时应答。只要服务端事务在”proceeding”状态
+3) 设定”Confirmed”状态的目的是为了处理任何附加的ACK，
+4) 事务进入”terminate”状态以后必须立刻销毁。
+
+                               |INVITE
+                               |pass INV to TU
+            INVITE             V send 100 if TU won&apos;t in 200ms
+            send response+-----------+
+                +--------|           |--------+101-199 from TU
+                |        | Proceeding|        |send response
+                +-------&gt;|           |&lt;-------+
+                         |           |          Transport Err.
+                         |           |          Inform TU
+                         |           |---------------&gt;+
+                         +-----------+                |
+            300-699 from TU |     |2xx from TU        |
+            send response   |     |send response      |
+                            |     +------------------&gt;+
+                            |                         |
+            INVITE          V          Timer G fires  |
+            send response+-----------+ send response  |
+                +--------|           |--------+       |
+                |        | Completed |        |       |
+                +-------&gt;|           |&lt;-------+       |
+                         +-----------+                |
+                            |     |                   |
+                        ACK |     |                   |
+                        -   |     +------------------&gt;+
+                            |        Timer H fires    |
+                            V        or Transport Err.|
+                         +-----------+  Inform TU     |
+                         |           |                |
+                         | Confirmed |                |
+                         |           |                |
+                         +-----------+                |
+                               |                      |
+                               |Timer I fires         |
+                               |-                     |
+                               |                      |
+                               V                      |
+                         +-----------+                |
+                         |           |                |
+                         | Terminated|&lt;---------------+
+                         |           |
+                         +-----------+
+
+2、非INVITE事务
+当收到一个不是INVITE或者ACK的请求的时候，状态机会初始化成为”trying”状态
+
+                                  |Request received
+                                  |pass to TU
+                                  V
+                            +-----------+
+                            |           |
+                            | Trying    |-------------+
+                            |           |             |
+                            +-----------+             |200-699 from TU
+                                  |                   |send response
+                                  |1xx from TU        |
+                                  |send response      |
+                                  |                   |
+               Request            V      1xx from TU  |
+               send response+-----------+send response|
+                   +--------|           |--------+    |
+                   |        | Proceeding|        |    |
+                   +-------&gt;|           |&lt;-------+    |
+            +&lt;--------------|           |             |
+            |Trnsprt Err    +-----------+             |
+            |Inform TU            |                   |
+            |                     |                   |
+            |                     |200-699 from TU    |
+            |                     |send response      |
+            |  Request            V                   |
+            |  send response+-----------+             |
+            |      +--------|           |             |
+            |      |        | Completed |&lt;------------+
+            |      +-------&gt;|           |
+            +&lt;--------------|           |
+            |Trnsprt Err    +-----------+
+            |Inform TU            |
+            |                     |Timer J fires
+            |                     |-
+            |                     |
+            |                     V
+            |               +-----------+
+            |               |           |
+            +--------------&gt;| Terminated|
+                            |           |
+                            +-----------+
+
+3、事务匹配
+1) Via头branch参数和创建时相同,且以”z9hG4bk”开头
+2) Via头sent－by参数和创建时相同,
+3) 请求和创建的方法一样。除了ACK对应的请求方法是INVITE。
+
+4、处理通讯错误
+把应答发送到备份地点。如果也失败就应当通知TU发送失败，并且切换到终止状态。
+</code></pre><h1 id="十三-通讯-Transport"><a href="#十三-通讯-Transport" class="headerlink" title="十三 通讯 Transport"></a>十三 通讯 Transport</h1><pre><code>当发送（或者接收）完成最后一个消息之后，依旧维持连接至少64×T1秒时间，即本节点的事务从创建到结束的最长时间，这是为了让事务能够在他们所创建的同一个连接上完成。
+所有的SIP元素都必须实现基于UDP和TCP的通讯。
+
+UAC:
+1、发送请求
+1) 如果客户端向多个地址发送请求，那么必须增加”maddr”参数到Via头域值上，并且这个参数值指定多个目的地址，对于Ipv4来说，应当增加”ttl”参数＝1。
+2) 在请求发送嵌，客户端通讯层必须在Via头域中增加一个”sent-by”栏。这个字段包含了一个IP地址或者主机名，端口。
+3) 如果端口不存在，缺省的值依赖于通讯协议。对于UDP，TCP和SCTP来说是5060，TLS是5061。
+4) 客户端传输层必须准备在发出请求的同一个连接上接收应答。
+
+2、接收应答
+检查Via头域”sent-by”参数，不匹配的”stray”(迷路)应答UA核心处理
+
+UAS:
+1、接收请求
+1) 能够接收任何IP地址、端口和协议的请求。
+2) UDP上监听的端口和界面，必须同时在TCP上监听，反正不一定。
+3) Via头域”sent-by”参数包含主机名，或者IP地址和包的源地址不同，转交到上层必须增加一个”received”参数到这个Via头域中,包含收到的包的原地址。
+
+从源IP：192.0.2.4收到请求：
+INVITE sip:bob@Biloxi.com SIP/2.0
+Via: SIP/2.0/UDP bobspc.biloxi.com:5060
+
+转交到上层增加”received”参数：
+INVITE sip:bob@Biloxi.com SIP/2.0
+Via: SIP/2.0/UDP bobspc.biloxi.com:5060；received=192.0.2.4
+4) 匹配失败交给核心，可能创建一个新事务来处理。
+5) 当UAS核心给INVITE请求发送一个2xx应答的时候，服务端事务已经销毁了。这就是说，当ACK收到的时候，不会有匹配的服务端事务，并且基于这个规则，ACK回交给UAS核心来处理。
+
+2、发送应答
+使用的Via头域决定应答发送到哪里:
+o 如果sent-protocol参数是一个可靠的传输协议比如TCP或者SCTP，或者在其上的TLS，应答必须用现存的到原始请求（创建这个事务的请求）的连接进行发送。如果连接不存在创建一个新的。如果存在received参数，用其指定的IP。如果存在sent-by参数，用其指定的port，如果不存在，那么就用缺省的port。
+o 否则，如果包含maddr参数，把应答转发到其指明的地址，使用sent-by指定的端口，如果没有sent-by，那么就使用缺省的5060。如果是一个多播地址，应答使用ttl参数所指定的TTL，或者如果没有指定，使用TTL=1。
+o 否则（对于非可靠传输），如果有received参数，必须发送其指定的地址，使用sent-by指定的端口，如果没有sent-by，那么就使用缺省5060。
+o 否则，如果没有receiver-标记，按指定的步骤送到sent-by参数指定的地址。
+
+3、分块
+1) 在面向消息的通讯协议中（比如UDP），如果消息有Content-Length头域，那么消息体就有可能包含很多字节。并且除Content-Length字节外，还有通讯层附加的字节，这些额外的字节应当被丢弃。如果通讯包在没有收到完整的Content-Length字节的消息体就终止了，这就意味着出错了。如果这个消息是应答，丢弃。如果是请求，应答400（Bad Request）。如果消息没有包含Content-Length头域，消息体的结束点就是消息的结束点。
+2) 在面向流的通讯协议中（比如TCP），Content-Length头域标志这包体的大小，必须使用Content-Length字段。
+
+4、错误处理
+非可靠传输协议：ICMP错误依赖于ICMP协议处理，Source quench和TTL exceeded ICMP错误忽略。
+可靠传输协议：连接错误
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/19/Sip协议-sip阅读笔记/" data-id="ciod4qqlz004wypfy7w1vw8tp" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Sip协议/">Sip协议</a></div><div class="post-nav"><a href="/2016/05/19/Q-A-Q-A——Linux网络编程-TCPIP协议基础/" class="pre">Q&amp;A——Linux网络编程 @ TCPIP协议基础</a><a href="/2016/05/19/Q-A-Q-A——Linux基础-高级IO/" class="next">Q&amp;A——Linux基础 @ 高级IO</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">236</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">1</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-面向模式的软件体系结构Vol1-《面向模式的软件体系结构-卷1-模式系统》/">《面向模式的软件体系结构 卷1-模式系统》</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记/">《高级C、C++编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第二十四章-带外数据/">第二十四章 带外数据</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第十四章-高级IO/">第十四章 高级IO</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

@@ -1,0 +1,488 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>framework | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">framework</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">framework</h1><div class="post-meta">May 19, 2016<span> | </span><span class="category"><a href="/categories/project-note/">project_note</a><a href="/categories/project-note/decode/">decode</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-类层次关系"><span class="toc-number">1.</span> <span class="toc-text">1. 类层次关系</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-接口调用关系"><span class="toc-number">2.</span> <span class="toc-text">2. 接口调用关系</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-模块初始化"><span class="toc-number">3.</span> <span class="toc-text">3. 模块初始化</span></a></li></ol></div></div><div class="post-content"><h1 id="1-类层次关系"><a href="#1-类层次关系" class="headerlink" title="1. 类层次关系"></a>1. 类层次关系</h1><pre><code>&lt;&lt;Core&gt;&gt;42
+&lt;core&gt;        [framework.h]        Framework::Core        class CLinkedResource
+&lt;core&gt;       [framework.h]        Framework::Core        class CFramework : public IFramework
+&lt;core&gt;        [attibute.h]        Framework::Core        class CAttributeBase
+&lt;core&gt;        [attibute.h]        Framework::Core        class CAttributeValue : public CAttributeBase
+&lt;core&gt;        [attibute.h]        Framework::Core        class CAttributeGroup: public CAttributeBase
+&lt;core&gt;        [communication.h]        Framework::Core        class CRemoteHostData   
+&lt;core&gt;        [communication.h]        Framework::Core        class CProcessData
+&lt;core&gt;        [environment.h]        Framework::Core        class CEnvironment
+&lt;core&gt;        [host.h]            Framework::Core        class CHost : public IFrameworkElement
+&lt;core&gt;        [library.h]            Framework::Library    class CAttributeType
+&lt;core&gt;        [library.h]            Framework::Library    class CRefResourceType
+&lt;core&gt;        [library.h]            Framework::Library    class CResourceType
+&lt;core&gt;        [library.h]            Framework::Library    class CModuleLibraryRelease
+&lt;core&gt;        [library.h]            Framework::Library    class CModuleLibrarySource
+&lt;core&gt;        [library.h]            Framework::Library    class CModuleLibraryCapability
+&lt;core&gt;        [library.h]            Framework::Library    class CModuleLibrary
+&lt;core&gt;        [library.h]            Framework::Library    class CLibrary
+&lt;core&gt;        [library.h]            Framework::Library    class CModuleLibrary
+&lt;core&gt;        [loader.h]            Framework::Core        class CLogTargetConfig
+&lt;core&gt;        [loader.h]            Framework::Core        class CLoaderConfig
+&lt;core&gt;        [loader.h]            Framework::Core        class CLoader
+&lt;core&gt;        [log.h]            Framework::Core        class CLog
+&lt;core&gt;        [message.h]            Framework::Core        class CMessageIterator
+&lt;core&gt;        [message.h]            Framework::Core        class CMessage
+&lt;core&gt;        [module.h]            Framework::Core        class CModule : public IFrameworkElement
+&lt;core&gt;        [process.h]            Framework::Core        class CProcess
+&lt;core&gt;        [resource.h]        Framework::Core        class CRefResourceData
+&lt;core&gt;        [resource.h]        Framework::Core        class CResource : public IFrameworkElement
+&lt;core&gt;        [status.h]            Framework::Core        class StatusBase
+&lt;core&gt;        [status.h]            Framework::Core        class StatusElement : public StatusBase
+&lt;core&gt;        [status.h]            Framework::Core        class StatusCounter : public StatusBase
+&lt;core&gt;        [status.h]            Framework::Core        class StatusGroup: public StatusBase
+&lt;core&gt;        [users.h]            Framework::Core        class CHostRights
+&lt;core&gt;        [users.h]            Framework::Core        class CResourceRights
+&lt;core&gt;        [users.h]            Framework::Core        class CUserBase
+&lt;core&gt;        [users.h]            Framework::Core        class CUserGroup : public CUserBase
+&lt;core&gt;        [users.h]            Framework::Core        class CUser: public CUserBase
+
+&lt;core&gt;        [FrameworkInclude.h]    Framework::Core        class IFrameworkBase
+&lt;core&gt;        [FrameworkInclude.h]    Framework::Core        class IFrameworkElement
+&lt;core&gt;        [FrameworkInclude.h]    Framework::Core        class IFrameworkContext
+&lt;core&gt;        [FrameworkInclude.h]    Framework::Core        class IModule
+&lt;core&gt;        [FrameworkInterface.h]  Framework::Core        class IFramework : public IFrameworkBase
+&lt;core&gt;        [FrameworkProtocol.h]   Framework::Core::Protocol    Interface Functions
+
+
+IFrameworkBase -&gt; IFramework -&gt; CFramework
+IFrameworkElement -&gt; CHost
+           -&gt; CModule
+          -&gt; CResource
+
+CAttributeBase    -&gt; CAttributeValue
+          -&gt; StatusElement
+StatusBase        -&gt; StatusElement
+          -&gt; StatusCounter
+          -&gt; StatusGroup
+CUserBase      -&gt; CUserGroup
+          -&gt; CUser
+
+-------------------------------------------------------------------------------------------------------------
+
+&lt;&lt;Helpers&gt;&gt;35+4
+&lt;Helpers&gt;    [CommHelper.h]        Framework::Helper::Communication    class Pipe
+&lt;Helpers&gt;    [CommHelper.h]        Framework::Helper::Communication    class Socket
+&lt;Helpers&gt;    [CommHelper.h]        Framework::Helper::Communication    class Serial
+&lt;Helpers&gt;    [CommHelper.h]        Framework::Helper::Communication    class Serial
+&lt;Helpers&gt;    [CrcHelper.h]        Framework::Helper::CRC            class Crc
+&lt;Helpers&gt;    [EventHelper.h]        Framework::Helper::Event        class MultiEvent
+&lt;Helpers&gt;    [ExpressionHelper.h]    Framework::Helper::Expression        class CCondBase
+&lt;Helpers&gt;    [ExpressionHelper.h]    Framework::Helper::Expression        struct CCondData : CCondBase
+&lt;Helpers&gt;    [ExpressionHelper.h]    Framework::Helper::Expression        class Evaluator
+&lt;Helpers&gt;    [FSHelper.h]        Framework::Helper::FileSystem        class IFileSystemElement
+&lt;Helpers&gt;    [FSHelper.h]        Framework::Helper::FileSystem        class File : public IFileSystemElement
+&lt;Helpers&gt;    [FSHelper.h]        Framework::Helper::FileSystem        class Directory : public IFileSystemElement
+&lt;Helpers&gt;    [FSHelper.h]        Framework::Helper::FileSystem        class Disk : public IFileSystemElement
+&lt;Helpers&gt;    [GuidHelper.h]        Framework::Helper::Guid            class Guid
+&lt;Helpers&gt;    [IOHelper.h]        Framework::Helper::IO            class IReader
+&lt;Helpers&gt;    [IOHelper.h]        Framework::Helper::IO            class IWriter
+&lt;Helpers&gt;    [LdapHelper.h]        Framework::Helper::Ldap            class CLdap
+&lt;Helpers&gt;    [MemoryHelper.h]    Framework::Helper::Memory        class DynBuffer
+&lt;Helpers&gt;    [ModuleHelper.h]    Framework::Helper::ModuleUtils        Interface Functions
+&lt;Helpers&gt;    [NetHelper.h]        Framework::Helper::Net            Interface Functions
+&lt;Helpers&gt;    [PlatformHelper.h]    Framework::Helper::Platform        class Cpu
+&lt;Helpers&gt;    [PlatformHelper.h]    Framework::Helper::Platform        class Memory
+&lt;Helpers&gt;    [ProcessHelper.h]    Framework::Helper::Process        class OS_Process
+&lt;Helpers&gt;    [QueueHelper.h]        Framework::Helper::Queue        class FifoElement
+&lt;Helpers&gt;    [QueueHelper.h]        Framework::Helper::Queue        class Fifo
+&lt;Helpers&gt;    [QueueHelper.h]        Framework::Helper::Queue        class FifoHeader
+&lt;Helpers&gt;    [QueueHelper.h]        Framework::Helper::Queue        class FastFifo
+&lt;Helpers&gt;    [StringHelper.h]    Framework::Helper::String        Interface Functions
+&lt;Helpers&gt;    [SynchHelper.h]        Framework::Helper::Synch        class Mutex
+&lt;Helpers&gt;    [SynchHelper.h]        Framework::Helper::Synch        class AutoMutex
+&lt;Helpers&gt;    [SynchHelper.h]        Framework::Helper::Synch        class RWMutex
+&lt;Helpers&gt;    [SynchHelper.h]        Framework::Helper::Synch        class AutoRWMutex
+&lt;Helpers&gt;    [SystemHelper.h]    Framework::Helper::System        Interface Functions
+&lt;Helpers&gt;    [ThreadingHelper.h]    Framework::Helper::Threading        class Thread
+&lt;Helpers&gt;    [TimeHelper.h]        Framework::Helper::Time            class TimeSpan
+&lt;Helpers&gt;    [TimeHelper.h]        Framework::Helper::Time            class DateTime
+&lt;Helpers&gt;    [TimerHelper.h]        Framework::Helper::Timer        class Timer
+&lt;Helpers&gt;    [XMLHelper.h]        Framework::Helper::XML            class XmlTextReader : public IO::IReader
+&lt;Helpers&gt;    [XMLHelper.h]        Framework::Helper::XML            class XmlTextWriter : public IO::IWriter
+
+
+IReader -&gt; XmlTextReader
+IWriter -&gt; XmlTextWriter
+CCondBase -&gt; CCondData
+IFileSystemElement -&gt; File
+                   -&gt; Directory
+                   -&gt; Disk
+
+-------------------------------------------------------------------------------------------------------------
+
+&lt;&lt;Library&gt;&gt;3+1
+&lt;FwClientInterface&gt;    [ClientModule.h]    Framework::Helper::App        class CClientVirtualModule : public Core::IModule
+&lt;FwClientInterface&gt;    [FwClientInterface.h]                    C Interface Functions
+&lt;SkeletonModule&gt;    [ModuleDeviceHandler.h]    Framework::Module        class CModuleDeviceHandler
+&lt;SkeletonModule&gt;    [ModuleDeviceHandler.h]    Framework::Module        class CSkeletonModule
+
+IModule -&gt; CClientVirtualModule
+
+-------------------------------------------------------------------------------------------------------------
+
+&lt;&lt;Share&gt;&gt;
+&lt;Share&gt;        [CondManager.h]        videosphere::Module            class CCondData
+&lt;Share&gt;        [CondManager.h]        videosphere::Module            class ICondManager
+&lt;Share&gt;        [Scheduler.h]        videosphere::Module:Scheduler        class CSchedulerInterval
+&lt;Share&gt;        [Scheduler.h]        videosphere::Module:Scheduler        class CScheduler
+
+-------------------------------------------------------------------------------------------------------------
+
+&lt;&lt;Loader&gt;&gt;
+略.
+</code></pre><h1 id="2-接口调用关系"><a href="#2-接口调用关系" class="headerlink" title="2. 接口调用关系"></a>2. 接口调用关系</h1><ul>
+<li><p>接口</p>
+<ul>
+<li><p><code>CFramework::DoSendMsg()&lt;-CFramework::IntSendMsg()&lt;-CFramework::SendMsg()</code>被模块调用，发送消息给host内的module（调用callback），或者其它host的</p>
+<pre><code>module（CFramework::DoSendMsg()-&gt;CLoader::SendMsgToRemoteHost-&gt;CRemoteHostData::SendMsg）             
+ReceiverThreadFnc()-&gt;HandleMessage()-&gt;CFramework::IntSendMsg()
+</code></pre></li>
+<li><p>从外部访问Framework接口：</p>
+<pre><code>FRMW_SetLogLevel()-&gt;
+CClientVirtualModule::SetLogLevel()-&gt;
+CFramework::SetLogLevel()-&gt;
+CLoader::SetHostLogLevel()-&gt;
+CRemoteHostData::SetLogLevel()-&gt;
+CRemoteHostData::PostFrmwMsg()
+</code></pre></li>
+<li><p>Helper与core之间的访问：</p>
+<pre><code>Framework-&gt;loder-&gt;Helper
+</code></pre></li>
+</ul>
+</li>
+<li><p>模块调用的发送消息接口 </p>
+<ul>
+<li><p>1)</p>
+<pre><code>CFramework::DoSendMsg():
+目标的Host Guid == Local Host：IModule::MsgClbk()
+否则发给远端Host： CLoader::SendMsgToRemoteHost()-&gt;
+                   CRemoteHostData::SendMsg()-&gt;   发送Evt信号给SenderThread 经过Edge OS协议发送
+</code></pre></li>
+</ul>
+</li>
+</ul>
+<pre><code>+ 2)
+
+        CFramework::SendMsg()-&gt;     需不需要wait Reply
+        CFramework::IntSendMsg()-&gt;  取得模块和资源的module、Host Guid
+        CFramework::DoSendMsg()  
+
++ 3)
+
+        CFramework::SendMsgToPeers()-&gt; 发给连接到资源的模块上
+        CFramework::IntSendMsgToPeers()-&gt; 获取资源连接
+        CFramework::DoSendMsg()
+
+
++ 4)
+
+        CFramework::SendMsgAndWaitReply()-&gt;
+        CFramework::IntSendMsg()-&gt; 
+        CFramework::DoSendMsg()-&gt; 
+        CRemoteHostData::SendMsg()         wait Reply
+</code></pre><ul>
+<li><p>模块发送状态接口</p>
+<pre><code>CFramework::IntSetStatusValue()
+CFramework::IntIncStatusCounter()
+CFramework::IntRemoveStatus()
+</code></pre><ul>
+<li><p>1) 发送给远端host</p>
+<pre><code>上述接口-&gt;
+CFramework::NotifyStatus()-&gt;
+CLoader::NotifyStatusToHosts()-&gt;
+UtilityThreadEvt-&gt;SetEvent(UT_STATUS_DATA)
+</code></pre></li>
+</ul>
+</li>
+</ul>
+<pre><code>+ 2) 发送给本地host
+
+        上述接口-&gt;
+        CFramework::NotifyStatusByType()-&gt;
+        CModule::StatusChanged()-&gt;
+        IModule::StatusChanged()            模块内部接口
+</code></pre><ul>
+<li><p>资源status </p>
+<ul>
+<li><p>1)创建</p>
+<pre><code>CFramework::GetResourceStatus()
+CFramework::GetModuleStatus()
+CFramework::GetHostStatus()
+创建status时保存属主GUID
+</code></pre></li>
+<li><p>2)添加Listener</p>
+<pre><code>CFramework::AddResourceListener()
+CFramework::AddModuleListener()
+CFramework::AddHostListener()
+</code></pre></li>
+<li><p>3)设置状态</p>
+<pre><code>CFramework::SetStatusValue()
+</code></pre></li>
+<li><p>4)发送状态</p>
+<pre><code>CFramework::IntSetStatusValue()
+CFramework::IntIncStatusCounter()
+CFramework::IntRemoveStatus()
+-&gt;
+CFramework::NotifyStatus()
+CFramework::NotifyStatusByType()
+</code></pre></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>模块加载</p>
+<ul>
+<li><p>1)系统初始化配置</p>
+<pre><code>CLoader::Run()
+CLoader::RunAsClient()
+CFramework::UpdateElements()-&gt;CLoader::AddModule()
+</code></pre></li>
+<li><p>2)将配置应用到模块</p>
+<pre><code>CFramework::SendSetupToModules()
+</code></pre></li>
+<li><p>3)模块调用</p>
+<pre><code>CModule::ModuleSetupChanged()
+</code></pre></li>
+<li><p>4)模块实现</p>
+<pre><code>IModule::ModuleSetupChanged()-&gt;
+CShield::ModuleSetupChanged()
+</code></pre></li>
+<li><p>5)接口内部流程</p>
+<pre><code>CShield::ValidateSetup()-&gt;
+CShield::ValidateAsSupervisor()-&gt;
+CShield::CreateNewModule()
+</code></pre></li>
+<li><p>6)Framework</p>
+<pre><code>CFramework::CreateModule()-&gt;
+CFramework::StartupModule()-&gt;
+CFramework::SetSetup()-&gt;
+CFramework::SetHostSetup()
+</code></pre></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>Listener </p>
+<ul>
+<li><p>1)初始化Listeners</p>
+<pre><code>AddHostStatusListener()        | Host-&gt;StatusGroup-&gt;Listener     | GUID : Host*          | Listener : Module*
+AddResourceListener()          | ResourceListeners               | GUID : Module         | Listener : Module*
+AddResourceTypeListener()      | ResourceTypeListeners           | GUID : resource type  | Listener : Module*
+AddResourceTypeListener()      | LocalHostResourceTypeListeners  | GUID : resource type  | Listener : Module*
+AddHostListener()              | HostDataListeners               | GUID : Host           | Listener : Module*
+AddHostListener()              | HostListeners                   | GUID : Host           | Listener : Module*
+AddResourceStatusListener()    | Resource-&gt;StatusGroup-&gt;Listener | GUID : Resource*      | Listener : Module*
+AddUsersDataListener()         | UsersListeners                  | Users                 | Listener : Module*
+AddModuleStatusListener()      | Module-&gt;StatusGroup-&gt;Listener   | GUID : Module*        | Listener : Module*
+AddElementTypeStatusListener() | ElementTypeStatusListeners      |              | Listener : Module*
+</code></pre></li>
+<li><p>2)通知HostStatus、ResourceStatus和ModuleStatus</p>
+<pre><code>CFramework::IntSetStatusValue() -&gt;    设置状态值并通知状态所属的Listeners和系统的ElementTypeStatusListeners
+StatusGroup::SetStatus() -&gt;             设置状态值并通知状态所属的Listeners
+StatusGroup::IntSetStatus() -&gt;         将Status的Listener加入待通知的map表中
+StatusGroup::IntNotify() -&gt;         从待通知的map表中取出Listener进行通知
+CModule::StatusChanged() -&gt;        回调模块的实现               
+IModule::StatusChanged()         模块的实现将status通知到模块
+</code></pre></li>
+<li><p>3)通知ResourceListeners、ResourceTypeListeners、LocalHostResourceTypeListeners、HostDataListeners、</p>
+<pre><code>CFramework::SetHostSetup() -&gt;           对Host进行配置
+CFramework::NotifyListeners() -&gt;    通知Listeners
+CModule::ElementChanged() -&gt;        回调模块的实现   
+IModule::ElementChanged()               通知到模块
+</code></pre></li>
+<li><p>4)通知HostListeners</p>
+<pre><code>CFramework::NotifyClientModule()
+CModule::StatusChanged() -&gt;        回调模块的实现               
+IModule::StatusChanged()         模块的实现将status通知到模块
+
+CFramework::SetHostSetup() -&gt;        对Host进行配置
+CFramework::NotifyListeners() -&gt;    通知Listeners
+CModule::ElementChanged() -&gt;        回调模块的实现   
+IModule::ElementChanged()               通知到模块
+
+CFramework::ResetUsers()
+CFramework::UpdateUsers()-&gt;
+CFramework::NotifyUsersListeners() -&gt;    通知Listeners
+CModule::ElementChanged() -&gt;        回调模块的实现   
+IModule::ElementChanged()               通知到模块
+</code></pre></li>
+<li><p>4)通知UserListeners</p>
+<pre><code>CFramework::ResetUsers()
+CFramework::UpdateUsers()-&gt;
+CFramework::NotifyUsersListeners() -&gt;    通知Listeners
+CModule::ElementChanged() -&gt;        回调模块的实现   
+IModule::ElementChanged()               通知到模块
+</code></pre></li>
+<li><p>5)通知ElementTypeStatusListeners</p>
+<pre><code>CFramework::NotifyStatusByType()-&gt;    改变元素状态
+CModule::ElementChanged() -&gt;        回调模块的实现   
+IModule::ElementChanged()               通知到模块
+</code></pre></li>
+</ul>
+</li>
+</ul>
+<h1 id="3-模块初始化"><a href="#3-模块初始化" class="headerlink" title="3. 模块初始化"></a>3. 模块初始化</h1><ul>
+<li><p>加载模块库配置，读取ModuleLibrary.xml</p>
+<pre><code>CLibrary::LoadLibrary()
+CModuleLibrary::LoadModuleSetup()
+</code></pre><ul>
+<li>将模块的属性放入CLibrary::ModuleLibrary中。</li>
+</ul>
+</li>
+<li><p>加载模块配置，读取Setup.xml</p>
+<pre><code>CFramework::LoadSetup()
+CFramework::RestoreSetup()
+CHost::LoadHostSetup()
+CProcess::LoadProcessSetup()
+CModule::LoadModuleSetup()
+</code></pre><ul>
+<li>当读取配置时解析到Process下面的Module时，实例化一个CModule对象，从之前加载的ModuleLibrary找到对应的模块属性，保存在CModule对象中。</li>
+</ul>
+</li>
+<li><p>从配置解析到的模块中找到拥有资源的模块，检查这些模块是否NeedAutoconfig，需要的话，把这些模块从初始化解析到的模块中去掉</p>
+<pre><code>CFramework::LoadSetup()
+CFramework::CheckAutoconfigModules()
+</code></pre></li>
+<li><p>更新系统元素状态</p>
+<pre><code>CFramework::UpdateElements()
+</code></pre><ul>
+<li><p>如果以前存在，资源：拷贝状态，释放以前OwnedResources，通过所属模块把以前资源销毁</p>
+<ul>
+<li>模块：拷贝状态和所属进程，释放OwnedResources<ul>
+<li>Host：直接拷贝所有数据</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>如果以前不存在，资源：找到资源Owner，删除Owner原来同一个Guid的资源的拥有</p>
+<ul>
+<li>模块：更新Process和Host信息</li>
+<li>Host：添加进Env</li>
+<li>最后加入Elements</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>解析引用关系</p>
+<pre><code>CFramework::ResolveReferences()
+</code></pre><ul>
+<li>原有的模块：新加入的资源属于该模块，建立从属关系</li>
+<li>原有的资源：新加入的模块拥有它，设置为属主模块，如果拥有者是资源，设置属主为资源的属主模块，设置自己为child，属主为parent<ul>
+<li>新加入的资源被它拥有：设置为child，设置新加入资源的属主模块为这个资源的属主</li>
+<li>新加入的资源被它引用：设置为引用者    </li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>写入到配置文件中，并备份配置文件</p>
+<pre><code>CFramework::SaveSetup()
+</code></pre></li>
+<li><p>加载模块实体</p>
+<pre><code>CLoader::LoadModule()
+IModule::SetFrameworkInterface()     //模块获取Framework的接口
+</code></pre></li>
+<li><p>启动supervisor module</p>
+<pre><code>IModule::Startup()
+CProme::Startup()
+CVSProductDevice::Startup()             //挂接信号处理、记录日志、AddResourceTypeListener （VideoStream、NetworkInterface）
+</code></pre></li>
+<li><p>启动其它模块</p>
+<pre><code>CProcess::Startup()       
+CModule::Startup()
+IModule::Startup()             //模块内部启动处理
+</code></pre></li>
+</ul>
+<ul>
+<li><p>读取模块配置并初始化模块内部</p>
+<pre><code>CLoader::SerializeModuleSetup()        //读取模块配置
+CModule::Autoconfig()                //对模块进行Autoconfig，模块内部创建资源、初始化操作
+IModule::ModuleAutoconfig()
+</code></pre><ul>
+<li><p>Prome</p>
+<pre><code>CProme::AutoConfig()            //初始化模块数据
+</code></pre></li>
+<li><p>Ambrella</p>
+<pre><code>CAmbarella::CreateNewResource()        //系统调用创建资源对象，设置其属性，将其添加到系统配置中
+CFramework::CreateResource()        //创建CResource对象，设置属主为创建它的模块，清空引用资源
+CFramework::AddResources()        //读取资源配置
+CFramework::SetSetup()                  //将资源添加到系统配置中
+CFramework::SetHostSetup()              //用输入的配置更新系统配置
+</code></pre></li>
+</ul>
+</li>
+<li><p>检查配置supervisor module</p>
+<pre><code>CFramework::SendSetupToModule()         //读取系统配置、check host
+CHost::Serialize()            //读取系统配置
+CModule::ValidateModuleSetup()        //check host
+
+-IModule::ValidateModuleSetupExt()
+-CProme::ValidateModuleSetupExt()
+-CVSProductDevice::ModuleSetupChanged()    //check ldap data
+--ModuleUtils::LoadHostSetup()        //找到Host数据
+--CVSProductDevice::CheckLdapConfig()
+</code></pre></li>
+</ul>
+<ul>
+<li><p>检查配置modules</p>
+<pre><code>CFramework::SendSetupToModule()
+CModule::Serialize()            //读取模块配置
+-IModule::ValidateModuleSetupExt()
+--CAmbarella::ValidateModuleSetupExt()
+---ModuleUtils::LoadModuleSetup()       //从ModuleLibrary中找到对应模块的配置
+---CAmbarella::ValidateSetup()        //检测各项属性配置
+</code></pre></li>
+</ul>
+<ul>
+<li><p>保存系统配置</p>
+<pre><code>CFramework::SaveSetup()            //保存并备份配置文档
+-CFramework::IntSetStatusValue()    //通知HostStatus的Listeners
+</code></pre></li>
+<li><p>按照配置初始模块属性</p>
+<pre><code>CFramework::SendSetupToModule()
+CModule::Serialize()            //读取模块配置
+CModule::ModuleSetupChanged()
+IModule::ModuleSetupChanged()
+</code></pre><ul>
+<li><p>Prome</p>
+<pre><code>CProme::ModuleSetupChanged()            //初始化模块数据
+
+-CVSProductDevice::ModuleSetupChanged() //填充模块数据、初始化模块对系统的listener
+--ModuleUtils::LoadModuleSetup()    //ModuleData填充
+---ModuleUtils::LoadSetup()             //从ModuleLibrary中找到对应模块的配置
+--CVSProductDevice::GetStartupResources()
+---CFramework::AddResourceStatusListener()//将模块添加到NetworkInterfaces、SDStorage、SDArchive、VideoSource资源的Listener
+--CVSProductDevice::ReadModuleData()    //将模块的属性添加到NetworkDataListeners中
+---CFramework::AddHostListener()    //将模块添加到系统Host的Listener中
+---CFramework::AddUsersDataListener()    //将模块添加到系统User的Listener中
+---CFramework::GetUsers()        //取得系统的Users
+---CVSProductDevice::CheckInternalUsers()//复制系统用户并创建密码
+---CVSProductDevice::SaveSystemData()    //保存系统用户
+</code></pre></li>
+<li><p>Ambrella</p>
+<pre><code>CAmbarella::ModuleSetupChanged()
+ModuleUtils::LoadModuleSetup()          //从ModuleLibrary中找到对应模块的配置
+CAmbarella::ApplySetup()
+-CFramework::SetStatusValue()        //设置模块各资源的状态值
+</code></pre></li>
+</ul>
+</li>
+<li><p>使能模块运行</p>
+<pre><code>CModule::Resume()
+IModule::Resume()
+</code></pre><ul>
+<li>Prome<ul>
+<li>填写日志信息</li>
+</ul>
+</li>
+<li><p>Ambrella</p>
+<pre><code>CAmbarella::Resume()
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/19/project-note-decode-framework/" data-id="ciod4qqru00a6ypfyn68xk8ca" class="article-share-link">分享到</a><div class="tags"><a href="/tags/decode/">decode</a></div><div class="post-nav"><a href="/2016/05/19/project-note-decode-stat/" class="pre">stat</a><a href="/2016/05/19/Linux系统编程-test-atomic-cpp/" class="next">test_atomic.cpp</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">236</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">1</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-面向模式的软件体系结构Vol1-《面向模式的软件体系结构-卷1-模式系统》/">《面向模式的软件体系结构 卷1-模式系统》</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记/">《高级C、C++编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第二十四章-带外数据/">第二十四章 带外数据</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第十四章-高级IO/">第十四章 高级IO</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

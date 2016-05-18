@@ -1,0 +1,105 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>二十五、将constructor和non-member function虚化 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">二十五、将constructor和non-member function虚化</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">二十五、将constructor和non-member function虚化</h1><div class="post-meta">May 19, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、虚化构造函数"><span class="toc-number">1.</span> <span class="toc-text">一、虚化构造函数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、virtual-copy-constructor"><span class="toc-number">2.</span> <span class="toc-text">二、virtual copy constructor</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、将Non-member-Function的行为虚化"><span class="toc-number">3.</span> <span class="toc-text">三、将Non-member Function的行为虚化</span></a></li></ol></div></div><div class="post-content"><ul>
+<li><p>假设需要根据输入参数构造不同的派生类对象：</p>
+<pre><code>class NLComponent {                        //抽象基类，内含纯虚函数
+public:            
+    …
+};
+
+class TextBlock: public NLComponent {    //文本类
+public:
+    …
+};
+
+class Graphic: public NLComponent {        //图片类
+public:
+    …
+};
+</code></pre></li>
+</ul>
+<pre><code>class NewsLetter {                        //新闻类，内含一系列NLComponent类对象
+public:        
+    …
+private:
+    list&lt;NLComponent*&gt; components;
+};
+</code></pre><h1 id="一、虚化构造函数"><a href="#一、虚化构造函数" class="headerlink" title="一、虚化构造函数"></a>一、虚化构造函数</h1><pre><code>class NewsLetter {                //新闻类，内含一系列NLComponent类对象
+public:
+    NewsLetter(istream&amp; str);
+    /*
+     * 从str读取NLComponent的数据，产生对象并返回一个指针
+     */
+    static NLComponent* readComponent(istream&amp; str);
+    …
+};
+
+NewsLetter::NewsLetter(istream&amp; str)
+{
+    while(str)
+    {
+        /*
+          * 将返回指针加入链表
+          */
+        components.push_back(readcomponent(str));
+    }
+}
+</code></pre><ol>
+<li>由于readcomponent产生新对象，行为类型constructor，但能产生不同类型对象，所有称为一个virtual constructor</li>
+<li>所谓virtual constructor是某种函数，根据其获得的不同输入，可产生不同的对象</li>
+</ol>
+<h1 id="二、virtual-copy-constructor"><a href="#二、virtual-copy-constructor" class="headerlink" title="二、virtual copy constructor"></a>二、virtual copy constructor</h1><ol>
+<li>virtual copy constructor会返回一个指针，指向其调用者的一个副本。</li>
+<li><p>基于这种方法，virtual copy constructors常以copyself 或者 clone命名</p>
+<pre><code>class NLComponent {                //virtual copy constructor
+public:
+    …
+    virtual NLComponent * clone() const = 0;
+};
+
+class TextBlock: public NLComponent {        
+public:
+    …
+    virtual TextBlock * clone() const { return new TextBlock(*this); }
+};
+
+class Graphic: public NLComponent {        
+public:
+    …
+    virtual Graphic * clone() const { return new Graphic(*this); }
+};        
+</code></pre></li>
+<li><p>class 的virtual copy constructor就只是调用真正的copy constructor而已，copy这层含义对两个函数而言是一样的。</p>
+</li>
+<li><p>上述实现是利用“虚函数返回值”规则的一个宽松点：当derived class重新定义base class的一个虚函数时，不再需要一定声明与原版本相同的返回类型。如果函数的返回类型是一个指针或者reference，指向baseclass，那么derived class的函数可以返回一个指针或者reference指向该base class 的一个derived class。</p>
+<ul>
+<li><p>有了上述的virtual copy constructor，现在可以为NewsLetter实现一个正常的copy constructor：</p>
+<pre><code>class NewsLetter {                
+public:
+    NewsLetter(const NewsLetter&amp; rhs);    //copy constructor    
+    …
+private:
+    list&lt;NLComponent*&gt; components;
+};
+
+NewsLetter::NewsLetter(const NewsLetter&amp; rhs)
+{
+    for(list&lt;NLComponent*&gt;::const_iterator it = rhs.components.begin();
+            it != rhs.components.end(); ++it)
+    {
+        /*
+          * 将 rhs 内含的NLComponent对象的副本clone到新NewsLetter对象中，
+         * 这里需要一个virtual copy constructor，因为这个components list内含对象指针
+          */
+        components.push_back((*it)-&gt;clone());
+    }
+}    
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="三、将Non-member-Function的行为虚化"><a href="#三、将Non-member-Function的行为虚化" class="headerlink" title="三、将Non-member Function的行为虚化"></a>三、将Non-member Function的行为虚化</h1><ol>
+<li>考虑让non-member functions的行为视其参数的动态类型不同而不同</li>
+<li>一言以蔽之，在non-member functions中调用虚函数，使其行为表现出多态</li>
+</ol>
+<pre><code>杜鹏
+2013-08-08
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/19/阅读笔记-MoreEffectiveC-二十五、将constructor和non-member-function虚化/" data-id="ciod4qqys00ouypfyvvdmjcmf" class="article-share-link">分享到</a><div class="tags"><a href="/tags/MoreEffectiveC/">MoreEffectiveC++</a></div><div class="post-nav"><a href="/2016/05/19/阅读笔记-MoreEffectiveC-二十二、以操作符符合形式（-）取代独身形式（-）/" class="pre">二十二、以操作符符合形式（+=）取代独身形式（+）</a><a href="/2016/05/19/阅读笔记-MoreEffectiveC-二十三、考虑使用其它程序库/" class="next">二十三、考虑使用其它程序库</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">236</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">1</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-面向模式的软件体系结构Vol1-《面向模式的软件体系结构-卷1-模式系统》/">《面向模式的软件体系结构 卷1-模式系统》</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记/">《高级C、C++编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第二十四章-带外数据/">第二十四章 带外数据</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第十四章-高级IO/">第十四章 高级IO</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

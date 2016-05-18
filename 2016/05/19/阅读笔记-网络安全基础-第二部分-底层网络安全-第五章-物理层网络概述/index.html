@@ -1,0 +1,248 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第二部分 底层网络安全(第五章 物理层网络概述) | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第二部分 底层网络安全(第五章 物理层网络概述)</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第二部分 底层网络安全(第五章 物理层网络概述)</h1><div class="post-meta">May 19, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/网络安全基础/">网络安全基础</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、常见攻击方法"><span class="toc-number">1.</span> <span class="toc-text">一、常见攻击方法</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、有线网络协议"><span class="toc-number">2.</span> <span class="toc-text">二、有线网络协议</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、无线网络协议"><span class="toc-number">3.</span> <span class="toc-text">三、无线网络协议</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、常见对策"><span class="toc-number">4.</span> <span class="toc-text">四、常见对策</span></a></li></ol></div></div><div class="post-content"><h1 id="一、常见攻击方法"><a href="#一、常见攻击方法" class="headerlink" title="一、常见攻击方法"></a>一、常见攻击方法</h1><ol>
+<li>硬件地址欺骗<ul>
+<li>目标设备收到数据包，不意味着数据包的生产者在同样的网络上，只意味着最后发送数据包的设备在同一个物理网络</li>
+<li>攻击者可以假装网络上的另一台设备</li>
+<li>可以采用无效地址，引起网络问题(交换机问题或网络风暴)</li>
+</ul>
+</li>
+<li>网络嗅探<ul>
+<li>网络接口的过滤避免收到目的非本接口的包，但不适用于安全设计，因为安全设计的目的是减少设备需要处理的流量，对网络控制器忽略目标地址而读取所有数据包的可能性是有的</li>
+<li>典型的骨干网是被保护的，所以流量进入ISP就不用担心嗅探了</li>
+<li>通常发生在局域网或无线网络</li>
+</ul>
+</li>
+<li>物理攻击</li>
+</ol>
+<h1 id="二、有线网络协议"><a href="#二、有线网络协议" class="headerlink" title="二、有线网络协议"></a>二、有线网络协议</h1><ol>
+<li><p>以太网协议</p>
+<ul>
+<li>载波侦听多路访问/冲突检测(CSMA/CD)<ul>
+<li>由网络控制器在介质上侦听是否有其它设备在传输(载波)</li>
+<li>发送设备必须一直侦听，称为冲突检测</li>
+<li>发生冲突的设备完成一次碰撞，在下一次发送信息前，必需选择一个等待时间的随机数</li>
+<li>冲突会导致设备发送更多的数据，随着一个共享网络环境下设备数量上升，冲突概率大大增加</li>
+<li>交换机将流量发送到特定的设备，提高了网络性能</li>
+<li>交换机的生成树端口(spanning port)和镜像端口(mirrored port)，将所有端口的流量镜像到一个端口上，导致总流量变成 带宽/端口数量</li>
+</ul>
+</li>
+<li><p>以太网协议</p>
+<ul>
+<li><p>以太网控制器在以太网帧上追加preamble、SFD和FCS字段</p>
+<p>  | 序号preamble | 起始帧限制符SFD | 目标地址 | 源地址 | 类型/长度 |     数据    | 帧序检查FCS |</p>
+<pre><code>7B              1B            6B        6B         1B           46 ~ 1500B        4B
+</code></pre></li>
+<li>常用协议<ul>
+<li>IP   0x800</li>
+<li>ARP  0x806</li>
+<li>IPv6 0x80dd</li>
+<li>RARP 0x8035</li>
+</ul>
+</li>
+<li>以太网地址类型<ul>
+<li>单播 上位1个0</li>
+<li>多播 上位1个1</li>
+<li>广播 全1</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>基于头部的攻击</p>
+<ul>
+<li>对不是由以太网控制器处理的3个字段的攻击<ul>
+<li>将源和目标地址设置成一样</li>
+<li>产生过短(<46)或过长(>1500)的数据报</46)或过长(></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>基于协议的攻击</p>
+<ul>
+<li>有线以太网协议由硬件实现，没有基于协议的漏洞</li>
+<li>设备可能与CSMA/CD协议冲突而造成网络故障，不算作漏洞</li>
+</ul>
+</li>
+<li><p>基于验证的攻击</p>
+<ul>
+<li>主要是源和目标地址</li>
+<li>目标硬件地址来源于ARP，可能被攻击，即ARP中毒</li>
+<li>发送带不同源地址的数据包，可能使交换机地址表溢出</li>
+<li>可以通过更改源地址冒充另一台设备</li>
+</ul>
+</li>
+<li><p>基于流量的攻击</p>
+<ul>
+<li>流量嗅探<ul>
+<li>可以把网络控制器设为混杂模式读取经过的所有流量</li>
+<li>可以通过VLAN将流量隔离在虚拟网络来防止</li>
+</ul>
+</li>
+<li>网络风暴<ul>
+<li>广播，如ARP</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、无线网络协议"><a href="#三、无线网络协议" class="headerlink" title="三、无线网络协议"></a>三、无线网络协议</h1><ol>
+<li><p>无线网路协议的命名惯例是802.11(a~z)</p>
+<ul>
+<li>版本间的主要区别是频率和速度</li>
+<li><p>2.4GHz与移动电话的频率发生冲突</p>
+<pre><code>802.11a    5GHz    54Mbps        30m
+802.11b    2.4GHz    11Mbps        30m
+802.11g    2.4GHz    11~54Mbps    30m
+802.11n    2.4GHz    200~500Mbps    50m
+</code></pre></li>
+</ul>
+</li>
+<li><p>无线以太网协议</p>
+<ul>
+<li>基于有线协议，主要区别是无线以太网不检测冲突，使用载波侦听多路访问/冲突避免(CSMA/CA)<ul>
+<li>无线以太网需要发生一个应答，来响应已发送的数据</li>
+<li>如果网络空闲，有线网可以传输数据，无线网需要等待应答数据包</li>
+<li>如果介质处于忙就等待一个随机时间，如果等到空闲，就继续等一段时间，以避免一旦设备空闲，所有设备同时要求传输</li>
+</ul>
+</li>
+<li><p>无线以太网协议需要一台设备负责网络，称为访问接入点(access point, AP)</p>
+<ul>
+<li>有两个主要功能：<ul>
+<li>产生并管理无线网络</li>
+<li>提供对有线网络的访问</li>
+</ul>
+</li>
+<li>SSID(service set identity, 服务装置识别)：传输网络识别AP的信号</li>
+</ul>
+</li>
+<li><p>设备加入网络的过程</p>
+<ul>
+<li>无线访问点发现<ul>
+<li>AP广播SSID，移动设备侦听到信号指示，说明接入点存在</li>
+<li>设备发送探测包，收到信号回应即完成发现，如果SSID已知则可以不发探测</li>
+</ul>
+</li>
+<li>接入网络<ul>
+<li>发送联系请求包，AP以联系响应包应答，设备收到响应即建立联系成功，可以开始通信</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>AP在数据传输中的角色：</p>
+<ul>
+<li>当配置成中继：<ul>
+<li>AP对有线网络透明</li>
+<li>数据包目标地址为AP，最终地址为目的地址</li>
+<li>访问点作为中继，再发到其它部分</li>
+<li>对有线网络透明，会产生安全问题</li>
+</ul>
+</li>
+<li>配置为路由器：<ul>
+<li>产生独立的硬件地址域</li>
+<li>数据包先发到AP，再进行路由</li>
+<li>无线AP有内在安全性，无线和有线具有更好的独立性</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>无线以太网帧</p>
+<pre><code>| 帧控制 | 延展性/ID | 地址1 | 地址2 | 地址3 | 序号 | 地址4 |     数据    | 帧序检查FCS |
+    2          2           6       6      6         2        6        0 ~ 2312        4
+</code></pre></li>
+</ul>
+</li>
+<li><p>基于头部的攻击</p>
+<ul>
+<li>头部大多数域由硬件控制，攻击有限，主要导致无法正常通信</li>
+<li>在帧控制中设置值，可以混淆设备</li>
+</ul>
+</li>
+<li><p>基于协议的攻击</p>
+<ul>
+<li>通过SSID的访问接入点广播，确定访问接入点的位置，称为探测或钓鱼(wardriving)<ul>
+<li>可以采用加密手段或网络访问控制器(NAC)来减少探测</li>
+</ul>
+</li>
+<li>可以对CSMA/CA发动攻击，通过发送大量信号时设备阻塞</li>
+</ul>
+</li>
+<li><p>基于验证的攻击</p>
+<ul>
+<li>设备验证：<ul>
+<li>验证：<ul>
+<li>验证有效的访问接入点</li>
+<li>验证设备合法</li>
+<li>验证无线设备的用户合法</li>
+</ul>
+</li>
+<li>攻击：<ul>
+<li>恶意访问接入点：不被许可的接入<ul>
+<li>可以屏蔽SSID广播，以隐藏自己</li>
+<li>可以捕获无线设备上的所有流量</li>
+</ul>
+</li>
+<li>非法访问接入点：伪装成有效接入点</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>访问接入点配置验证<ul>
+<li>访问接入点的配置，以修改安全性设置</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>基于流量的攻击</p>
+<ul>
+<li>主要攻击为流量嗅探，通过加密机制来提供安全性</li>
+<li>无线加密协议对设备和访问点直接的流量镜像加密，不提供端到端的加密</li>
+<li>有线对等私钥 (Wired Equivalent Privacy, WEP)<ul>
+<li>无线设备在发送联系请求前，先发送一条共享秘钥加密的信息来验证自己</li>
+<li>通过唯一的共享密码进行保护，密码恒定，容易破解</li>
+</ul>
+</li>
+<li>WiFi访问保护协议(WiFi Protected Access, WPA)<ul>
+<li>可以基于家庭环境，或者基于企业(有自己的验证系统)<ul>
+<li>家庭环境：<ul>
+<li>设备联系访问接入点，以单向散列的形式发送密码给访问点验证用户和设备，共享的密码只用于验证</li>
+<li>验证完成后双方协商会话加密秘钥，用于数据包交换，秘钥在设备间是随机的，而且有生存期，长度128bit，很难破解</li>
+</ul>
+</li>
+<li>企业环境：<ul>
+<li>验证每一个用户，而不只是设备</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>如果攻击者可以看到足够流量，还是可能获取加密秘钥，但秘钥生存期有限，泄露的影响很小</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、常见对策"><a href="#四、常见对策" class="headerlink" title="四、常见对策"></a>四、常见对策</h1><ol>
+<li>虚拟局域网 VLAN<ul>
+<li>特点<ul>
+<li>在物理网络的基础上构建逻辑网络</li>
+<li>广播流量被限制在一个VLAN内部</li>
+<li>VLAN间网络隔离，需要经过路由器访问</li>
+</ul>
+</li>
+<li>静态VLAN<ul>
+<li>基于固定端口划分</li>
+<li>对ARP中毒提供了一定的保护，防止了对交换机的端口映射表的攻击</li>
+</ul>
+</li>
+<li>动态VLAN<ul>
+<li>基于设备硬件地址划分</li>
+<li>通过硬件地址对设备的验证提供额外保护</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>网络访问控制 NAC<ul>
+<li>提供权限保护的策略</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/" data-id="ciod4qr4300ypypfyu5lqd27k" class="article-share-link">分享到</a><div class="tags"><a href="/tags/网络安全基础/">网络安全基础</a></div><div class="post-nav"><a href="/2016/05/19/阅读笔记-说明/" class="pre">说明</a><a href="/2016/05/19/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记/" class="next">《高级C、C++编译技术》阅读笔记</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">236</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">1</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-面向模式的软件体系结构Vol1-《面向模式的软件体系结构-卷1-模式系统》/">《面向模式的软件体系结构 卷1-模式系统》</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记/">《高级C、C++编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第二十四章-带外数据/">第二十四章 带外数据</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第十四章-高级IO/">第十四章 高级IO</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第十七章 ioctl操作 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第十七章 ioctl操作</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第十七章 ioctl操作</h1><div class="post-meta">May 19, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、ioctl函数"><span class="toc-number">1.</span> <span class="toc-text">一、ioctl函数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、套接字操作"><span class="toc-number">2.</span> <span class="toc-text">二、套接字操作</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、文件操作"><span class="toc-number">3.</span> <span class="toc-text">三、文件操作</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、接口配置"><span class="toc-number">4.</span> <span class="toc-text">四、接口配置</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、接口操作"><span class="toc-number">5.</span> <span class="toc-text">五、接口操作</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、ARP高速缓存"><span class="toc-number">6.</span> <span class="toc-text">六、ARP高速缓存</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、路由表操作"><span class="toc-number">7.</span> <span class="toc-text">七、路由表操作</span></a></li></ol></div></div><div class="post-content"><p><strong>网络程序经常在启动后使用ioctl获取主机的接口信息，包括接口地址、是否支持广播/多播等</strong></p>
+<h1 id="一、ioctl函数"><a href="#一、ioctl函数" class="headerlink" title="一、ioctl函数"></a>一、ioctl函数</h1><pre><code>#include &lt;unistd.h&gt;
+int ioctl(int fd, int request, .../* void arg */);
+成功返回 0，出错返回-1
+</code></pre><ul>
+<li>网络请求的操作类别<ul>
+<li>套接字操作</li>
+<li>文件操作</li>
+<li>接口操作</li>
+<li>ARP高速缓存操作</li>
+<li>路由表操作</li>
+<li>流系统</li>
+</ul>
+</li>
+</ul>
+<h1 id="二、套接字操作"><a href="#二、套接字操作" class="headerlink" title="二、套接字操作"></a>二、套接字操作</h1><ul>
+<li>SIOCATMARK<ul>
+<li>读指针位于带外标记时，第三个参数返回非0值，否则返回0值</li>
+</ul>
+</li>
+<li>SIOCGPGRP<ul>
+<li>获取套接字的pid和gpid，该进程接收套接字的SIGIO或SIGURG信号，与fcntl的<code>F_GETOWN</code>命令等效</li>
+</ul>
+</li>
+<li>SIOCSPGRP<ul>
+<li>设置套接字的pid和gpid，可用于接收套接字的SIGIO或SIGURG信号，与fcntl的<code>F_SETOWN</code>命令等效</li>
+</ul>
+</li>
+</ul>
+<h1 id="三、文件操作"><a href="#三、文件操作" class="headerlink" title="三、文件操作"></a>三、文件操作</h1><ul>
+<li>FIONBIO<ul>
+<li>清除或设置套接字的非阻塞IO标志，与<code>O_NONBLOCK</code>文件状态标志等效，可以通过fcntl的<code>F_SETFL</code>命令设置或清除</li>
+</ul>
+</li>
+<li>FIOASYNC<ul>
+<li>清除或设置套接字的信号驱动异步IO标志，与<code>O_ASYNC</code>等效，可以通过fcntl的<code>F_SETFL</code>命令设置或清除</li>
+</ul>
+</li>
+<li>FIONREAD<ul>
+<li>返回套接字接受缓冲区当前的字节数</li>
+</ul>
+</li>
+<li>F_SETOWN<ul>
+<li>与SIOCSPGRP等效</li>
+</ul>
+</li>
+<li>F_GETOWN<ul>
+<li>与SIOCGPGRP等效</li>
+</ul>
+</li>
+</ul>
+<h1 id="四、接口配置"><a href="#四、接口配置" class="headerlink" title="四、接口配置"></a>四、接口配置</h1><ol>
+<li>从内核获取系统的接口配置</li>
+<li>由SIOCGIFCONF请求完成</li>
+<li><p>使用ifconf结构，内部使用ifreq结构</p>
+<ul>
+<li><p>内核定义</p>
+<pre><code>/*
+ * Interface request structure used for socket
+ * ioctl&apos;s.  All interface ioctl&apos;s must have parameter
+ * definitions which begin with ifr_name.  The
+ * remainder may be interface specific.
+ */
+
+struct ifreq {
+#define IFHWADDRLEN    6
+    union
+    {
+        char    ifrn_name[IFNAMSIZ];        /* if name, e.g. &quot;en0&quot; */
+    } ifr_ifrn;
+
+    union {
+        struct    sockaddr ifru_addr;
+        struct    sockaddr ifru_dstaddr;
+        struct    sockaddr ifru_broadaddr;
+        struct    sockaddr ifru_netmask;
+        struct  sockaddr ifru_hwaddr;
+        short    ifru_flags;
+        int    ifru_ivalue;
+        int    ifru_mtu;
+        struct  ifmap ifru_map;
+        char    ifru_slave[IFNAMSIZ];    /* Just fits the size */
+        char    ifru_newname[IFNAMSIZ];
+        void __user *    ifru_data;
+        struct    if_settings ifru_settings;
+    } ifr_ifru;
+};
+
+#define ifr_name    ifr_ifrn.ifrn_name    /* interface name     */
+#define ifr_hwaddr    ifr_ifru.ifru_hwaddr    /* MAC address         */
+#define    ifr_addr    ifr_ifru.ifru_addr    /* address        */
+#define    ifr_dstaddr    ifr_ifru.ifru_dstaddr    /* other end of p-p lnk    */
+#define    ifr_broadaddr    ifr_ifru.ifru_broadaddr    /* broadcast address    */
+#define    ifr_netmask    ifr_ifru.ifru_netmask    /* interface net mask    */
+#define    ifr_flags    ifr_ifru.ifru_flags    /* flags        */
+#define    ifr_metric    ifr_ifru.ifru_ivalue    /* metric        */
+#define    ifr_mtu        ifr_ifru.ifru_mtu    /* mtu            */
+#define ifr_map        ifr_ifru.ifru_map    /* device map        */
+#define ifr_slave    ifr_ifru.ifru_slave    /* slave device        */
+#define    ifr_data    ifr_ifru.ifru_data    /* for use by interface    */
+#define ifr_ifindex    ifr_ifru.ifru_ivalue    /* interface index    */
+#define ifr_bandwidth    ifr_ifru.ifru_ivalue    /* link bandwidth    */
+#define ifr_qlen    ifr_ifru.ifru_ivalue    /* Queue length     */
+#define ifr_newname    ifr_ifru.ifru_newname    /* New name        */
+#define ifr_settings    ifr_ifru.ifru_settings    /* Device/proto settings*/
+
+/*
+ * Structure used in SIOCGIFCONF request.
+ * Used to retrieve interface configuration
+ * for machine (useful for programs which
+ * must know all networks accessible).
+ */
+
+struct ifconf  {
+    int    ifc_len;            /* size of buffer    */
+    union {
+        char __user *ifcu_buf;
+        struct ifreq __user *ifcu_req;
+    } ifc_ifcu;
+};
+#define    ifc_buf    ifc_ifcu.ifcu_buf        /* buffer address    */
+#define    ifc_req    ifc_ifcu.ifcu_req        /* array of structures    */
+</code></pre></li>
+<li><p>使用(getSystemParameters.cpp)</p>
+</li>
+</ul>
+</li>
+<li><p>注意ifreq的<code>ifru_addr</code>成员使用IPv4的sockaddr结构定义,大小为16字节，对于IPv6的<code>sockaddr_in6</code>可能造成问题(24字节)</p>
+</li>
+<li>如果当前的<code>ifr_addr.sa_family</code>支持广播(<code>IFF_BROADCAST</code>)，可以调用ioctl的SIOCGIFBRDADDR获得广播地址</li>
+<li>如果当前的<code>ifr_addr.sa_family</code>支持点对点接口(<code>IFF_POINTOPOINT</code>)，可以调用ioctl的SIOCGIFDSTADDR获得对端地址</li>
+</ol>
+<h1 id="五、接口操作"><a href="#五、接口操作" class="headerlink" title="五、接口操作"></a>五、接口操作</h1><ol>
+<li>SIOCGIIFCONF请求用于返回所有的接口名以及套接字地址结构</li>
+<li>接口总是以名称标识，获取到<code>ifr_name</code>后，可以在ifreq结构中指定然后继续查询其它信息</li>
+<li>get版本通常由netstat查询，set版本通常有ifconfig调用</li>
+<li>命令<ul>
+<li>SIOCGIFADDR/SIOCSIFADDR<ul>
+<li>获取/设置接口地址，通过ifr_addr成员</li>
+</ul>
+</li>
+<li>SIOCGIFFLAGS/SIOCSIFFLAGS<ul>
+<li>获取/设置接口标识，通过ifr_flags成员</li>
+<li>接口标识定义在<code>&lt;net/if.h&gt;</code>中</li>
+<li>标识是否出于工作状态(<code>IFF_UP</code>)、是否为点到点接口(<code>IFF_POINTOPOINT</code>)、是否支持广播(<code>IFF_BROADCAST</code>)等</li>
+</ul>
+</li>
+<li>SIOCGIFDSTADDR/SIOCSIFDSTADDR<ul>
+<li>获取/设置点到点地址，通过ifr_dstaddr成员</li>
+</ul>
+</li>
+<li>SIOCGIFBRDADDR/SIOCSIFBRDADDR<ul>
+<li>获取/设置广播地址，通过ifr_broadaddr成员</li>
+</ul>
+</li>
+<li>SIOCGIFNETMASK/SIOCSIFNETMASK<ul>
+<li>获取/设置子网掩码，通过ifr_addr成员</li>
+</ul>
+</li>
+<li>SIOCGIFMETRIC/SIOCSIFMETRIC<ul>
+<li>获取/设置路由测度，通过ifr_metric成员</li>
+<li>接口测度由内核为每个接口维护</li>
+<li>路由守护进程routed使用，被加到跳数上</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="六、ARP高速缓存"><a href="#六、ARP高速缓存" class="headerlink" title="六、ARP高速缓存"></a>六、ARP高速缓存</h1><ol>
+<li>通常由路由套接字操作</li>
+<li><p>第三个参数指向arpreq结构，定义在头文件<code>&lt;net/if_arp.h&gt;</code>中</p>
+<pre><code>/* ARP ioctl request. */
+struct arpreq {
+  struct sockaddr    arp_pa;        /* protocol address        */
+  struct sockaddr    arp_ha;        /* hardware address        */
+  int            arp_flags;    /* flags            */
+  struct sockaddr       arp_netmask;    /* netmask (only for proxy arps) */
+  char            arp_dev[16];
+};
+
+struct arpreq_old {
+  struct sockaddr    arp_pa;        /* protocol address        */
+  struct sockaddr    arp_ha;        /* hardware address        */
+  int            arp_flags;    /* flags            */
+  struct sockaddr       arp_netmask;    /* netmask (only for proxy arps) */
+};
+
+/* ARP Flag values. */
+#define ATF_COM        0x02        /* completed entry (ha valid)    */
+#define    ATF_PERM    0x04        /* permanent entry        */
+#define    ATF_PUBL    0x08        /* publish entry        */
+#define    ATF_USETRAILERS    0x10        /* has requested trailers    */
+#define ATF_NETMASK     0x20            /* want to use a netmask (only for proxy entries) */
+</code></pre></li>
+<li><p>命令</p>
+<ul>
+<li>SIOCSARP<ul>
+<li>添加或修改ARP高速缓存的表项</li>
+<li><code>arp_pa</code>是包含IP的网际套接字地址结构(IPv4/6)</li>
+<li><code>arp_ha</code>是通用套接字地址结构，<code>sa_family</code>为<code>AF_UNSEPC</code>，<code>sa_data</code>含硬件地址</li>
+<li><code>ATF_PERM</code>和<code>ATF_PUBL</code>可以用户指定，<code>ATF_COM</code>由内核设置</li>
+</ul>
+</li>
+<li>SIOCDARP<ul>
+<li>删除表项</li>
+<li>需指定表项的网际网络地址</li>
+</ul>
+</li>
+<li>SIOGARP<ul>
+<li>获取表项</li>
+<li>指定网际地址，返回硬件地址和标志</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>只有超级用户才能添加删除表项，通常arp程序会使用</p>
+</li>
+<li>ioctl没法列出ARP高速缓存的所有表项，arp -a命令通过读取内核内存/dev/kmem获取，可以通过sysctl来完成</li>
+</ol>
+<h1 id="七、路由表操作"><a href="#七、路由表操作" class="headerlink" title="七、路由表操作"></a>七、路由表操作</h1><ol>
+<li>通常由路由套接字操作，第三个参数为指向rtentry的指针</li>
+<li>第三个参数指向arpreq结构，定义在头文件<code>&lt;net/route.h&gt;</code>中</li>
+<li>命令<ul>
+<li>SIOADDRT/SIODELRT<ul>
+<li>添加删除表项</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>与arp一样，只有超级用户才能添加删除表项，通常route程序会使用</li>
+<li>ioctl没法列出路由表的所有表项，netstat -r命令通过读取内核内存/dev/kmem获取，可以通过sysctl来完成</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/19/阅读笔记-unix网络编程Ed3-第十七章-ioctl操作/" data-id="ciod4qr3b00x6ypfyz546n994" class="article-share-link">分享到</a><div class="tags"><a href="/tags/unix网络编程Ed3/">unix网络编程Ed3</a></div><div class="post-nav"><a href="/2016/05/19/阅读笔记-unix网络编程Ed3-第十一章-名字与地址转换/" class="pre">第十一章 名字与地址转换</a><a href="/2016/05/19/阅读笔记-unix网络编程Ed3-第六章-IO复用-select和poll/" class="next">第六章 IO复用 select和poll</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">236</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">1</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-面向模式的软件体系结构Vol1-《面向模式的软件体系结构-卷1-模式系统》/">《面向模式的软件体系结构 卷1-模式系统》</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记/">《高级C、C++编译技术》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第二十四章-带外数据/">第二十四章 带外数据</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-附录-IPv4、IPv6、ICMPv4、ICMPv6/">附录 IPv4、IPv6、ICMPv4、ICMPv6</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/19/阅读笔记-unix网络编程Ed3-第十四章-高级IO/">第十四章 高级IO</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
