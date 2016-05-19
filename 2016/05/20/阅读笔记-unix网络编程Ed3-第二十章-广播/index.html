@@ -1,0 +1,99 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第二十章 广播 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第二十章 广播</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第二十章 广播</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、概述"><span class="toc-number">1.</span> <span class="toc-text">一、概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、广播地址"><span class="toc-number">2.</span> <span class="toc-text">二、广播地址</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、广播与多播"><span class="toc-number">3.</span> <span class="toc-text">三、广播与多播</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、编码"><span class="toc-number">4.</span> <span class="toc-text">四、编码</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、竞争状态"><span class="toc-number">5.</span> <span class="toc-text">五、竞争状态</span></a></li></ol></div></div><div class="post-content"><h1 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h1><ol>
+<li><p>寻址方式</p>
+<pre><code>类型  IPv4  IPv6  TCP UDP  标识接口数  递送到接口数
+单播    Y     Y    Y   Y       1个     1个     
+任播          Y        Y      一组     一组中的一个
+多播   可选    Y        Y      一组     全组 
+广播    Y              Y       全体       全体
+</code></pre><ul>
+<li>TCP只支持单播，UDP和原始套接字支持别的</li>
+<li>任播从一组主机(通常提供相同服务)中选一个(通常按照某种测度离源主机最近)</li>
+<li>IPv4可选多播，支持广播，IPv6必需支持多播，不支持广播</li>
+<li>广播的用途：<ul>
+<li>资源发现，在本地子网定位一个服务器主机</li>
+<li>减少网络环境中的分组流通</li>
+</ul>
+</li>
+<li>广播的应用：<ul>
+<li>ARP：使用链路层广播，通过IP找MAC</li>
+<li>DHCP：客户端广播自己的请求(255.255.255.255)</li>
+<li>NTP：服务器主机广播当前时间，避免客户端自己的轮询</li>
+<li>路由守护进程routed：广播路由表，使附近的路由器或者主机可以接收通告，以更新自己的路由表</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、广播地址"><a href="#二、广播地址" class="headerlink" title="二、广播地址"></a>二、广播地址</h1><ol>
+<li>记法{子网ID， 主机ID}<ul>
+<li>子网ID表示子网掩码覆盖的连续位</li>
+</ul>
+</li>
+<li>子网定向广播地址<ul>
+<li>{子网ID，-1}，如192.168.1.100/24对应为192.168.1.255</li>
+<li>最好不要依赖转发子网定向广播进行通信，路由器设置程序允许转发此广播包可能造成放大攻击</li>
+</ul>
+</li>
+<li>受限广播地址<ul>
+<li>{-1, -1}，255.255.255.255</li>
+<li>路由器从不转发</li>
+<li>主机发送时将该地址转换成定向子网广播地址</li>
+<li>如果发送端有多个接口，可能只在第一个接口上发，如果要每个接口都发送，应该首先获取每个接口的配置，然后对接口所在的子网执行sendto调用，发送定向广播</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、广播与多播"><a href="#三、广播与多播" class="headerlink" title="三、广播与多播"></a>三、广播与多播</h1><ol>
+<li>以太网帧类型字段，IPv4为0x0800，IPv6为0x86dd</li>
+<li>主机发送时，将广播地址映射成48位全1的以太网地址: ff:ff:ff:ff:ff:Ff</li>
+<li>主机收到广播但UDP未绑定对应端口时，不能发送ICMP端口不可达消息，以避免广播风暴</li>
+<li>广播分组到达子网上所有主机，包括发送主机自身(一般来说，发送主机不用绑定目的端口，不然数据会返回到应用层)</li>
+<li>不关心广播的所有主机沿协议栈相识完整处理UDP广播包，直到被UDP层丢弃</li>
+<li>子网上所有的非IP主机在链路层收到完整的帧，然后丢弃</li>
+</ol>
+<h1 id="四、编码"><a href="#四、编码" class="headerlink" title="四、编码"></a>四、编码</h1><ol>
+<li>必需通过设置套接字SO_BROADCAST属性，显式告诉内核发送广播报</li>
+<li>源自Berkeley的实现不允许对广播报进行分片，超过MTU的数据报发送调用会返回EMSGSIZE错误，但Linux不具有此限制</li>
+<li>为便于移植，发广播报之前使用ioctl的SIOCGIFMTU命令设置MTU大小，如果是局域网可以限制在1472</li>
+</ol>
+<h1 id="五、竞争状态"><a href="#五、竞争状态" class="headerlink" title="五、竞争状态"></a>五、竞争状态</h1><ol>
+<li>当多个进程访问共享数据，其结果依赖于程序的执行顺序时，产生竞争状态</li>
+<li>当信号产生时处于被阻塞期间，内核会记录信号但不递交，直到信号被解除阻塞</li>
+<li><p>如果要用alarm的方式，用信号通知程序，正确的姿势是用pselect以保证信号阻塞与递交间的原子操作，如NTP程序</p>
+<pre><code>const int on = 1;
+setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &amp;on, sizof(on));
+
+sigset_t newmask, oldmask, zeromask;
+
+sigemptyset(&amp;zeromask);
+sigemptyset(&amp;newmask);
+sigaddset(&amp;newmask, SIGALRM);
+
+signal(&amp;newmask, alarm_func);
+
+// 阻塞SIGALRM并等待接收
+sigprocmask(SIG_BLOCK, &amp;newmask, NULL);
+alarm(5)
+
+// 调用pselect时zeromask代替现有屏蔽字(newmask),直到返回
+fd_set rset;
+FD_ZERO(rset);
+FD_SET(sockfd, &amp;rset);
+int n = pselect(sockfd+1, &amp;rset, NULL, NULL, NULL, &amp;zeromask);
+if(n &lt; 0) { 
+    if(error == EINTR) {
+        break;
+    }
+    ...
+} else if(n != 1) {
+    printf(&quot;pselect error! We only have 1 fd&quot;);
+} else {
+    // it is safe to recvfrom without block
+    char buf[1024];
+    struct sockaddr* replyaddr;
+    int len;
+    int m = recvfrom(sockfd, buf, sizeof(buf), replyaddr, &amp;len);
+}
+</code></pre></li>
+</ol>
+<pre><code>* 当pselect被调用时，先以空集zeromask替代进程的信号掩码(不阻塞任何信号，可以捕获SIGALRM)，再检查描述符并可能进入睡眠。pselect返回时，进程的信号掩码又被重置为调用pselect之前的值(阻塞SIGALRM)，从而避免了SIGALRM信号的丢失
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/阅读笔记-unix网络编程Ed3-第二十章-广播/" data-id="cioej719b00v25afy4u3dhl9d" class="article-share-link">分享到</a><div class="tags"><a href="/tags/unix网络编程Ed3/">unix网络编程Ed3</a></div><div class="post-nav"><a href="/2016/05/20/阅读笔记-unix网络编程Ed3-第二十四章-带外数据/" class="pre">第二十四章 带外数据</a><a href="/2016/05/20/阅读笔记-unix网络编程Ed3-第二十六章-线程/" class="next">第二十六章 线程</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">240</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

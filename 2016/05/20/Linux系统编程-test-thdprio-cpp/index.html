@@ -1,0 +1,363 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>test_thdprio.cpp | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">test_thdprio.cpp</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">test_thdprio.cpp</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/Linux系统编程/">Linux系统编程</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div></div></div><div class="post-content"><pre><code>#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;pthread.h&gt;
+#include &lt;sys/prctl.h&gt;
+
+
+//#define TEST_SAME_PRIO
+//#define TEST_DIFF_PRIO
+#define TEST_OTHER_PRIO
+
+//#define TEST_SCHD_OTHER
+//#define TEST_SCHD_RR
+//#define TEST_SCHD_FIFO
+//#define TEST_SCHD_MIXED_OTHER_RR
+//#define TEST_SCHD_MIXED_OTHER_FIFO
+//#define TEST_SCHD_MIXED_OTHER_RR_FIFO
+//#define TEST_SCHD_MIXED_OTHER_RR_FIFO2
+#define TEST_SCHD_MIXED_FIFO_EMPTY_RR
+//#define TEST_SCHD_MIXED_RR_FIFO
+
+
+#define CREATE_WAIT 100
+#define THREAD_LOOP 5000000
+#define DEF_PRIO 30
+
+
+pthread_t ppid0, ppid1, ppid2, ppid3, ppid4;
+pthread_attr_t attr0, attr1, attr2, attr3, attr4;
+unsigned long cnt0, cnt1, cnt2, cnt3, cnt4;
+int prio0, prio1, prio2, prio3, prio4;
+int policy0, policy1, policy2, policy3, policy4;
+
+
+
+void init_prio(void) 
+{
+#if defined(TEST_SAME_PRIO)
+    prio0 =  prio1 = prio2 = prio3 = prio4 = 11;
+
+#elif defined(TEST_DIFF_PRIO)
+    prio0 = DEF_PRIO - 20;
+    prio1 = DEF_PRIO - 10;
+    prio2 = DEF_PRIO;
+    prio3 = DEF_PRIO + 10;
+    prio4 = DEF_PRIO + 20;
+
+#endif
+}
+
+
+void init_policy(void) 
+{
+#if defined(TEST_SCHD_OTHER)
+    policy0 = policy1 = policy2 = policy3 = policy4 = SCHED_OTHER;
+
+#elif defined(TEST_SCHD_RR)
+    policy0 = policy1 = policy2 = policy3 = policy4 = SCHED_RR;
+
+#elif defined(TEST_SCHD_FIFO)
+    policy0 = policy1 = policy2 = policy3 = policy4 = SCHED_FIFO;
+
+#elif defined(TEST_SCHD_MIXED_OTHER_RR)
+    policy0 = policy1 = policy2 = policy3 = SCHED_OTHER;
+    policy4 = SCHED_RR;
+
+#elif defined(TEST_SCHD_MIXED_OTHER_FIFO)
+    policy0 = policy1 = SCHED_FIFO;
+    policy2 = policy3 = policy4 = SCHED_OTHER;
+
+#elif defined(TEST_SCHD_MIXED_OTHER_RR_FIFO)
+    policy0 = policy1 = policy2 = SCHED_OTHER;
+    policy3 = SCHED_FIFO;
+    policy4 = SCHED_RR;
+
+    prio0 = prio1 = prio2 = DEF_PRIO;
+    prio3 = DEF_PRIO + 10;
+    prio4 = DEF_PRIO + 20;
+
+#elif defined(TEST_SCHD_MIXED_OTHER_RR_FIFO2)
+        policy0 = policy1 = SCHED_OTHER;
+        policy2 = SCHED_RR;
+        policy3 = SCHED_RR;
+        policy4 = SCHED_FIFO;
+
+        prio0 = prio1 = DEF_PRIO;
+        prio2 = DEF_PRIO;
+        prio3 = DEF_PRIO + 10;
+        prio4 = DEF_PRIO + 20;
+
+#elif defined(TEST_SCHD_MIXED_FIFO_EMPTY_RR)
+    policy0 = policy1 = SCHED_OTHER;
+    policy2 = SCHED_FIFO;
+    policy3 = SCHED_RR;
+    policy4 = SCHED_FIFO;
+
+    prio0 = prio1 = DEF_PRIO + 10;
+    prio2 = DEF_PRIO;
+    prio3 = DEF_PRIO + 10;
+    prio4 = DEF_PRIO + 20;
+
+#elif defined(TEST_SCHD_MIXED_RR_FIFO)
+    policy0 = policy1 = policy2 = SCHED_RR;
+    policy3 =  policy4 = SCHED_FIFO;
+
+    prio0 = DEF_PRIO - 20;
+    prio1 = DEF_PRIO + 10;
+    prio2 = DEF_PRIO;
+    prio3 = DEF_PRIO - 10;
+    prio4 = DEF_PRIO + 20;
+
+#endif
+}
+
+void set_thread_name(const char* n)
+{
+    prctl(PR_SET_NAME,n,0,0,0);
+}
+
+void get_thread_name(char* n)
+{
+    prctl(PR_GET_NAME,n,0,0,0);
+}
+
+void show_thread_priority_range(int policy)
+{        
+    int max_priority = sched_get_priority_max(policy);  
+    int min_priority = sched_get_priority_min(policy);      
+
+    switch ( policy )
+        {
+        case SCHED_FIFO:
+                printf(&quot;policy = SCHED_FIFO, &quot;);
+                break;
+
+        case SCHED_RR:
+                printf(&quot;policy = SCHED_RR, &quot;);
+                break;
+
+        case SCHED_OTHER:
+                printf(&quot;policy = SCHED_OTHER, &quot;);
+                break;
+
+        default:
+                printf(&quot;policy = UNKNOWN, &quot;);
+                break;
+        }
+
+    printf(&quot;max_priority = %d, &quot;, max_priority);
+    printf(&quot;min_priority = %d\n&quot;, min_priority);
+}
+
+
+
+void getinfo(const char * i)
+{
+    int policy;
+    pthread_attr_t attr;
+    struct sched_param param;
+    char n[32];
+    char schd[12];
+    char buf[64];
+
+    get_thread_name(n);
+
+    pthread_attr_init(&amp;attr);    
+    pthread_attr_getschedpolicy(&amp;attr, &amp;policy);
+    pthread_getschedparam(pthread_self(),&amp;policy,&amp;param);
+
+    if(policy == SCHED_OTHER)
+        sprintf(schd, &quot;SCHED_OTHER&quot;);
+    else if(policy == SCHED_RR)
+        sprintf(schd, &quot;SCHED_RR&quot;);
+    else if(policy == SCHED_FIFO)
+        sprintf(schd, &quot;SCHED_FIFO&quot;);
+    else
+        sprintf(schd, &quot;UNKOWN&quot;);
+
+
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, &quot;%s: %s(prio = %d), [%s], Thread loop: %lu, %lu, %lu, %lu, %lu\n&quot;, n, schd, param.sched_priority, i, cnt0, cnt1, cnt2, cnt3, cnt4);
+    printf(&quot;%s&quot;, buf);
+}
+
+
+void set_thread_attr(int idx, pthread_attr_t* attr, int policy, int priority)
+{
+    char schd[12];
+    struct sched_param param; 
+    param.sched_priority = priority; 
+
+    pthread_attr_init(attr);
+    pthread_attr_setscope(attr, PTHREAD_SCOPE_PROCESS);
+    pthread_attr_setschedpolicy(attr, policy);
+    pthread_attr_setschedparam(attr,&amp;param);
+    pthread_attr_setinheritsched(attr,PTHREAD_EXPLICIT_SCHED);    
+
+
+    if(policy == SCHED_OTHER)
+        sprintf(schd, &quot;SCHED_OTHER&quot;);
+    else if(policy == SCHED_RR)
+        sprintf(schd, &quot;SCHED_RR&quot;);
+    else if(policy == SCHED_FIFO)
+        sprintf(schd, &quot;SCHED_FIFO&quot;);
+    else
+        sprintf(schd, &quot;UNKOWN&quot;);
+
+    printf(&quot;set thread[%d]: policy: %s, priority = %d\n&quot;, idx, schd, priority);
+}
+
+void wait(int r)
+{
+    printf(&quot;wait %d loops\n&quot;, r);
+    while(--r &gt;= 0);    
+}
+
+void threadloop(int idx, unsigned long x, unsigned long y, unsigned long&amp; count)
+{
+    unsigned long i = 0, j = 0;
+
+    count = 0;
+    for(i=1;i&lt;x;i++)
+        for(j=1;j&lt;y;j++)
+            if(j%2500 == 0) {
+                count++;
+                            printf(&quot;%d &quot;, idx);
+                     }
+}
+
+void threadloop_with_sleep(int idx, unsigned long x, unsigned long y, unsigned long&amp; count)
+{
+    unsigned long i = 0, j = 0;
+
+    count = 0;
+    for(i=1;i&lt;x;i++)
+        for(j=1;j&lt;y;j++)
+            if(j%2500 == 0) {
+                count++;                    
+                            printf(&quot;%d &quot;, idx);
+                            if(count == 8000) {
+                                printf(&quot;thread%d, count = %d, before sleep\n&quot;, idx, count);
+                                usleep(1000);
+                                printf(&quot;thread%d, count = %d, exit sleep\n&quot;, idx, count);
+                            }
+                     }
+}
+
+
+void* Thread0(void* p)
+{
+    set_thread_name(__func__);
+
+    sleep(1);
+    getinfo(&quot;start&quot;);
+
+    threadloop(0, 10, THREAD_LOOP, cnt0);
+
+    getinfo(&quot;exit&quot;);
+}
+
+void* Thread1(void* p)
+{
+    set_thread_name(__func__);
+
+    sleep(1);
+    getinfo(&quot;start&quot;);
+
+    threadloop(1, 10, THREAD_LOOP, cnt1);
+
+    getinfo(&quot;exit&quot;);
+}
+
+void* Thread2(void* p)
+{
+    set_thread_name(__func__);
+
+    sleep(1);
+    getinfo(&quot;start&quot;);
+
+    threadloop(2, 10, THREAD_LOOP, cnt2);
+
+    getinfo(&quot;exit&quot;);
+}
+
+void* Thread3(void* p)
+{
+    set_thread_name(__func__);
+
+    sleep(1);
+    getinfo(&quot;start&quot;);
+
+       #ifdef TEST_SCHD_MIXED_FIFO_EMPTY_RR
+           threadloop_with_sleep(3, 10, THREAD_LOOP, cnt3);
+       #else
+        threadloop(3, 10, THREAD_LOOP, cnt3);
+       #endif
+
+    getinfo(&quot;exit&quot;);
+}
+
+void* Thread4(void* p)
+{
+    set_thread_name(__func__);
+
+    sleep(1);
+    getinfo(&quot;start&quot;);
+
+    threadloop(4, 10, THREAD_LOOP, cnt4);
+
+    getinfo(&quot;exit&quot;);
+}
+
+int main()
+{
+    int i;
+    i = getuid();
+    if(i==0)
+        printf(&quot;The current user is root\n&quot;);
+    else
+        printf(&quot;The current user is not root\n&quot;);
+
+    printf(&quot;current priority range: \n&quot;);
+    show_thread_priority_range(SCHED_OTHER);
+    show_thread_priority_range(SCHED_FIFO);
+    show_thread_priority_range(SCHED_RR);
+    sleep(3);
+
+    printf(&quot;init thread property:\n&quot;);
+    init_prio();
+    init_policy();
+    set_thread_attr(0, &amp;attr0, policy0, prio0);
+    set_thread_attr(1, &amp;attr1, policy1, prio1);
+    set_thread_attr(2, &amp;attr2, policy2, prio2);
+    set_thread_attr(3, &amp;attr3, policy3, prio3);
+    set_thread_attr(4, &amp;attr4, policy4, prio4);
+
+    pthread_create(&amp;ppid0,&amp;attr0,Thread0,NULL);        
+    wait(CREATE_WAIT); 
+    pthread_create(&amp;ppid1,&amp;attr1,Thread1,NULL);        
+    wait(CREATE_WAIT);
+    pthread_create(&amp;ppid2,&amp;attr2,Thread2,NULL);        
+    wait(CREATE_WAIT);
+    pthread_create(&amp;ppid3,&amp;attr3,Thread3,NULL);        
+    wait(CREATE_WAIT*5);
+    pthread_create(&amp;ppid4,&amp;attr4,Thread4,NULL);        
+
+    pthread_join(ppid0,NULL);
+    pthread_join(ppid1,NULL);
+    pthread_join(ppid2,NULL);
+    pthread_join(ppid3,NULL);
+    pthread_join(ppid4,NULL);
+
+    pthread_attr_destroy(&amp;attr0);
+    pthread_attr_destroy(&amp;attr1);
+    pthread_attr_destroy(&amp;attr2);
+    pthread_attr_destroy(&amp;attr3);
+    pthread_attr_destroy(&amp;attr4);
+
+    printf(&quot; &gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;test over&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;\n&quot;);
+    return 0;
+}
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/Linux系统编程-test-thdprio-cpp/" data-id="cioej70kq00255afyyfbrxlrt" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux系统编程/">Linux系统编程</a></div><div class="post-nav"><a href="/2016/05/20/Linux系统编程-多线程编程注意事项/" class="pre">多线程编程注意事项</a><a href="/2016/05/20/Linux系统编程-test-rlock-cpp/" class="next">test_rlock.cpp</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">240</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

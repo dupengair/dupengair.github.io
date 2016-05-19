@@ -1,0 +1,418 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>七、改变思考方式 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">七、改变思考方式</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">七、改变思考方式</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/C-11新特性/">C++11新特性</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、指针空值——nullptr"><span class="toc-number">1.</span> <span class="toc-text">一、指针空值——nullptr</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、默认函数的控制"><span class="toc-number">2.</span> <span class="toc-text">二、默认函数的控制</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、lambda函数"><span class="toc-number">3.</span> <span class="toc-text">三、lambda函数</span></a></li></ol></div></div><div class="post-content"><h1 id="一、指针空值——nullptr"><a href="#一、指针空值——nullptr" class="headerlink" title="一、指针空值——nullptr"></a>一、指针空值——nullptr</h1><ol>
+<li><p>NULL</p>
+<ul>
+<li><p>c++98规定，NULL是0</p>
+<ul>
+<li><p>NULL的定义在stddef.h中：</p>
+<pre><code>#undef NULL
+#if defined(__cplusplus)
+#define NULL 0
+#else
+#define NULL ((void*)0)
+#endif
+</code></pre></li>
+</ul>
+</li>
+<li><p>这使得NULL可能被解释为整型</p>
+<pre><code>f(0);                                // call f(int)
+f(NULL);                            // call f(int)
+f(nullptr);                            // call f(void*)
+</code></pre></li>
+</ul>
+</li>
+<li><p>nullptr</p>
+<ul>
+<li><p>nullptr是一个关键字类型为<code>nullptr_t</code></p>
+<ul>
+<li><p><code>nullptr_t</code>类型的定义在<code>&lt;cstddef&gt;</code>中：</p>
+<pre><code>typedef decltype(nullptr) nullptr_t;
+</code></pre></li>
+</ul>
+</li>
+<li><p>nullptr是有类型的，仅可被隐式转换为指针类型</p>
+<pre><code>f(nullptr);                            // 调用f(char* c)版本
+</code></pre></li>
+</ul>
+</li>
+<li><p><code>nullptr_t</code>类型</p>
+<ul>
+<li><p><code>nullptr_t</code>可以声明一个空指针类型的数据，所有这些数据:</p>
+<ul>
+<li>数据等价，行为一致</li>
+<li>可以隐式转换为任意指针类型</li>
+<li>不能转换为非指针类型，包括<code>reinterpret_cast</code>也不行</li>
+<li>不能用于算术表达式</li>
+<li><p>可以用于关系运算，但只能与同类型或指针类型比较，仅当关系为<code>==, &lt;=, &gt;=</code>时返回true</p>
+<pre><code>int t = nullptr;                // error! 不能转换为非指针
+if(nullptr)                        // error! 不能转换为bool
+nullptr + 1;                    // error! 不能用于算术表达式
+</code></pre></li>
+</ul>
+</li>
+<li><p><code>nullptr_t</code>用于模板时，作为一个普通类型来推导</p>
+<pre><code>template&lt;typename T&gt; void g(T* t);
+template&lt;typename T&gt; void h(T t);
+
+g(nullptr);                            // error! nullptr作为普通类型推导
+h(nullptr);                            // T = nullptr_t
+g((int*)nullptr);                    // T = int
+h((int*)nullptr);                    // T = int*
+</code></pre></li>
+<li><p><code>nullptr_t</code>类型与<code>void*</code>大小相同</p>
+<pre><code>sizeof(nullptr_t) == sizeof(void*)    // true
+</code></pre></li>
+<li><p><code>nullptr_t</code>与<code>(void*)0</code> 的区别：<code>nullptr_t</code>可以隐式转换到任何指针类型，<code>(void*)0</code> 需要显示类型转换（与C不同，C可以直接转换）</p>
+<pre><code>int *px = (void*)0;                    // error! 需要类型转换
+int *px = nullptr;
+</code></pre></li>
+<li><p>用户不能对nullptr取地址，但可以对<code>nullptr_t</code>类型定义的对象去地址，因为nullptr被定义为一个右值常量，取地址没意义</p>
+<pre><code>nullptr_t mynptr;
+printf(&quot;%x&quot;, &amp;nullptr);                // error! 不能对nullptr取地址
+printf(&quot;%x&quot;, &amp;mynptr);                // ok
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="二、默认函数的控制"><a href="#二、默认函数的控制" class="headerlink" title="二、默认函数的控制"></a>二、默认函数的控制</h1><ol>
+<li><p>类的默认函数，一旦自己定义就不再生成</p>
+<ul>
+<li>构造函数、析构函数</li>
+<li>拷贝构造函数，拷贝赋值操作符</li>
+<li><p>移动构造函数，移动赋值操作符</p>
+<pre><code>operator ,
+operator &amp;
+operator &amp;&amp;
+operator *
+operator -&gt;
+operator -&gt;*
+operator new
+operator delete
+</code></pre></li>
+</ul>
+</li>
+<li><p>自定义构造函数与POD</p>
+<ul>
+<li>一旦声明自定义的编译器本来会默认生成的函数，会导致类不再是POD类型，失去了编译器优化的可能性，如自定义构造函数，编译器将不再生成默认构造函数。</li>
+</ul>
+</li>
+<li><p>必要性</p>
+<ul>
+<li>在符合标准布局的情况下，如果自定义这些默认函数时，可以让编译器同时生成默认版本的，就能恢复POD类型。</li>
+<li>有时候即使没有重新定义这些默认函数，也不需要让编译器生成默认版本的，如使类uncopyable时</li>
+</ul>
+</li>
+<li><p>“= default” 与 “= deleted”</p>
+<ul>
+<li><p>“= default” 强制类生成默认函数</p>
+<pre><code>class IsPod {
+public:
+    IsPod(int i): data(i) {}
+    IsPod() = default;                    // 强制生成default构造函数，恢复POD类型
+};
+</code></pre></li>
+<li><p>“= delete” 禁止生成默认函数</p>
+<pre><code>class NoCopy {
+public:
+    NoCopy(const NoCopy&amp;) = delete;
+    NoCopy&amp; operator=(const NoCopy&amp;) = delete; 
+};
+</code></pre></li>
+<li><p>它们可以用在类定义之外，修饰成员函数</p>
+<pre><code>class Test {
+public:
+    Test() = default;                    // 强制生成default构造函数
+    Test(const Test&amp;);                    // 没有指定default
+};
+
+Test::Test(const Test&amp;) = default;        // 使用编译器默认的实现
+</code></pre></li>
+</ul>
+</li>
+<li><p>“= delete”的妙用</p>
+<ul>
+<li><p>避免不必要的隐式类型转换</p>
+<pre><code>class Conv {
+public:
+    Conv(int i);
+    Conv(char c) = delete;                // 禁止从char构造Conv
+};
+void Func(conv cv);
+
+Func(1);
+Func(&apos;a&apos;);                                // error! 无法隐式类型转换
+Conv cv(1);
+conv cv(&apos;a&apos;);                            // error! 无法隐式类型转换
+</code></pre></li>
+<li><p>不要与explicit混用，会产生混乱的结果</p>
+<pre><code>class Conv {
+public:
+    Conv(int i);
+    explicit Conv(char c) = delete;        // 禁止从char显式构造Conv，但可以隐式类型转换
+};
+void Func(conv cv);
+
+Func(1);
+Func(&apos;a&apos;);                                // 可以隐式类型转换为Conv类型
+Conv cv(1);
+conv cv(&apos;a&apos;);                            // error! 无法显式构造    
+</code></pre></li>
+<li><p>可以应用于普通函数，禁止其隐式类型转换</p>
+<pre><code>void Func(int i);
+void Func(chat c) = delete;                // 禁止隐式类型转换
+
+Func(1);
+Func(&apos;a&apos;);                                // error! 无法隐式类型转换        
+</code></pre></li>
+<li><p>可以通过显式删除类的operator new操作符来禁止在堆上生成对象</p>
+<pre><code>class NoHeapObj {
+public:
+    ...
+    void* operator new(std::size_t) = delete;        // 禁止在堆上生成对象
+}; 
+</code></pre></li>
+<li><p>可以结合placement new使对象在指定位置生成，并且不需要析构函数来执行对象级别的清理</p>
+<pre><code>class NoStackObj {
+public:
+    ~NoStackObj() = delete;                // 禁止在栈上生成对象
+    ...
+};
+
+NoStackObj a;                            // error! 无法通过编译
+void p;
+new (p) NoStackObj()                    // 只能在堆上生成对象，加上不需要析构函数执行清理
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="三、lambda函数"><a href="#三、lambda函数" class="headerlink" title="三、lambda函数"></a>三、lambda函数</h1><ol>
+<li><p>语法定义</p>
+<pre><code>[ capture ]( parameters* ) mutable* -&gt; return-type* { statement }
+*：可选部分
+</code></pre><ul>
+<li><p>最简单形式的lambda表达式</p>
+<pre><code>[]{}；
+</code></pre></li>
+<li><p>lambda函数的运算基于初始状态    </p>
+<ul>
+<li><p>普通用法：</p>
+<pre><code>int m = 1, n = 2;
+auto sum = [](int x, int y) -&gt; int{ return x + y; }
+sum(m, n);
+</code></pre></li>
+<li><p>lambda运算：</p>
+<pre><code>int m = 1, n = 2;
+auto sum = [&amp;m, &amp;n]() -&gt; int{ return m + n; }        // 直接捕捉，不需传参
+sum();    
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>捕捉项</p>
+<ul>
+<li><p>可以组合使用的基本项：</p>
+<pre><code>[var] ：值传递捕捉var
+[=]   ：值传递捕捉所有
+[&amp;var]：引用捕捉var
+[&amp;]   ：引用捕捉所有
+</code></pre></li>
+<li><p>使用：</p>
+<pre><code>[this] ：值传递捕捉this
+[=, &amp;a]：引用捕捉a，值捕捉其它
+[&amp;, a] ：值捕捉a，引用捕捉其它
+</code></pre></li>
+<li><p>不允许重复捕捉</p>
+<pre><code>[=, a] ：error! 重复捕捉a
+[&amp;, &amp;a]：error! 重复捕捉a
+</code></pre></li>
+<li><p>C++11规定块作用域以外的lambda函数捕捉列表必须为空，即全局变量不可以捕捉（实测gcc警告提示，编译通过）</p>
+</li>
+<li>C++11规定lambda函数只能捕捉块作用域内的自动变量（实测捕捉static变量gcc警告提示，编译通过）</li>
+</ul>
+</li>
+<li><p>lambda与仿函数</p>
+<ul>
+<li>仿函数可以拥有状态（即传参可以不用在函数调用的同时进行）</li>
+<li>lambda在编译器的内部实现转化为一个仿函数</li>
+</ul>
+</li>
+<li><p>基础应用</p>
+<ul>
+<li>lambda可用作局部函数，封装函数内部的程序段，减少复杂函数的局部变量，使代码具有自说明性</li>
+<li><p>lambda可在运行期初始化常量，即定义时直接调用</p>
+<pre><code>int count = 3;
+const int y = [=] { int ret = 0, i = count; do{ret += i;}while(i-- != 0); return ret; }();
+</code></pre></li>
+</ul>
+</li>
+<li><p>值捕捉与引用捕捉</p>
+<ul>
+<li>值捕捉在定义时捕捉变量，其后调用视其为常量，不会再次捕捉，无论调用多少次</li>
+<li><p>应用捕捉在调用时捕捉，可以实时获取变量值</p>
+<pre><code>int a = 1;
+auto by_val = [=]{ return a; };
+auto by_ref = [&amp;]{ return a; };
+
+cout &lt;&lt; by_val() &lt;&lt; endl;        // 1
+cout &lt;&lt; by_ref() &lt;&lt; endl;        // 1
+
+a++
+cout &lt;&lt; by_val() &lt;&lt; endl;        // 1
+cout &lt;&lt; by_ref() &lt;&lt; endl;        // 2
+</code></pre></li>
+</ul>
+</li>
+<li><p>lambda与函数指针</p>
+<ul>
+<li>lambda类型为一个闭包（closure）的类，每个lambda表达式会产生一个闭包的临时对象（右值）</li>
+<li>closure类型被C++11定义为unique的，匿名非联合体（unamed nonunion）的class类型，其含义是定义完成后就关闭了变量与上下文的联系，只与函数本身相关</li>
+<li><p>lambda表达式非函数指针，但允许转换成函数指针，不允许从函数指针到lambda表达式的转换</p>
+<pre><code>auto L_EXPR = [](int x, int y) -&gt; int { return x + y; };
+typedef int (*FUNC1)(int x, int y);
+typedef int (*FUNC2)(int x);
+
+FUNC1 f1 = L_EXPR;                    // 允许lambda到函数指针的转换
+FUNC2 f2 = L_EXPR;                    // error! 声明不一致
+
+decltype(L_EXPR) lexpr = L_EXPR;
+decltype(L_EXPR) lexpr2 = f2;        // error! 不允许从函数指针到lambda的转换
+</code></pre></li>
+</ul>
+</li>
+<li><p>lambda的常量性</p>
+<ul>
+<li><p>lambda捕捉变量时，如果为值捕捉，不允许修改变量，除非声明为mutable，参数传递则不受限制</p>
+<pre><code>int var = 1;
+auto lm1 = [=]{ var++; };            // error! 值传递不允许修改，无法编译通过
+auto lm2 = [=]()mutable{ var++; };    // mutable 声明使函数不再const
+auto lm3 = [&amp;]{ var++; };            // 引用捕捉可修改变量
+auto lm4 = [=](int* v){ v++; };
+lm4(var);                            // 参数传递不受限制
+</code></pre></li>
+<li><p>在标准中lambda等价于定义了常量operator()的仿函数，引用捕捉是常量引用，其值可以修改，引用本身不能修改。</p>
+<pre><code>auto lm1 = [=]{ var++; };                 // 值捕捉实际上被编译器转换为一个仿函数，其operator()为常量函数
+class lm1 {
+public:
+    lm1(int v): val(v) {}
+    void operator() const { val++; }    // error! 常量成员函数，不能修改成员变量
+private:
+    int val;
+};
+
+auto lm3 = [&amp;]{ var++; };                // 引用捕捉是一个常量引用
+class lm3 {
+public:
+    lm3(int v): val(v) {}
+    void operator() const { val++; }    // 修改的是常量引用的值，不是引用本身
+private:
+    int&amp; const val;
+};        
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<ol>
+<li><p>lambda与STL</p>
+<ul>
+<li><p>lambda与仿函数、函数指针    </p>
+<ul>
+<li><code>for_each</code>不用关心iterator和循环细节，效率高</li>
+<li>函数指针<ul>
+<li>定义与调用位置不同，不便于代码阅读</li>
+<li>编译器不能对函数指针进行inline优化，lambda默认内联，循环次数多时效率差别巨大</li>
+<li>不能存储状态</li>
+</ul>
+</li>
+<li><p>仿函数</p>
+<ul>
+<li>书写复杂，需要定义类</li>
+<li><p>应用受限</p>
+<pre><code>vector&lt;int&gt; nums;
+vector&lt;int&gt; largenums;
+int bound = 10;
+
+void IsLarge(int i) {
+    if(i &gt; bound) 
+        largenums.push_back(i);
+}
+
+class IsLNums {
+public:
+    IsLnums(int u): bound(u) {}
+    void operator() (int i) const {
+        if(i &gt; bound)
+            largenums.push_back(i);
+    }
+private:
+    int bound;
+};
+
+IsLNums Isl(bound);            
+
+for_each(nums.begin(), nums.end(), IsLarge);
+for_each(nums.begin(), nums.end(), Isl);
+for_each(nums.begin(), nums.end(), [=](int i){
+    if(i &gt; bound)
+        largenums.push_back(i);
+});
+</code></pre></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>当需要将循环封装时，函数指针由于不能保存状态必须要添加参数，无法在<code>for_each</code>循环中使用，而仿函数和lambda不需改变：</p>
+<pre><code>void IsLarge(int i, int bound) {
+    if(i &gt; bound) 
+        largenums.push_back(i);
+}
+
+void GetLargeNums(int bound) {
+    IsLNums Isl(bound);
+
+    // for_each(nums.begin(), nums.end(), IsLarge);        // 无法使用函数指针
+    for_each(nums.begin(), nums.end(), Isl);
+    for_each(nums.begin(), nums.end(), [=](int i){
+        if(i &gt; bound)
+            largenums.push_back(i);
+    });
+}    
+</code></pre></li>
+</ul>
+</li>
+<li><p>lambda与算法和仿函数对比，要简单很多</p>
+<pre><code>示例 1)    
+vector&lt;int&gt; nums;
+void Add(const int val) {
+    // 传统for循环
+    for (auto i = nums.begin(); i != nums.end(); ++i) {
+        *i += val;
+    }
+
+    // 这里无法使用for_each, 需要变动性算法将结果写回nums
+    transform(nums.begin(), nums.end(), nums.begin(), bind2nd(plus&lt;int&gt;(), val));
+
+    // lambda使for_each仍然可以使用
+    for_each(nums.begin(), nums.end() [=](int &amp;i) {
+        i += val;
+    });        
+}
+Add(10);
+
+示例 2)
+vector&lt;int&gt; v;
+int err = 0, score = 100;
+
+// 使用accumulate算法，需要两次运算
+err = accumulate(v.begin, v.end(), 0);
+score = accumulate(v.begin, v.end, 100, minus&lt;int&gt;());
+
+// 使用lambda简单很多，只需要一次循环
+for_each(v.begin(), v.end(), [&amp;](int i) {
+    err += i;
+    score -= i;
+});
+</code></pre></li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/阅读笔记-C-11新特性-七、改变思考方式/" data-id="cioej70t700bw5afyigc1ns3p" class="article-share-link">分享到</a><div class="tags"><a href="/tags/C-11新特性/">C++11新特性</a></div><div class="post-nav"><a href="/2016/05/20/阅读笔记-C-Templates-《C-Templates》阅读笔记/" class="pre">《C++ Templates》阅读笔记</a><a href="/2016/05/20/阅读笔记-C-11新特性-三、通用为本-专用为末/" class="next">三、通用为本 专用为末</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">240</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

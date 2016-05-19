@@ -1,0 +1,273 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第一章 线程安全的对象生命期管理 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第一章 线程安全的对象生命期管理</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第一章 线程安全的对象生命期管理</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、线程安全"><span class="toc-number">1.</span> <span class="toc-text">一、线程安全</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、智能指针"><span class="toc-number">2.</span> <span class="toc-text">二、智能指针</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、一对多的回调"><span class="toc-number">3.</span> <span class="toc-text">四、一对多的回调</span></a></li></ol></div></div><div class="post-content"><h1 id="一、线程安全"><a href="#一、线程安全" class="headerlink" title="一、线程安全"></a>一、线程安全</h1><ol>
+<li><p>不要在构造函数中注册自己到别人的回调中</p>
+<ul>
+<li><p>构造还没完成，可能在别的对象中就被用到，尤其是作为基类时</p>
+<pre><code>// Bomb
+class Drived: public Base {
+    public:
+        Drived(Obj&amp; o) {
+            o-&gt;register(this);
+        }
+};
+</code></pre></li>
+<li><p>应采用二段式构造(cstor+init)，注册回调的过程单独提出来</p>
+<pre><code>// Good
+class Drived: public Base {
+    public:
+        Drived();
+        void Init(Obj&amp; o) {
+            o-&gt;register(this);
+        }
+};    
+</code></pre></li>
+</ul>
+</li>
+<li><p>对象成员的mutex无法保证析构安全</p>
+<pre><code>Foo::~Foo() {
+    Lock(a.mutex);
+    // free internal state  (1)
+}    
+
+Foo::Dosth() {
+    Lock(a.mutex);  // (2)
+    // do sth for a 
+}
+
+// thread 1, x is exposed between threads
+delete x;
+x = NULL; // no use at all
+
+// thread 2, 
+if(x)
+    x.Dosth();
+</code></pre><ul>
+<li>当thread1和2分别运行到两个函数的(1)和(2)处时，x对象已经被析构，而Dosth()的调用结果未知</li>
+<li>应该将用到x的地方加锁保护，才能做到线程安全</li>
+</ul>
+</li>
+<li><p>多线程同时以ABBA的方式访问多个对象时，可能产生死锁</p>
+<ul>
+<li><p>普通函数</p>
+<pre><code>void Dosth(Foo&amp; a, Foo&amp; b) {
+    Lock(a.mutex);
+    Lock(b.mutex);
+    // do sth for a and b
+}
+
+// thread 1
+Dosth(a, b);
+// thread 2
+Dosth(b, a);
+</code></pre></li>
+<li><p>重载操作符</p>
+<pre><code>Foo&amp; Foo::operator=(const Foo&amp; rhs) {
+    if(this == &amp;rhs)
+        return *this;
+
+    Lock(mutex);
+    Lock(rhs.mutex);
+    value = rhs.value;
+    return *this;
+}
+
+// thread 1
+a = b;
+// thread 2
+b = a;
+</code></pre></li>
+<li><p>为了保证始终按相同的顺序加锁，可以比较对象地址，始终先加锁地址小的</p>
+</li>
+</ul>
+</li>
+<li><p>临界区非常小的情况下，互斥锁并不会影响并发读，所以也不会有惊群现象</p>
+</li>
+</ol>
+<h1 id="二、智能指针"><a href="#二、智能指针" class="headerlink" title="二、智能指针"></a>二、智能指针</h1><ol>
+<li>垃圾回收的原理：所有人都用不到的，一定是垃圾 </li>
+<li>C++的内存问题及解决之道<ul>
+<li>缓冲区溢出<ul>
+<li>用容器管理buffer，通过成员函数操作，而不是裸指针</li>
+</ul>
+</li>
+<li>野指针<ul>
+<li>用<code>shared_ptr/weak_ptr</code>进行管理</li>
+</ul>
+</li>
+<li>重复释放<ul>
+<li><code>scoped_ptr</code>，只在对象析构时释放</li>
+</ul>
+</li>
+<li>内存泄漏<ul>
+<li><code>scoped_ptr</code>，对象析构时自动释放内存</li>
+</ul>
+</li>
+<li>不配对的new[]/delete<ul>
+<li>使用容器和智能指针</li>
+</ul>
+</li>
+<li>内存碎片</li>
+</ul>
+</li>
+<li>现代C++编程很少出现delete，资源通过对象进行管理</li>
+<li><p>智能指针</p>
+<ul>
+<li><p>引入间接性，使对象的存活状态可判断(代理的思想)</p>
+<pre><code>sp1 -&gt;  |Proxy    |  -&gt; Object
+sp2 -&gt;  |counter|
+</code></pre></li>
+<li><p>计数在主流平台上用原子操作实现，无锁操作，高性能且线程安全</p>
+</li>
+<li><code>shared_ptr</code>在对象不再被引用时立即回收内存，防止垃圾占用内存，不影响关键任务的实时性</li>
+<li><code>weak_ptr</code>弱引用，解决循环引用问题，并且可以提升至强引用<code>shared_ptr</code>，通常用于不需要强行占有对象的场合，使用时先判断指针合法性(是否可提升到<code>shared_ptr</code>)，以避免意外延长对象生存期</li>
+</ul>
+</li>
+<li>可以采取swap的方式，将临界区内的对象析构转移到临界区外，以缩短临界区长度</li>
+<li><p>boost::bind会拷贝实参，也会延长对象生命期</p>
+<pre><code>shared_ptr&lt;Foo&gt; pFoo(new Foo);
+// pFoo的生命期不会短于func对象的生命期
+boost::function&lt;void&gt; func=boost::bind(&amp;Foo::Dosth, pFoo);
+</code></pre></li>
+<li><p>多数情况下不用拷贝，可用const reference传递以提高性能，线程只需要最外层函数有<code>shared_ptr</code>实体对象</p>
+</li>
+<li>对象析构开销大的情况下，可以用<code>shared_ptr</code>的容器把对象析构转移到专门线程，以防止析构发生在关键线程</li>
+<li>RAII是现代C++的重要特征<ul>
+<li>old C++：new和delete要配对</li>
+<li>modern C++：资源配置在单一语句中执行(即分配的对象立刻转交给handler，如<code>shared_ptr</code>)</li>
+</ul>
+</li>
+</ol>
+<p>#三、对象池中销毁对象</p>
+<ol>
+<li><p>用shared_ptr，会造成无法释放 version.1</p>
+<pre><code>class StockFactory: boost::noncopyable {
+public:
+    shared_ptr&lt;Stock&gt; get(const string&amp; key);
+private:
+    mutable MutexLock mutex_;
+    std::map&lt;string, shared_ptr&lt;Stock&gt; &gt; stocks_;
+};
+</code></pre><ul>
+<li>stocks_使用<code>shared_ptr</code>造成即使get以后不在使用了，也无法释放其中的对象，只要这个容器一直存在</li>
+</ul>
+</li>
+<li><p>使用<code>weak_ptr</code>，仍然有内存泄漏 version.2</p>
+<pre><code>// 容器改为std::map&lt;string, weak_ptr&lt;Stock&gt; &gt; stocks_;
+shared_ptr&lt;Stock&gt; StockFactory::get(const string&amp; key) {
+    shared_ptr&lt;Stock&gt; pStock;
+    MutexLockGuard lock(mutex_);
+    weak_ptr&lt;Stock&gt;&amp; wkStock = stocks_[key];
+    pStock = wkStock.lock();  // 提升类型到强引用
+    if(!pStock) {
+        pStock.reset(new Stock(key));
+        wkStock = pStock; // 更新了key对应的value，因为wkStock是个ref
+    }
+    return pStock;
+}
+</code></pre><ul>
+<li>仍然有少量内存泄露，Stock对象会被析构，但<code>weak_ptr</code>仍然存在，没有被容器主动erase掉，所以容器中保存了曾经存在过的Stock对象的弱引用</li>
+</ul>
+</li>
+<li><p>使用<code>shared_ptr</code>自定义析构函数，主动从容器中擦除 version.3</p>
+<pre><code>// 通过StockFactory::get获得的shared_ptr，自定义析构函数保证了主动从容器擦除
+...
+if(!pStock) {
+    pStock.reset(new Stock(key), boost::bind(&amp;StockFactory::deleteStock, this, _1));
+...
+</code></pre></li>
+</ol>
+<pre><code>    class StockFactory: boost::noncopyable {
+    ...
+    private:
+        ...
+        void deleteStock(Stock* stock) {
+            if(stock) {
+                MutexLockGuard lock(mutex_);
+                stocks_.erase(stock-&gt;key())
+            }
+            delete stock;
+        }
+    };
+
+* 除了将原始的this指针保存到pStock智能指针中，有可能因为StockFactory先析构而导致pStock析构产生线程安全问题以外，stock对象终于能正常实时被析构，不会引起内存问题
+</code></pre><ol>
+<li><p>使用<code>enable_shared_from_this</code>，解决this生命期问题 version.4</p>
+<pre><code>// 让StockFactory继承boost::enable_shared_from_this
+class StockFactory: public boost::enable_shared_from_this&lt;StockFactory&gt;, boost::noncopyable { ... }
+
+// StockFactory::get中使用shared_from_this()
+...
+if(!pStock) {
+    pStock.reset(new Stock(key), boost::bind(&amp;StockFactory::deleteStock, shared_from_this(), _1));
+...
+</code></pre><ul>
+<li>目的是将StockFactory对象作为<code>shared_ptr</code>共享给Stock对象，保证Stock对象存在时，前者不会过早析构</li>
+<li><code>enable_shared_from_this</code>用于成员函数需要提供类的this指针的智能指针时，C++11里std已经包含<code>enable_shared_from_this</code>基类，详情见补充 </li>
+<li>此时StockFactory对象的生命期被延长到至少和Stock一样</li>
+</ul>
+</li>
+<li><p>通过弱回调技术，保证StockFactory对象的生命期不被延长　version.5</p>
+<pre><code>// get中调用析构函数时传递this的weak_ptr，避免StockFactory生命期被延长
+class StockFactory: public boost::enable_shared_from_this&lt;StockFactory&gt;, boost::noncopyable {
+public：
+    shared_ptr&lt;Stock&gt; get(const string&amp; key) {
+        shared_ptr&lt;Stock&gt; pStock;
+        MutexLockGuard lock(mutex_);
+        weak_ptr&lt;Stock&gt;&amp; wkStock = stocks_[key];
+        pStock = wkStock.lock();
+        if(!pStock) {
+            pStock.reset(new Stock(key), 
+                        boost::bind(&amp;StockFactory::weakDeletCallback,
+                        books::weak_ptr&lt;StockFactory&gt;(shared_from_this()), -1));
+            wkStock = pStock;
+        }
+        return pStock;
+    }
+
+private:
+    // 析构函数传入指向this的weak_ptr，可以在调用时判断this是否在生存期内
+    static void weakDeleteCallback(const boost::weak_ptr&lt;StockFactory&gt;&amp; wkFactory, Stock* stock) {
+        shared_ptr&lt;StockFactory&gt; factory(wkFactory.lock()); 
+        if(factory) {     // 如果容器还在生命期内，就执行析构
+            factory-&gt;removeStock(stock);
+        }
+        delete stock;
+    }
+
+    void removeStock(Stock* stock) {
+        if(stock) {
+            MutexLockGuard lock(mutex_);
+            stocks_.erase(stock-&gt;key());
+        }
+    }
+
+private:
+    mutable MutexLock mutex_;
+    std::map&lt;string, weak_ptr&lt;Stock&gt; &gt; stocks_;
+};
+</code></pre></li>
+</ol>
+<h1 id="四、一对多的回调"><a href="#四、一对多的回调" class="headerlink" title="四、一对多的回调"></a>四、一对多的回调</h1><ul>
+<li><p>通过C++11的variadic template，可以实现一对多的回调</p>
+<pre><code>template&lt;typename Signature&gt;
+class SingalTrival;
+
+template &lt;typename RET, typename... ARGS&gt;
+class signalTrivial&lt;RET(ARGS...)&gt; {
+public:
+    typedef std::function&lt;void (ARGS...)&gt; Functor;
+
+    void connect(Functor&amp;&amp; func) {
+        functors_.push_back(std::forward&lt;Functor&gt;(func));
+    }
+    void call(ARGS&amp;&amp;... args) {
+        for(const Functor&amp; f: functors_) {
+            f(args...);
+        }
+    }
+
+private:
+    std::vector&lt;Functor&gt; functors_;
+};
+</code></pre></li>
+</ul>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/阅读笔记-Linux多线程服务器编程-第一章-线程安全的对象生命期管理/" data-id="cioej70zw00m95afyqxe54gzz" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux多线程服务器编程/">Linux多线程服务器编程</a></div><div class="post-nav"><a href="/2016/05/20/阅读笔记-Linux性能优化大师-第一章-深入理解Linux操作系统/" class="pre">第一章 深入理解Linux操作系统</a><a href="/2016/05/20/阅读笔记-InsideC-ObjectModel-第四章-Funciton语意学/" class="next">第四章 Funciton语意学</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">240</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

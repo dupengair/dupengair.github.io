@@ -1,0 +1,319 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第七章 站在对象模型的尖端 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第七章 站在对象模型的尖端</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第七章 站在对象模型的尖端</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、template"><span class="toc-number">1.</span> <span class="toc-text">一、template</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、异常处理-Exception-Handling"><span class="toc-number">2.</span> <span class="toc-text">二、异常处理 Exception Handling</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、执行期类识别"><span class="toc-number">3.</span> <span class="toc-text">三、执行期类识别</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、效率有了，弹性呢"><span class="toc-number">4.</span> <span class="toc-text">四、效率有了，弹性呢</span></a></li></ol></div></div><div class="post-content"><h1 id="一、template"><a href="#一、template" class="headerlink" title="一、template"></a>一、template</h1><p><strong>讨论主题</strong></p>
+<ul>
+<li>template的声明</li>
+<li>class object、inline nonmenber、member template functions的实例化</li>
+<li>nonmember、member template functions和static template class members的实例化<br>&gt;</li>
+</ul>
+<ol>
+<li><p>template的实例化</p>
+<ul>
+<li>一个class object的定义会导致template的实例化</li>
+<li>定义一个template类型的指针不会导致实例化，因为编译器不需要知道class的定义</li>
+<li><p>定义一个template类型的引用会导致实例化，因为引用一定要绑定到一个class对象上</p>
+<pre><code>template &lt;typename T&gt;
+class A {
+    static T a;
+public:
+    A(T x):a(X) {}
+};
+
+A&lt;int&gt;::a = 1;                //实例化
+A&lt;int&gt;* pa = 0;                //不实例化，因为定义一个指针不需要对象存在
+A&lt;int&gt;&amp; ra = 0;                //实例化，0被隐式转换为一个对象，如果不能转换则编译报错
+</code></pre></li>
+<li><p>对于member functions，则等到使用时才实例化，原因有二：</p>
+<ul>
+<li>效率，不需要实现那么多暂时没有用的member function</li>
+<li>最大自适应性，模板的某些成员函数定义可以对某种特定类型是不适用的，当实例化该类型时，由于用不到这些成员函数就不实例化它们，从而使模板对该类型也可以正常实例化。（SFINAE）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>template错误的报告</p>
+<ul>
+<li>涉及到template参数的错误，必须要实例化时才能发现，如某模板隐含要求实例化类型对某种操作的支持</li>
+<li><p>编译器检查声明的过程中只会发现语法错误</p>
+<pre><code>模板类定义：
+template&lt;typename T&gt; 
+class A {
+    T _a;
+public:
+    T func_a();
+};
+
+成员函数定义：
+template&lt;typename T&gt;
+T A&lt;T&gt;::func_b() {            //没有这个定义
+    return _b;                //没有这个成员
+}
+</code></pre><ul>
+<li>上面这个定义不会保错，因为模板类可以被特化，所以编译器也不知道这个定义会来自于哪个特化？（实际测试会报错）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>template中的名称决议方式    </p>
+<ul>
+<li><p>template名称决议取决于两个作用域</p>
+<ul>
+<li>模板定义的作用域</li>
+<li>模板实例化的作用域（此作用域包含定义的作用域，范围更加广阔）</li>
+</ul>
+</li>
+<li><p>编译器对模板中的名称进行解析时，考察名称是否依赖于模板参数，如果依赖，决议结果取决于作用域2，否则为1</p>
+</li>
+<li><p>对于模板中的函数名称来说，考察其依赖的参数而不考虑返回值</p>
+<pre><code>模板定义作用域：    
+external void func(double x);            
+template&lt;typename T&gt; 
+class A {
+    int _a;
+    T   _b;
+public:
+    void func1() { func(_a); }             //template type independent
+    T func2() { return func(_b); }         //template type dependent
+};
+
+模板实例化作用域：
+external void func(int x);            
+A&lt;int&gt; a;
+a.func1()                                // 调用func(double x)，此处的func(_a)不依赖于模板参数（_a的类型为int），所以在函数定义作用域中进行决议，此时只有func(double x)的声明可见
+a.func2()                                // 调用func(int x)，func(_b)依赖于T（_b的类型由T决定），所以在模板实例化作用域中进行决议，此时func(double x)和func(int x)都可见，后者的匹配程度更高
+</code></pre></li>
+</ul>
+</li>
+<li><p>member function的实例化</p>
+<ul>
+<li><p>对template的支持，最大的困难在于member functions的初始化，如果每一次都初始化所有的member functions，会导致编译时间急剧增加。并且链接时消除member functions在不同编译单元的重复定义也会带来巨大的工作量</p>
+</li>
+<li><p><code>&lt;补充：见《程序员的自我修养》4.4.1&gt;</code>编译器将每个模板的实例代码单独存在一个段里，链接的时候合并入最终的代码段，gcc把这些段叫做Link Once，命名为<code>.gnu.linkonce.name</code>。虚函数表也做类似处理</p>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、异常处理-Exception-Handling"><a href="#二、异常处理-Exception-Handling" class="headerlink" title="二、异常处理 Exception Handling"></a>二、异常处理 Exception Handling</h1><ol>
+<li><p>编译支持异常处理的主要工作：</p>
+<ul>
+<li>查询exception objects的类型（依赖于RTTI，运行时类识别）</li>
+<li>找到匹配的catch子句</li>
+<li>处理exception objects的生存期、清理现场，维护函数栈</li>
+</ul>
+</li>
+<li><p>快速检阅</p>
+<ul>
+<li><p>根据执行期语意将抛出异常的作用域分块</p>
+<pre><code>A* func() {
+    A* pa;                        //区段1，异常产生时只用返回    
+    pa=foo();                    //foo函数可能产生异常    
+    if(!pa) return 0;    
+
+    Point a;                    //区段2，异常产生时需要编译器销毁对象
+    A* pa2;
+    pa2=foo();                    //foo函数可能产生异常    
+    if(!pa2) return pa1;    
+}
+</code></pre></li>
+<li><p>上面的函数因为编译器需要在产生异常时做出不同的处理，所以划分不同的区段</p>
+</li>
+<li><p>对于手动分配的资源，需要在捕捉异常时手动清理</p>
+<pre><code>A* func(Mutex&amp; m) {
+    A* pa = new A;                //区段1，异常产生时只用返回    
+    m.lock();
+    try {
+        foo();                    //可能产生异常
+    } catch(...) {
+        area.unlock();            //手动清理资源
+        delete pa;    
+        throw;
+    }
+
+    m.unlock();
+    delete pa;
+}
+</code></pre></li>
+<li><p>对于new表达式产生的异常，不用手动清理，编译会自动调用对象的析构函数（placement delete）并释放内存（operator delete），如上。对于new数组也成立。</p>
+</li>
+<li><p>最好通过对象管理资源</p>
+<pre><code>A* func(Mutex&amp; m) {
+    unique_ptr&lt;A&gt; upa(new A);    //区段1：退出作用域时自动销毁    
+    AutoMutex(m) ;                //区段2：退出作用域时自动UNLOCK
+    foo();                        //区段3：可能产生异常
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>对Exception Handling的支持</p>
+<ul>
+<li><p>exception抛出时编译器的工作：</p>
+<ul>
+<li>判断throw是否在try中</li>
+<li>是，则匹配catch子句</li>
+<li>匹配到则转到catch子句中运行</li>
+<li>没有匹配或者不在try中则执行一系列过程返回到上级函数<ul>
+<li>清理现场，销毁当前作用域的局部变量</li>
+<li>栈返回，unwind当前的函数栈</li>
+<li>返回上级函数</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>决定throw是否发生在try中</p>
+<ul>
+<li>编译器将程序段分成3种情况<ul>
+<li>try以外的区域，没有局部变量，异常发生时不需要对现场做清理</li>
+<li>try以外的区域，有局部变量，异常发生时要清理现场</li>
+<li>try以内的区域</li>
+</ul>
+</li>
+<li>将每个程序段的起始地址存储在表中，执行时与program counter（下一条指令地址）比较可知在哪个区段</li>
+</ul>
+</li>
+<li><p>与catch匹配exception类型</p>
+<ul>
+<li>编译器为exception和每个catch子句都产生一个类型描述器进行匹配，exception的类型描述器必须包含所有的base class，因为异常捕捉是多态的</li>
+</ul>
+</li>
+<li><p>异常抛出</p>
+<ul>
+<li><p>只有引用或指针捕捉的异常才能被重新抛出，值捕捉的异常只能抛出副本，并且会slicing</p>
+<pre><code>catch(A exp_a) {            //值捕捉，引起slicing
+    throw;                    //抛出副本
+}
+
+catch(A&amp; exp_a) {            //引用捕捉
+    throw;                    //抛出原始异常
+}
+</code></pre></li>
+<li><p>throw子句总是抛出一个exception对象的副本</p>
+<pre><code>Logic_err err1;
+void foo() {
+    try {
+        if() {
+            err1.str = &quot;logic err1 get&quot;;
+            throw err1;                        //抛出的是err1的副本
+        }
+    } catch (Logic_err&amp; err) {
+        err1.str = &quot;logic err handled&quot;;        //没有改写全局对象err1
+    }
+}
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、执行期类识别"><a href="#三、执行期类识别" class="headerlink" title="三、执行期类识别"></a>三、执行期类识别</h1><ol>
+<li><p>type-safe downcast</p>
+<ul>
+<li>对type-safe的支持带来的额外负担<ul>
+<li>空间上需要一个指针指向存储类型信息的节点</li>
+<li>时间上需要执行期判定当前类型</li>
+</ul>
+</li>
+<li>编译器将RTTI object放在vtbl的起始处，通过vptr访问</li>
+</ul>
+</li>
+<li><p>type-safe dynamic cast</p>
+<ul>
+<li><p>成本在于运行时获得<code>type_info</code> object，即类型描述器，比较其类型信息</p>
+<pre><code>void func(A* pa) {
+    if (B* pb = dynamic_cast&lt;B*&gt;(pa)) {
+        // success
+    } else {
+        // pa not point to B object
+    }
+</code></pre><ul>
+<li><p>获得类型描述器的操作转化为：</p>
+<pre><code>((type_info*)(pa-&gt;vptr[0])-&gt;__type_descriptor;    //slot 0 in vtbl
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>reference与pointer的区别</p>
+<ul>
+<li>对于pointer：<ul>
+<li>指向object的动态类型符合转换后的要求，返回转换后的对象地址</li>
+<li>反之，传回0</li>
+</ul>
+</li>
+<li><p>对于reference：</p>
+<ul>
+<li>当前引用的object的动态类型符合目标引用的要求，引用类型转变为目标类型</li>
+<li><p>与pointer不同的是，引用不能返回一个指向0的不存在的引用，所以动态类型符合要求时，抛出一个<code>bad_cast</code> exception<br>上面的函数应这样修改：    </p>
+<pre><code>void func(const A&amp; rfa) {
+    try {
+        B&amp; rfb = dynamic_cast&lt;B&amp;&gt;(rfa));
+        // success
+    } catch (bad_cast) {
+        // pa not refer to B object
+    }
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>typeid运算符</p>
+<ul>
+<li>typeid运算符返回一个<code>type_info</code> class类型object的const reference</li>
+<li><p><code>type_info</code> class保存编译器提供的class信息，至少应该含有：</p>
+<ul>
+<li>class的名称</li>
+<li>比较算法和排序算法(?)</li>
+<li>某些形式的描述器，表现explicit class type和subtypes (?)</li>
+</ul>
+</li>
+<li><p>type_info class的简单定义：</p>
+<pre><code>class type_info {
+public:
+    virtual ~type_info();
+    bool operator==(const type_info&amp;) const;    //比较
+    bool operator!=(const type_info&amp;) const;
+    bool before(const type_info&amp;) const;        //排序
+    const char* name() const;                    //class名称
+private:
+    type_info(const type_info&amp;);                //禁止拷贝
+    type_info&amp; operator=(const type_info&amp;);
+    ...                                            //data members
+};
+</code></pre><ul>
+<li><p>上面的函数可以修改为用typeid运算符来完成：</p>
+<pre><code>void func(const A&amp; rfa) {
+    if ( typeid(rfa) == typeid(B) ) {        
+        B&amp; rfb = dynamic_cast&lt;B&amp;&gt;(rfa));
+        // success
+    } else {
+        // pa not refer to B object
+    }
+</code></pre></li>
+</ul>
+</li>
+<li><p>typeid运算符也适合内建类型，与class相比，其<code>type_info</code> object是静态获得</p>
+<pre><code>int i;
+if ( typeid(i) == typeid(int) ) {
+    ...
+}
+</code></pre></li>
+<li><p>typeid运算符测试对象，而不是指针，测试指针只会返回其编译时的静态类型</p>
+</li>
+<li><code>type_info</code> object在需要的时候才产生</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、效率有了，弹性呢"><a href="#四、效率有了，弹性呢" class="headerlink" title="四、效率有了，弹性呢"></a>四、效率有了，弹性呢</h1><p><strong>C++对象模型提供富有效率的执行期支持，但在动态共享函数库、共享内存和分布式对象方面，弹性不够</strong></p>
+<ol>
+<li><p>动态共享函数库dynamic shared library</p>
+<ul>
+<li>理想情况下，shared library的改动对应用程序应该透明，新lib对旧lib不应富有侵略性，新lib不应导致app需要重新编译</li>
+<li>现在的class大小和对象offset在编译期固定，这样效率很高，但当class布局有变化时程序必须重新编译，这影响了二进制层面的弹性</li>
+</ul>
+</li>
+<li><p>共享内存shared memory</p>
+<ul>
+<li>c++ virtual function调用，依赖于编译时期确定的其在vtbl的offset被硬编码到二进制应用程序中。这要求了所有使用shared library的应用程序，要将该vtbl放在内存的同一个位置</li>
+<li>virtual function不适合做库接口，因为其变动会引起vtbl的变化，使得应用程序必须重新编译</li>
+<li>COM编程可以解决这个问题</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/阅读笔记-InsideC-ObjectModel-第七章-站在对象模型的尖端/" data-id="cioej70z800ln5afymsawtdzt" class="article-share-link">分享到</a><div class="tags"><a href="/tags/InsideC-ObjectModel/">InsideC++ObjectModel</a></div><div class="post-nav"><a href="/2016/05/20/阅读笔记-InsideC-ObjectModel-第三章-Data语意学/" class="pre">第三章 Data语意学</a><a href="/2016/05/20/阅读笔记-InsideC-ObjectModel-第一章-关于对象/" class="next">第一章 关于对象</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">240</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

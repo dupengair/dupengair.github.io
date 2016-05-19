@@ -1,0 +1,180 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>amb命令 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">amb命令</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">amb命令</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#命令："><span class="toc-number">1.</span> <span class="toc-text">命令：</span></a></li></ol></div></div><div class="post-content"><h1 id="命令："><a href="#命令：" class="headerlink" title="命令："></a>命令：</h1><pre><code>[setenv]
+Usage: setenv [param] [val]
+sn        - Serial number
+auto_boot - Automatic boot    等于1自动启动，enter进amboot,其它值启动时停在amboot，需手动boot
+cmdline   - Boot parameters
+wifi_mac  - WiFi MAC address
+wifi_ip   - WiFi IP address
+wifi_mask - WiFi netmask address
+wifi_gw   - WiFi gateway address
+eth0_mac  - Eth0 MAC address
+eth0_ip   - Eth0 IP address
+eth0_mask - Eth0 netmask address
+eth0_gw   - Eth0 gateway address
+auto_dl   - Automatically try to boot over network
+tftpd     - TFTP server address
+pri_addr  - RTOS download address
+pri_file  - RTOS file name
+pri_comp  - RTOS compressed?
+rmd_addr  - Ramdisk download address
+rmd_file  - Ramdisk file name
+rmd_comp  - Ramdisk compressed?
+dsp_addr  - DSP download address
+dsp_file  - DSP file name
+dsp_comp  - DSP compressed?
+
+[diag]
+Usage: diag [command]
+Run diagnostic code to test various system hardware.
+The available commands are:
+        diag adc  - Test ADC.
+        diag gpio - Test GPIO.
+        diag ir   - Test IR.
+        diag mem  - Test DRAM.
+        diag mem loop - Test DRAM in forever loop.
+        diag nand erase [end_block] - Test NAND erase.
+        diag nand read - Test NAND read.
+        diag nand prog - Test NAND prog.
+        diag nand rclm [init|late|other|all]- Reclaim nand bad blocks.
+        diag nand verify [boot|storage|all]- Test NAND read write verify.
+        diag nand part [partition|all] [times] -
+                Where partition is bst|bld|pri|bak|rmd|rom|dsp
+                Check CRC32 for every partition.
+        diag nor verify - Test NOR read write verify.
+        Loop command:
+        diag nand erase loop - Test NAND erase in forever loop.
+        diag nand read loop - Test NAND read in forever loop.
+        diag nand prog loop - Test NAND prog in forever loop.
+        diag nand prog verify - Test NAND verify in forever loop.
+
+        diag sd read type - Test SD/SDHC/MMC/MoviNAND (PIO/DMA) read.
+        diag sd write type - Test SD/SDHC/MMC/MoviNAND (PIO/DMA) write
+        diag sd verify type - Test SD/MMC read write verify.
+
+[show]
+Usage:
+show logo      - boot loader logo
+show flash     - flash info and allocation scheme
+show ptb       - flash partition table
+show bb        - show NAND bad blocks
+show wifi      - show wifi infomations
+show meta      - show meta
+show netboot   - netboot parameters
+
+[bapi]
+Usage: bapi init                  - Setup bapi
+bapi [n/f]boot[c] &lt;param&gt;  - Boot Linux with bapi support
+bapi hb [save/resume]      - BAPI Hibernation
+bapi rb [set/get] &lt;param&gt;  - BAPI Reboot
+
+[bios]
+Usage: bios
+Load the PBA image from flash and boot to BIOS
+
+[boot]
+
+[dump]
+Usage: dump [8|16|32] [start address] - [end address]
+Dump memory content in either 8-bit, 16-bit, or 32-bit mode
+from specified starting and ending addresses
+
+[erase]
+Usage: erase [bst|ptb|bld|pba|pri|bak|rmd|rom|dsp|
+              raw|stg|prf|cal|all|boot]
+Where [boot] means bst, ptb, pba, pri, bak, rmd, rom ,dsp partitions.
+      [all]  means full chip.Erase a parition as specified
+
+[exec]
+Usage: exec [address]
+Execute program in memory location specified by address
+
+[hal]
+Usage: hal fn [arguments]
+Invoke a HAL function
+
+[hotboot]
+Usage: hotboot &lt;pattern&gt;
+This command is equavalent to boot() with hotboot pattern set
+
+[nand_erase]
+Usage: nand_erase [block] [blocks]
+Force to erase nand blocks including initial bad blocks
+
+[netboot]
+Usage: netboot &lt;cmdline&gt;
+Load images from TFTP server to memory and boot
+
+[ping]
+[reboot]
+[reset]
+
+[setmem]
+Usage: setmem [8|16|32] [start address] - [end address] : [pattern]
+Set memory content with 8/16/32-bit a pattern
+from specified starting and ending addresses
+
+[usbdl]
+Usage: The command execute actions over USB
+usbdl (Perform actions controlled by Host)
+usbdl ADDRESS exec (Download image to target address and execute it)
+usbdl fwprog (Download firware and program it into flash)
+usbdl ext (Turn on USB external clock)
+usbdl kernel (Download kernel files and execute it)
+usbdl upload (Upload data to Host by host&apos;s request)
+usbdl test [download | pll] (Test download or dll power-on/off)
+
+xmdl
+Usage: xmdl [address] [exec]
+xmdl firmware
+Download binary image to target memory address over UART
+using the XMODEM protocol
+
+[rXX]
+Usage: rXX [address]  XX:8/16/32
+Read a XX-bit data from an address
+
+[wXX]
+Usage: wXX [address] [value]  XX:8/16/32
+Write a XX-bit data into an address
+
+
+
+
+# ./nandwrite
+Usage: nandwrite [OPTION] MTD_DEVICE INPUTFILE
+Writes to the specified MTD device.
+-a, --autoplace Use auto oob layout
+-j, --jffs2 force jffs2 oob layout (legacy support)
+-y, --yaffs force yaffs oob layout (legacy support)
+-f, --forcelegacy force legacy support on autoplacement enabled mtd device
+-n, --noecc write without ecc
+-o, --oob image contains oob data
+-s addr, --start=addr set start address (default is 0)
+-p, --pad pad to page size
+-b, --blockalign=1|2|4 set multiple of eraseblocks to align to
+-q, --quiet don&apos;t display progress messages
+--help display this help and exit
+--version output version information and exit
+
+-G, --bld Update Ambarella AMBOOT BLD Partition
+-H, --hal Update Ambarella AMBOOT HAL Partition
+-Q, --pba Update Ambarella AMBOOT PBA Partition
+-I, --sec Update Ambarella AMBOOT SEC Partition
+-U, --dsp Update Ambarella AMBOOT DSP Partition
+-W, --lnx Update Ambarella AMBOOT LNX Partition
+-X, --swp Update Ambarella AMBOOT SWP Partition
+-Y, --add Update Ambarella AMBOOT ADD Partition
+-Z, --adc Update Ambarella AMBOOT ADC Partition
+-K, --kernel Update Ambarella AMBOOT Kernel Partition
+-M, --rmd Update Ambarella AMBOOT RMD Partition
+-R, --rom Update Ambarella AMBOOT ROM Partition
+-B, --rmd Update Ambarella AMBOOT BAK Partition
+-C, --cmd Update Ambarella AMBOOT CMD line
+-F hex, --flag=hex Update Ambarella AMBOOT Partition load flag
+-S hex, --safe=hex force AMBOOT boot form PTB, safe recovery
+-L hex, --load=hex Update Ambarella AMBOOT Partition load address
+-D hex, --date=hex Update Ambarella AMBOOT Partition date
+-V hex, --version=hex Update Ambarella AMBOOT Partition version
+-E MAC, --ethmac=MAC Update Ambarella AMBOOT MAC
+-N sn, --sn=sn Update Ambarella AMBOOT SN
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/linux内核驱动与文件系统-amb命令/" data-id="cioej70n100635afypj4ybwin" class="article-share-link">分享到</a><div class="tags"><a href="/tags/linux内核驱动与文件系统/">linux内核驱动与文件系统</a></div><div class="post-nav"><a href="/2016/05/20/linux内核驱动与文件系统-ambbuffer管理机制bsreader阅读心得/" class="pre">ambbuffer管理机制bsreader阅读心得</a><a href="/2016/05/20/linux内核驱动与文件系统-busybox/" class="next">busybox</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">240</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

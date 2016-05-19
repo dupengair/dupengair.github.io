@@ -1,0 +1,340 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第二十一章 多播 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第二十一章 多播</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第二十一章 多播</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、概述"><span class="toc-number">1.</span> <span class="toc-text">一、概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、多播地址"><span class="toc-number">2.</span> <span class="toc-text">二、多播地址</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、局域网上广播和多播比较"><span class="toc-number">3.</span> <span class="toc-text">三、局域网上广播和多播比较</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、源特定多播"><span class="toc-number">4.</span> <span class="toc-text">四、源特定多播</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、多播套接字选项"><span class="toc-number">5.</span> <span class="toc-text">五、多播套接字选项</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、IP分片"><span class="toc-number">6.</span> <span class="toc-text">六、IP分片</span></a></li></ol></div></div><div class="post-content"><h1 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h1><ol>
+<li>单播地址标识单个IP接口，广播地址标识子网内的所有IP接口，多播地址标识一组IP接口</li>
+<li>多播数据报只应由对其感兴趣的接口接收</li>
+<li>多播可以跨网段使用</li>
+<li>禁止源地址为广播或者多播的IP数据报</li>
+</ol>
+<h1 id="二、多播地址"><a href="#二、多播地址" class="headerlink" title="二、多播地址"></a>二、多播地址</h1><ol>
+<li><p>IPv4的D类地址</p>
+<ul>
+<li>IPv4的D类地址(224.0.0.0~239.255.255.255)为多播地址，低28位为多播组ID，整个32位为组地址</li>
+<li><p>映射到以太网链路地址：</p>
+<pre><code>    |&lt;-    28b组ID   -&gt;|
+  |e:[4b]|[1b]:[7b]| | |        IPv4D类地址
+    |&lt;-忽略的  |        |
+       5bit -&gt;|&lt;- 低序的|
+              | 23bit-&gt;|
+|01|00|5e|[1b]:[7b]| | |      以太网链路地址
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<pre><code>    + 映射到以太网地址高24位总是01：00：5e，下一位总是0
+    + 低23位复制多播组ID的低23位，多播组ID的高5位总被忽略，因此32bit多播地址映射为单个以太网地址的关系，不是一对一的
+    + 以太网地址的首字节低序两位标明该地址是一个统一管理的组地址，意味着高24位由IEEE分配
+* 特殊的IPv4多播地址：
+    + 224.0.0.1 所有主机组(all-host)
+    + 224.0.0.2 所有路由器组(all-routers)
+    + 224.0.0.0~224.0.0.255 链路局部多播地址(link local)
+        - 为低级拓扑发现和维护协议保留
+        - 多播路由器从不转发这些目的地址的数据报
+</code></pre><ol>
+<li><p>IPv6的多播地址</p>
+<ul>
+<li><p>映射到以太网链路地址：</p>
+<pre><code>                |&lt;-     112bit组ID      -&gt;|
+|ff|  [4b]:[4b] |     ...     |  |  |  |  |      IPv6多播地址
+   |&lt;-4:4b范围-&gt;|&lt;-10Byte忽略-&gt;|&lt;- 低32b -&gt;|      
+                |             |&lt;-低序 32b-&gt;|
+                        |33|33|  |  |  |  |      以太网链路地址
+          局部管理的组地址-&gt;|
+</code></pre><ul>
+<li>IPv6多播地址高字节为ff</li>
+<li>112bit组ID的低序32bit复制到以太网地址的低32bit，以太网高2字节为33:33</li>
+<li>以太网首字节低序2位表明地址是一个局部管理的组地址，意味着不能保证该地址对IPv6地址的唯一性</li>
+</ul>
+</li>
+<li><p>IPv6多播地址定义</p>
+<blockquote>
+<p>标志：| 0 | 0 | P | T |</p>
+<ul>
+<li>4bit标志字段的高2bit保留            </li>
+<li>当P=0时<ul>
+<li>T=0：众所周知多播组</li>
+<li>T=1：临时多播组(transient)</li>
+</ul>
+</li>
+</ul>
+<p>标志：| 0 | 0 | 0 | T |</p>
+</blockquote>
+<pre><code>|ff|[4b] : [4b]|    ...   |   |   |   |   |   IPv6多播地址
+   |&lt;-4:4b范围-&gt;|&lt;-80bit0-&gt;|&lt;- 低32b组ID -&gt;| 
+</code></pre><ul>
+<li><p>当P=1时</p>
+<ul>
+<li>表示多播地址是基于某个单播前缀赋予</li>
+<li>T必需为1，也就是说基于单播的多播地址总是临时的</li>
+<li><p>plen和prefix两个字段分别为前缀长度和单播前缀的值</p>
+<pre><code>&gt; 标志：| 0 | 0 | 1 | 1 |
+
+|ff|[4b] : [4b] |...|plen|  64bit prefix  |   |   |   |   |   IPv6多播地址
+   |&lt;-4:4b范围-&gt;|&lt;-       80bit          -&gt;|&lt;- 低32b组ID -&gt;| 
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>特殊的IPv6多播地址：</p>
+<ul>
+<li>ff01::1和ff02::1是所有节点组，类似IPv4的all-host(224.0.0.1)，但多播是IPv6的组成部分</li>
+<li>ff01::2、ff02:2、ff05::2是所有路由器组，类似IPv4的224.0.0.2</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<ol>
+<li><p>多播地址范围</p>
+<ul>
+<li>IPv6<ul>
+<li>4bit范围字段<ul>
+<li>用于指定数据报游走的范围</li>
+</ul>
+</li>
+<li>跳限字段<ul>
+<li>限制分组被路由器转发</li>
+</ul>
+</li>
+<li>地址范围<ul>
+<li>1 接口局部(interface-local)：不准接口输出</li>
+<li>2 链路局部(link-local)：不可路由器转发</li>
+<li>4 管区局部(admin-local)</li>
+<li>5 网点局部(site-local)</li>
+<li>8 组织机构局部(organization-local)<ul>
+<li>路由器管理员决定</li>
+</ul>
+</li>
+<li>14 全球或全局的(global)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>IPv4</p>
+<ul>
+<li>没有单独范围字段，TTL字段兼做多播范围</li>
+<li>范围<ul>
+<li>0 接口局部</li>
+<li>1 链路局部</li>
+<li>2~32 网点局部</li>
+<li>33~64 地区局部</li>
+<li>65~128 大洲局部</li>
+<li>129~255 无范围限制/全球</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>地址范围</p>
+<pre><code>范围          IPv6    IPv4 [TTL范围      可管理范围]    
+接口局部       1              0
+链路局部       2              1          224.0.0.0~224.0.0.255  
+网点局部       5             &lt;32         237.255.0.0~239.255.255.255
+组织机构局部    8                         239.192.0.0.0~239.195.255.255 
+全球          14           &lt;=255         224.0.0.1~238.255.255.255
+</code></pre></li>
+</ul>
+</li>
+<li><p>多播会话</p>
+<ul>
+<li>一个多播地址和一个传输层接口确定一个会话(session)</li>
+<li>可以用会话区分不同业务</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、局域网上广播和多播比较"><a href="#三、局域网上广播和多播比较" class="headerlink" title="三、局域网上广播和多播比较"></a>三、局域网上广播和多播比较</h1><ol>
+<li>发送多播数据报不用加入多播组，接收端加入</li>
+<li>不具备多播能力的主机忽略多播帧<ul>
+<li>该帧目的以太网地址不匹配主机的接口地址</li>
+<li>该帧的目的以太网地址不是以太网广播地址</li>
+<li>该主机的接口没有告知接收任何组地址(没有加入01：00：5e地址)</li>
+</ul>
+</li>
+<li>不完备过滤<ul>
+<li>数据链路层-&gt;IP层</li>
+<li>加入多播组的以太网地址，通常会收到其它以太网组地址为目的地址的帧(因为D类地址前5bit忽略，导致IP-&gt;MAC多对一)</li>
+<li>数据链路层丢弃以<strong>太网多播地址不匹配</strong>的数据报</li>
+</ul>
+</li>
+<li>完备过滤<ul>
+<li>IP层-&gt;UDP层</li>
+<li>比较多播地址，基于IP层完整32bitD类地址</li>
+<li>UDP层丢弃<strong>不同多播组</strong>数据报</li>
+</ul>
+</li>
+<li>到达应用程序<ul>
+<li>UDP层丢弃<strong>相同多播组，不同端口</strong>的数据报</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、源特定多播"><a href="#四、源特定多播" class="headerlink" title="四、源特定多播"></a>四、源特定多播</h1><ol>
+<li>广域网上的多播难以部署<ul>
+<li>MRP要求每个多播路由器接收来自所有本地主机的加入多播组和其它请求，并在所有路由器之间交换</li>
+<li>IPv4没有足够的多播地址可以在广域网上静态分配</li>
+</ul>
+</li>
+<li>源特定多播SSM结合源地址到组地址<ul>
+<li>接收进程加入多播组时向多播路由器提供发送进程的源地址<ul>
+<li>降低多播路由器对每个分组的转发聚散度，因为每个接收进程都必需知道源地址</li>
+<li>保留多播地址的包容性，发送进程不需要知道任何接收进程的地址</li>
+</ul>
+</li>
+<li>把多播组标识细化为单播源地址和多播目的地址的组合<ul>
+<li>发送进程可以挑选任何多播地址，因为源地址和目的地址的组合是唯一的</li>
+<li>SSM会话由源地址、多播目的地址和端口组合标识</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>提供一定的反窃听能力，不同源的数据通道分离，因为源地址不同</li>
+</ol>
+<h1 id="五、多播套接字选项"><a href="#五、多播套接字选项" class="headerlink" title="五、多播套接字选项"></a>五、多播套接字选项</h1><ol>
+<li><p>传统多播套接字选项5个，SSM新增4个</p>
+<ul>
+<li>所有9个都可用于setsocketopt</li>
+<li>加入/离开的6个只能用于setsocketopt</li>
+<li><p>组成员无关选项</p>
+<pre><code>                    数据类型         说明
+IP_MUTICAST_IF        struct in_addr    指定外出多播数据报的默认接口
+IP_MUTICAST_TTL        u_char            指定外出多播数据报的TTL
+IP_MUTICAST_LOOP    u_char            开启/禁止外出多播数据报的本地回环
+
+IPV6_MUTICAST_IF    u_int            指定外出多播数据报的默认接口            
+IPV6_MUTICAST_HOPS    int                指定外出多播数据报的跳限
+IPV6_MUTICAST_LOOP    u_int            开启/禁止外出多播数据报的本地回环
+</code></pre></li>
+<li><p>组成员相关选项</p>
+<pre><code>                            数据类型                        说明
+IP_ADD_MEMBERSHIIP            struct ip_mreq                加入多播组
+IP_DROP_MEMBERSHIP            struct ip_mreq                离开多播组
+IP_BLOCK_SOURCE                struct ip_mreq_source        在一个已加入组上阻塞某个源
+IP_UNBLOCK_SOURCE            struct ip_mreq_source        开通一个早先阻塞的源
+IP_ADD_SOURCE_MEMBERSHIP    struct ip_mreq_source        加入一个源特定多播组
+IP_DROP_SOURCE_MEMBERSHIP    struct ip_mreq_source        离开一个源特定多播组
+
+IPV6_JOIN_GROUP                struct ipv6_mreq            加入多播组
+IPV6_LEAVE_GROUP            struct ipv6_mreq            离开多播组
+
+MCAST_JOIN_GROUP            struct group_req            加入多播组
+MCAST_LEAVE_GROUP            struct group_req            离开多播组
+MCAST_BLOCK_SOURCE            struct group_source_req        在一个已加入组上阻塞某个源
+MCAST_UNBLOCK_SOURCE        struct group_source_req        开通一个早先阻塞的源
+MCAST_JOIN_SOURCE_GROUP        struct group_source_req        加入一个源特定多播组
+MCAST_LEAVE_SOURCE_GROUP    struct group_source_req        离开一个源特定多播组
+</code></pre><ul>
+<li>IPv4多播编程的常见错误时取int类型作为TTL参数</li>
+</ul>
+</li>
+<li><p>本地接口加入不限源多播组(<code>IP_ADD_MEMBERSHIIP/IPV6_JOIN_GROUP/MCAST_JOIN_GROUP</code>)</p>
+<pre><code>struct ip_mreq {
+    struct in_addr imr_multiaddr;            // class D m-addr
+    struct in_addr imr_interface;            // addr of local interface
+};
+
+struct ipv6_mreq {
+    struct in6_addr ipv6mr_multiaddr;        // ipv6 m-addr
+    unsigned int     ipv6mr_interface;        // interface index or 0
+};
+
+struct group_req {
+    unsigned int             gr_interface;    // interface  index or 0
+    struct sockaddr_stroage    gr_group;        // ipv4/6 m-addr
+};
+</code></pre><ul>
+<li>对IPv4版本，本地接口通过某个单播地址确定，对IPv6和协议无关API，使用接口索引</li>
+<li>如果本地接口知道为IPv4通配地址(<code>INADDR_ANY</code>)或IPv6值为0的索引，由内核选择本地接口</li>
+<li>一个主机在给定接口上属于某个给定多播组的前提是改主机的一个或多个进程在该接口上属于改组</li>
+<li>在一个给定套接字上可以多次加入多播组，但要么多播地址不同，要么在不同接口上加入同一个多播组</li>
+<li>IPv6显式存在范围字段，如果要不论范围接收所有分组，需要加入：<ul>
+<li>接口局部(ff01:;101)</li>
+<li>链路局部(ff02::101)</li>
+<li>网点局部(ff05::101)</li>
+<li>组织机构局部(ff08::101)</li>
+<li>全球(ff0e::101)</li>
+</ul>
+</li>
+<li>所有这些加入都可在单个套接字上执行，通过设置IPV6_PKTINFO可以让recvmsg返回每个数据报的目的地址</li>
+<li>IP协议无关的套接字选项(<code>MCAST_JOIN_GROUP</code>)与IPv6版本基本相同，指数用<code>sockaddr_storage</code>结构体代替<code>in6_addr</code></li>
+<li>多数实现对套接字允许加入的次数有限制，通过IP_MAX_MEMBERSHIPS指定</li>
+<li>当不指定加入的接口时，Berkeley内核通常在IP路由表中查找给定的多播地址适用的接口</li>
+<li>IPv6和协议无关的版本通过索引来指定接口，以取代IPv4单播地址指定的方法，意在允许在未指定网络地址的接口或隧道端点执行加入</li>
+</ul>
+</li>
+<li><p>本地接口离开不限源多播组(<code>IP_DROP_MEMBERSHIIP/IPV6_LEAVE_GROUP/MCAST_LEAVE_GROUP</code>)</p>
+<ul>
+<li>如果未指定本地接口，那么抹除首个匹配的多播组成员</li>
+<li>如果进程加入多播组后不显式离开，当套接字关闭时，该成员关系自动抹除</li>
+<li>单个主机可能多个套接字各自加入相同的多播组，单个套接字上成员关系的抹除不影响改主机继续作为该多播组成员，直到最后一个套接字离开多播组</li>
+</ul>
+</li>
+<li><p>阻塞来自某个源的多播组(<code>IP_BLOCK_SOURCE/MCAST_BLOCK_SOURCE</code>)</p>
+<pre><code>struct ip_mreq_source {
+    struct in_addr imr_multiaddr;        // class D m-addr
+    struct in_addr imr_sourceaddr;        // ipv4 source addr
+    struct in_addr imr_interface;        // addr of local interface
+};
+
+struct group_soruce_req {
+    unsigned int             gsr_interface;    // interface  index or 0
+    struct sockaddr_storage gsr_group;        // ipv4/6 m-addr
+    struct sockaddr_storage gsr_soruce;        // ipv4/6 source addr
+};
+</code></pre><ul>
+<li>如果加入同一个多播组的所有套接字都阻塞了相同的源，主机可以通知多播路由器不再需要该分组流通，由此可能影响网络中的多播路由</li>
+<li>IPv4由单播地址指定接口，协议无关API由索引指定</li>
+<li>如果本地接口知道为IPv4通配地址(<code>INADDR_ANY</code>)或IPv6值为0的索引，由内核选择与首个成员匹配的本地接口</li>
+<li>阻塞操作是修改已存在的组成员关系，所以要求先加入对应的多播组</li>
+</ul>
+</li>
+<li><p>开通某个阻塞的源(<code>IP_UNBLOCK_SOURCE/MCAST_UNBLOCK_SOURCE</code>)</p>
+<ul>
+<li>如果未指定本地接口，那么开通首个匹配的多播组成员</li>
+</ul>
+</li>
+<li><p>加入特定源的多播组(<code>IP_ADD_SOURCE_MEMBERSHIIP/MCAST_JOIN_SOURCE_GROUP</code>)</p>
+<ul>
+<li>在这个接口上不能加入不限源的该多播组</li>
+<li>如果本地接口知道为IPv4通配地址(<code>INADDR_ANY</code>)或IPv6值为0的索引，由内核选择本地接口</li>
+</ul>
+</li>
+<li>离开特定源的多播组(<code>IP_LEAVE_SOURCE_MEMBERSHIIP/MCAST_LEAVE_SOURCE_GROUP</code>)<ul>
+<li>如果未指定本地接口，那么开通首个匹配的特定于源的多播组成员关系</li>
+<li>如果加入多播组后不显式离开，当套接字关闭时，该成员关系自动抹除 </li>
+<li>单个套接字上成员关系的抹除不影响改主机继续作为该多播组成员</li>
+</ul>
+</li>
+<li>指定发送多播数据报的外出接口(<code>IP_MULTICAST_IF/IPV6_MULTICAST_IF</code>)<ul>
+<li>对IPv4为in_addr指定接口，IPv6由索引指定</li>
+<li>如果本地接口知道为IPv4通配地址(<code>INADDR_ANY</code>)或IPv6值为0的索引，之前通过套接字指派的任何接口都被抹除，系统改为每次发送数据报都选择外出接口</li>
+<li>区分加入多播组的接口(用于接收)和发送多播数据报的接口(用于发送)<ul>
+<li>内核查找普通IP路由表选择通往目的路径的接口作为默认外出接口</li>
+<li>可能存在一个接口同时用于输入输出</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>设定IPv4的TTL或IPv6的跳限(<code>IP_MUTICAST_TTL/IPv6_MUTICAST_HOPS</code>)<ul>
+<li>如果不设定默认为1，从而把多播数据报限制在本子网</li>
+</ul>
+</li>
+<li><p>开启/禁止多播数据报的本地回环(<code>IP_MUTICAST_LOOP/IPV6_MUTICAST_LOOP</code>)</p>
+<ul>
+<li>默认开启，意味着如果一个进程同时属于所发送数据报的目的多播组，就会收到自己发送的所有包</li>
+<li>与广播不同的是，本地回环对广播而言无法禁止</li>
+</ul>
+</li>
+<li><p>上述9个多播套接字选项，前6个影响接收，后3个影响发送</p>
+</li>
+<li>如果发送前没有设置影响发送的套接字选项，数据报的外出接口由内核选择，TTL跳限为1，并且有一个副本自环回来</li>
+<li>为接收多播数据报，进程必需加入多播组，并绑定端口到UDP套接字<ul>
+<li>加入多播组：通知链路层和IP层接收该数据报</li>
+<li>绑定端口：通知UDP层将接收数据报到该端口对应的应用程序</li>
+</ul>
+</li>
+<li>有些应用程序将多播地址也绑定到套接字，从而防止IP层把该端口收取的目的地址为其它单播、广播或多播的数据报递送到到套接字。非必要，但通过了内核过滤分组的手段</li>
+</ul>
+</li>
+</ol>
+<h1 id="六、IP分片"><a href="#六、IP分片" class="headerlink" title="六、IP分片"></a>六、IP分片</h1><ol>
+<li>广播报不允许分片</li>
+<li>多播报可以分片</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/阅读笔记-unix网络编程Ed3-第二十一章-多播/" data-id="cioej718s00uf5afypy7at4j0" class="article-share-link">分享到</a><div class="tags"><a href="/tags/unix网络编程Ed3/">unix网络编程Ed3</a></div><div class="post-nav"><a href="/2016/05/20/阅读笔记-unix网络编程Ed3-第二十七章-IP选项/" class="pre">第二十七章 IP选项</a><a href="/2016/05/20/阅读笔记-unix网络编程Ed3-第三十章-客户服务器程序设计/" class="next">第三十章 客户服务器程序设计</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">240</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

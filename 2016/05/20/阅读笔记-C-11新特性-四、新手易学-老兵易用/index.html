@@ -1,0 +1,380 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>四、新手易学 老兵易用 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">四、新手易学 老兵易用</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">四、新手易学 老兵易用</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/C-11新特性/">C++11新特性</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、右-gt-的改进"><span class="toc-number">1.</span> <span class="toc-text">一、右>的改进</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、auto类型推导"><span class="toc-number">2.</span> <span class="toc-text">二、auto类型推导</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、decltype"><span class="toc-number">3.</span> <span class="toc-text">三、decltype</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、追踪返回类型"><span class="toc-number">4.</span> <span class="toc-text">四、追踪返回类型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、基于范围的for循环"><span class="toc-number">5.</span> <span class="toc-text">五、基于范围的for循环</span></a></li></ol></div></div><div class="post-content"><ul>
+<li>本章主要讲述C++11在编码效率上的改进，如auto类型推导，range based for loop等</li>
+</ul>
+<h1 id="一、右-gt-的改进"><a href="#一、右-gt-的改进" class="headerlink" title="一、右&gt;的改进"></a>一、右&gt;的改进</h1><ol>
+<li><p>C++98中右&gt;被优先解释为右移操作符，这是根据标识符最长原则进行解析的，在实例化模板或类型转换时，如果出现连续的两个&gt;需要用空格进行分隔</p>
+<pre><code>template &lt;int i&gt; class X {};
+template &lt;typename T&gt; class Y {}
+
+Y&lt;x&lt;1&gt;&gt; y1;                //C++98编译失败，应该写为Y&lt;x&lt;1&gt; &gt; y1;
+</code></pre></li>
+<li><p>C++11会要求编译器自动判断右&gt;操作符的情况</p>
+<pre><code>Y&lt;x&lt;1&gt;&gt; y1;                //C++11通过
+</code></pre></li>
+<li><p>C++11中在模板实例化时会将右&gt;操作符优先识别为模板，当此时需要使用右移，会有与C++98不兼容的地方，此时最好用括号防止出错，尽量不要将模板实例化与右移操作同时使用</p>
+<pre><code>template &lt;int i&gt; class X {};
+X&lt;1 &gt;&gt; 5&gt; x;            //C++98通过，&gt;&gt;被解释为右移，表达式被解释为X&lt;0&gt; x;
+                        //C++11失败，&gt;&gt;被解释为模板定义，此时应加括号：X&lt;(1&gt;&gt;5)&gt; x
+</code></pre><h1 id="二、auto类型推导"><a href="#二、auto类型推导" class="headerlink" title="二、auto类型推导"></a>二、auto类型推导</h1></li>
+<li><p>静态类型与动态类型</p>
+<ul>
+<li>静态类型：类型检查的时间点发生在编译阶段，变量先定义后使用，具有明确类型。如C、C++、Java</li>
+<li>动态类型：类型检查的时间点发生在运行阶段，变量直接使用，不用定义，如python、perl、Javascript</li>
+</ul>
+</li>
+<li><p>使用auto</p>
+<ul>
+<li><p>C++11重定义auto关键字不再用作存储类型说明，而是自动类型推导</p>
+<pre><code>auto a = 1;            // 变量类型推导为int
+auto c = &apos;a&apos;;        // 变量类型推导为char
+</code></pre></li>
+<li><p>auto声明的变量必须被初始化，否则无法被自动推导</p>
+<pre><code>auto a;             // 无法推导
+a = 1;        
+</code></pre></li>
+<li><p>auto的优势</p>
+<ul>
+<li><p>简化库的使用，不用再了解多层嵌套的复杂名字空间</p>
+<pre><code>void loop(std::vector&lt;std:;string&gt; v) {
+    for (std::vector&lt;std::string&gt;::iterator iter = v.begin();        //C++98
+            iter &lt; v.end(); iter++) {
+    ....
+    }
+}
+
+void loop(std::vector&lt;std:;string&gt; v) {
+    for (auto iter = v.begin(); iter &lt; v.end(); iter++) {            //C++11 
+    ....
+    }
+}
+</code></pre></li>
+<li><p>在不知道类型的情况下，避免错误或精度丢失</p>
+<pre><code>class PI {
+public:
+    double operator* (float v) {
+        return (double)val * v;                        // 乘法运算后扩展为double
+    }
+    const float val = 3.1415927f;
+};
+
+PI pi;
+float radius = 1.7e10;
+auto circumference = 2 * (pi * radius);                // 避免误声明为float损失精度
+</code></pre></li>
+<li><p>客户端代码类型自适应，扩平台能力更强</p>
+<pre><code>auto var = strlen(&quot;hello world!&quot;);            // 64bit下8bytes，32bit下4bytes，作用同size_t，但size_t只适用于&lt;cstring&gt;中定义的函数
+</code></pre></li>
+<li><p>某些场合下，可提高性能</p>
+<pre><code>#define Old_Max(a, b)    ((a) &gt; (b)) ? (a) : (b) 
+#define New_Max(a, b)    ({\
+    auto _a = (a);\
+    auto _b = (b);\
+    (_a &gt; _b) ? _a : _b; })
+
+Old_Max(1*2*3*4, 5+6+7+8);                    // 传统方式，表达式计算两次 (直接被宏替换后再计算)
+New_Max(1*2*3*4, 5+6+7+8);                    // 表达式只计算一次，性能提高
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>auto使用细则</p>
+<ul>
+<li><p>auto与指针、引用</p>
+<pre><code>int x;
+int* y = &amp;x;
+double foo();
+int&amp; bar();
+
+auto *a = &amp;x;        // int*
+auto &amp;b = x;        // int&amp;
+auto c = y;            // int*
+auto *d = y;        // int*
+auto *e = &amp;foo();    // error! 不能指向临时变量
+auto &amp;f = foo();    // error! non const左值引用不能引用一个右值
+auto g = bar();        // int
+auto &amp;h = bar();    // int&amp;
+</code></pre></li>
+<li><p>auto与cv限制符(const、volatile)连用时，指针和引用才能保证cv属性，这与decltype总是保留cv属性不同</p>
+<pre><code>double foo();
+float* bar();
+
+const auto a = foo();        //const double
+const auto &amp;b = foo();        //const double&amp;
+volatile auto *c  = bar();    //volatile float*
+
+auto d = a;                    // double
+auto &amp;e = a;                // const double&amp;
+auto f = c;                    // float*
+auto &amp;g = c;                // volatile float*
+</code></pre></li>
+<li><p>同一条赋值语句中，auto可以声明多个变量，但要求这些变量的类型一致，因为只有第一个变量用于auto的类型推导，推导出来的类型被作用于其它变量</p>
+<pre><code>auto x = 1, y = 2;                // 正确
+auto x = 1, y = 1.1f            // 错误，类型不一致
+</code></pre></li>
+<li><p>标注里说，auto是一个将要推导出来的类型的占位符，因此*和&amp;让人感到意外，因此可以将每个auto声明单独成行</p>
+<pre><code>const auto* m = &amp;x, n = 1;        // auto=int, m=int*, n=int
+auto o = 1, &amp;p = o, *q = &amp;p;    // auto=o=int, p=int&amp;, q=int*
+</code></pre></li>
+</ul>
+</li>
+<li><p>auto与类型推导</p>
+<ul>
+<li><p>auto能用在变量声明、初始化列表和new表达式</p>
+<pre><code>auto x = 1;
+auto y(1);
+auto m {1};
+auto n = new auto(1);
+</code></pre></li>
+<li><p>不能推导的例外情况</p>
+<pre><code>void func(auto x = 1);             // auto不能做形参
+struct str{ auto var = 10; };    // auto不能使非静态成员变量
+int a[10]; 
+auto b[10] = a;                    // auto不能用于定义数组
+auto c = a;                        // 但可以推导数组的类型
+std::vector&lt;auto&gt; v = {1};        // auto 不能用于实例化模板
+</code></pre></li>
+<li><p>推导时忽略冗余的*，这与decltype不同</p>
+<pre><code>const int k = 1;
+auto * var5 = p;                // 忽略冗余*，int*
+var5 = &amp;i;
+</code></pre></li>
+</ul>
+</li>
+<li><p>注意，c++98中将auto用于变量存储类型的声明在c++11中已经废除</p>
+<pre><code>auto int i = 1;                    //C++98合法，C++11出错
+</code></pre></li>
+</ol>
+<h1 id="三、decltype"><a href="#三、decltype" class="headerlink" title="三、decltype"></a>三、decltype</h1><ol>
+<li><p>typeid与decltype</p>
+<ul>
+<li>C++部分支持动态类型，即RTTI，C则完全不支持。</li>
+<li><p>C++11为typeid增加了<code>hash_code()</code>成员函数，返回类型唯一的哈希值，用于对类型进行比较</p>
+<pre><code>A a;
+B b;
+typeid(a).hash_code() == typeid(b).hash_code() ? &quot;type a == b&quot; :: &quot;type a != b&quot;;
+</code></pre></li>
+<li><p>decltype的参数为一个表达式，返回该表达式的类型，可以用作一个类型指示符来定义变量</p>
+<pre><code>int a;
+fload b;
+decltype(a+ b) c;
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<ol>
+<li><p>应用</p>
+<ul>
+<li><p>与using合用，可以为推导出的类型取名，颠覆了之前扩展类型需要映射到基本类型的做法</p>
+<pre><code>using size_t = decltype(sizeof(1));
+using ptrdiff_t = decltype((int*)0 - (int*)0);
+using nullptr_t = decltype(nullptr);
+</code></pre></li>
+<li><p>与typedef合用，简化程序提高可读性，与auto一样可以充当占位符的作用</p>
+<pre><code>vector&lt;int&gt; v;
+typedef decltype(v.begin()) vtype;
+for(vtype i = v.begin; i &lt; v.end(); i++) { ... }                            // 简化定义
+for(decltype(v)::iterator iter = v.begin(); iter&lt;v.end(); i++) {...}        // 充当占位符
+</code></pre></li>
+<li><p>可使用匿名类型</p>
+<pre><code>enum class{K1, K2}anon_e;                //匿名强类型枚举
+union {
+    decltype(anon_e) Key;
+    char* name;
+}anon_u;                                //匿名联合体
+struct {
+    int a; 
+    decltype(anon_u) id;
+}anon_s[10];                            //匿名结构体数组
+
+decltype(anon_s) as;
+as[0].id.key = decltype(anon_e)::K1;
+</code></pre></li>
+<li><p>简化模板</p>
+<pre><code>template&lt;typename T1, typename T2&gt;
+decltype(t1 + t2) Sum(T1&amp; t1, T2&amp; t2) {        //这种写法有问题，见下面
+    return t1 + t2;
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>使用细则    </p>
+<ul>
+<li><p>不要随意多加括号</p>
+<pre><code>int i;
+decltype(i) a;        //int
+decltype((i)) b;    //int &amp;，且没有初始化，error
+</code></pre></li>
+<li><p>标记符表达式：只含符号标记本身</p>
+<pre><code>int arr[4];
+arr: 是
+arr[1]: 不是
+arr+1: 不是
+</code></pre></li>
+<li><p>关于decltype(e)的推导法则</p>
+<ul>
+<li>如果e是不带括号的标记符表达式以及类访问成员，推导结果为e本身的类型，e不能是一个被重载的函数</li>
+<li>否则，如果e是一个将亡值（右值的一种），推导结果为T&amp;&amp;</li>
+<li>否则，如果e是一个左值，推导结果为T&amp;</li>
+<li><p>否则，为e本身的类型</p>
+<pre><code>int i = 1;
+int arr[5] = {0};
+int *ptr = arr;
+struct S { double d; }s;
+void Overloaded(int);
+void Overloaded(char);
+int&amp;&amp; Retlref();
+const bool Func(int);
+
+//规则1
+decltype(arr) var1;                //int[5]，标记符表达式
+decltype(ptr) var2;                //int*，标记符表达式        
+decltype(s.d) var3;                //double，标记符表达式
+decltype(Overloaded) var4;        //error，不能是重载函数
+
+//规则2
+decltype(Retlref()) var5;        //int&amp;&amp;，将亡值
+
+//规则3
+decltype(true?i:i) var7 = i;    //int&amp;，表达式返回左值i
+decltype((i)) var8 = i;            //int&amp;，带()是一个表达式，返回左值
+decltype(++i) var9 = i;            //int&amp;，表达式返回左值
+decltype(arr[3]) var10 = i;        //int&amp;，表达式operator[]返回一个左值
+decltype(*ptr) var11 = i;        //int&amp;，表达式operator*返回一个左值
+decltype(&quot;var&quot;) var12 = i;        //const char&amp;，常量字符串为常量左值
+
+//规则4
+decltype(1) var13;                //int，除常量字符串外（常量左值）其它常量为右值
+decltype(i++) var14;            //int，operator++返回右值
+decltype((Func(1))) var15;        //const bool，()可忽略
+</code></pre></li>
+</ul>
+</li>
+<li><p>对于比较难判断的规则3，可以用模板<code>is_lvalue_reference</code>来判断是否是一个左值</p>
+</li>
+</ul>
+</li>
+<li><p>cv限制符与冗余符号</p>
+<ul>
+<li><p>与auto不同，decltype能继承cv限制符，而auto只有在声明指针或引用的变量时才继承</p>
+<pre><code>const int ic = 0;
+volatile int iv;
+
+decltype(ic) a;        //const int
+decltype(iv) b;        //volatile int
+auto c = ic;        //int
+auto &amp;d = ic;        //const int
+auto e = iv;        //int
+auto *f = iv;        //volatile int*
+</code></pre></li>
+<li><p>decltype能忽略冗余符号，如&amp;、const等，但注意*不能忽略，auto则会忽略</p>
+<pre><code>int i = 1;
+int &amp;j = i;
+int *p = &amp;i;
+const int k = 1;
+
+decltype(i) &amp; var1 = i;        // int&amp;
+decltype(j) &amp; var2 = i;        // 多余的&amp;被忽略，左值引用int&amp;
+decltype(p) * var3 = &amp;i;    // error，int**与&amp;i类型不匹配
+decltype(p) * var4 = &amp;p;    // int**
+
+auto * var5 = p;            // 忽略冗余*，int*
+var5 = &amp;i;
+
+const decltype(k) var6 = 1;    // 忽略冗余const，const int
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="四、追踪返回类型"><a href="#四、追踪返回类型" class="headerlink" title="四、追踪返回类型"></a>四、追踪返回类型</h1><ol>
+<li><p>引入</p>
+<ul>
+<li><p>c++98的模板定义方式，模板使用者必须提前知道返回值</p>
+<pre><code>template &lt;typename T1, typename T2, typename TR&gt;
+TR Sum(T1&amp; t1, T2&amp; t2) {            // 用户实例化模板时，必须知道返回值TR类型，当模板参数T1、T2
+    return (t1 + t2);                // 不同时，使用者需要自己推导
+}
+</code></pre></li>
+<li><p>使用decltype进行推导，如下的写法是错误的，因为decltype推导的前提是变量必须声明，类型确定</p>
+<pre><code>template &lt;typename T1, typename T2&gt;
+decltype(t1 + t2) Sum(T1&amp; t1, T2&amp; t2) {        // 此时t1, t2类型没有确定，无法推导
+    return (t1 + t2);            
+}
+</code></pre></li>
+<li><p>c++11推导返回类型的方式，结合auto和decltype关键字，类似lambda表达式的返回类型后置用法</p>
+<pre><code>template &lt;typename T1, typename T2&gt;
+auto Sum(T1&amp; t1, T2&amp; t2) -&gt; decltype(t1 + t2) {        // C++11
+    return (t1 + t2);            
+}        
+
+auto t = Sum(1, 0.1);    
+</code></pre></li>
+<li><p>另：也可以通过模板的promotion trait来获得返回类型，是一种极其复杂的模板编程技巧。见《C++ Template》15.2.4 P264    </p>
+</li>
+</ul>
+</li>
+<li><p>应用</p>
+<ul>
+<li><p>大大简化可读性</p>
+<pre><code>/* pf()是一个函数，返回一个函数指针int(*(*) ())()，这个函数指针的返回值又是一个函数指针int(*)()    */
+int (*(*pf()) ()) ()    {                    // 很容易成为面试题，一个返回函数指针的函数指针
+    return nullptr;                            // C++98的定义方式，极难阅读，按从内到外来看
+}
+
+/* 函数pf返回一个函数指针(*)()，该函数指针的返回值又是一个函数指针int(*)() */        
+auto pf() -&gt; auto (*)() -&gt; int (*) () {        // C++11的定义清晰很多
+    return nullptr;
+}
+</code></pre></li>
+<li><p>广泛应用到转发函数中，实现参数与返回类型的匹配</p>
+<pre><code>double foo(int a) { return (double(a) + 0.1); }
+int foo(double b) { return (int) b; }
+
+template &lt;typename T&gt;
+auto Forward(T t) -&gt; decltype(foo(t)) {
+    return foo(t);
+}
+
+Forward(2);         //2.1
+Forward(0.5)        //0
+</code></pre></li>
+<li><p>定义函数指针，与C++98无太大区别，没有返回值时设为void</p>
+<pre><code>int (*fp)();
+auto (*fp)() -&gt; int;
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="五、基于范围的for循环"><a href="#五、基于范围的for循环" class="headerlink" title="五、基于范围的for循环"></a>五、基于范围的for循环</h1><ol>
+<li><p>使用条件</p>
+<ul>
+<li>对于类，如果类有begin和end函数，for循环迭代范围为begin和end之间的范围</li>
+<li><p>对于数组，为第一个元素和最后一个元素间的范围，如果数组范围不能确定则不能使用</p>
+<pre><code>void func(int a[]) {
+    for(auto i: a) {        // error: 数组大小不确定
+    }
+}
+</code></pre></li>
+<li><p>要求对象实现++和==操作</p>
+</li>
+</ul>
+</li>
+<li><p>对标准库容器，如果用auto声明迭代对象，得到的是容器元素，不是迭代器对象</p>
+<pre><code>vector&lt;int&gt; v={1, 2, 3, 4, 5};    
+for(auto i: v) {
+    cout &lt;&lt; i &lt;&lt; endl;        //i的类型为int，是容器元素，不是迭代器
+}
+</code></pre><p> 补充： </p>
+<ul>
+<li>auto与for_each: auto用于仅仅想获取集合/数组中的元素来做一些事情，而不关注索引值、迭代器或者元素本身的时候</li>
+<li><p>为了避免对每个元素调用拷贝构造和析构函数，通常应声明当前元素为const reference：</p>
+<pre><code>vector&lt;int&gt; v={1, 2, 3, 4, 5};    
+for(const auto&amp; i: v) {
+    cout &lt;&lt; i &lt;&lt; endl;        
+}
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<p>2015-7-7<br>杜鹏    </p>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/阅读笔记-C-11新特性-四、新手易学-老兵易用/" data-id="cioej70th00ch5afyel0e9jjy" class="article-share-link">分享到</a><div class="tags"><a href="/tags/C-11新特性/">C++11新特性</a></div><div class="post-nav"><a href="/2016/05/20/阅读笔记-EffectiveC-七、你到底爱不爱我——何时使用virtual析构函数/" class="pre">七、你到底爱不爱我——何时使用virtual析构函数</a><a href="/2016/05/20/杂项-视频格式阅读笔记/" class="next">视频格式阅读笔记</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">240</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
