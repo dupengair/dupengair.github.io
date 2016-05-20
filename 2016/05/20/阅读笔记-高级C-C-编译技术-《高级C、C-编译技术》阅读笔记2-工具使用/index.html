@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>《高级C、C++编译技术》阅读笔记2(工具使用) | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">《高级C、C++编译技术》阅读笔记2(工具使用)</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">《高级C、C++编译技术》阅读笔记2(工具使用)</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/高级C-C-编译技术/">高级C&amp;C++编译技术</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#第十二章-Linux工具集"><span class="toc-number">1.</span> <span class="toc-text">第十二章 Linux工具集</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#1-快速查看工具"><span class="toc-number">2.</span> <span class="toc-text">1. 快速查看工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-详细信息分析工具"><span class="toc-number">3.</span> <span class="toc-text">2. 详细信息分析工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-部署阶段工具"><span class="toc-number">4.</span> <span class="toc-text">3. 部署阶段工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-运行时分析工具"><span class="toc-number">5.</span> <span class="toc-text">4. 运行时分析工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-静态库工具"><span class="toc-number">6.</span> <span class="toc-text">5. 静态库工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第十三章-平台实践"><span class="toc-number">7.</span> <span class="toc-text">第十三章 平台实践</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#1-连接过程调试"><span class="toc-number">8.</span> <span class="toc-text">1. 连接过程调试</span></a></li></ol></div></div><div class="post-content"><h1 id="第十二章-Linux工具集"><a href="#第十二章-Linux工具集" class="headerlink" title="第十二章 Linux工具集"></a>第十二章 Linux工具集</h1><h1 id="1-快速查看工具"><a href="#1-快速查看工具" class="headerlink" title="1. 快速查看工具"></a>1. 快速查看工具</h1><ul>
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>《高级C、C++编译技术》阅读笔记2(工具使用) | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">《高级C、C++编译技术》阅读笔记2(工具使用)</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">Less is more</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">《高级C、C++编译技术》阅读笔记2(工具使用)</h1><div class="post-meta">May 20, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/高级C-C-编译技术/">高级C&amp;C++编译技术</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#第十二章-Linux工具集"><span class="toc-number">1.</span> <span class="toc-text">第十二章 Linux工具集</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#1-快速查看工具"><span class="toc-number">2.</span> <span class="toc-text">1. 快速查看工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-详细信息分析工具"><span class="toc-number">3.</span> <span class="toc-text">2. 详细信息分析工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-部署阶段工具"><span class="toc-number">4.</span> <span class="toc-text">3. 部署阶段工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-运行时分析工具"><span class="toc-number">5.</span> <span class="toc-text">4. 运行时分析工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-静态库工具"><span class="toc-number">6.</span> <span class="toc-text">5. 静态库工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第十三章-平台实践"><span class="toc-number">7.</span> <span class="toc-text">第十三章 平台实践</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#1-连接过程调试"><span class="toc-number">8.</span> <span class="toc-text">1. 连接过程调试</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-确定二进制文件类型"><span class="toc-number">9.</span> <span class="toc-text">2. 确定二进制文件类型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-确定二进制入口点"><span class="toc-number">10.</span> <span class="toc-text">3. 确定二进制入口点</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-列出符号信息"><span class="toc-number">11.</span> <span class="toc-text">4. 列出符号信息</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-查看节信息"><span class="toc-number">12.</span> <span class="toc-text">5. 查看节信息</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#6-查看段信息"><span class="toc-number">13.</span> <span class="toc-text">6. 查看段信息</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#7-反汇编代码"><span class="toc-number">14.</span> <span class="toc-text">7. 反汇编代码</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#8-判断是否为调试模式"><span class="toc-number">15.</span> <span class="toc-text">8. 判断是否为调试模式</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#9-查看加载时依赖项"><span class="toc-number">16.</span> <span class="toc-text">9. 查看加载时依赖项</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#10-查看装载器可以找到的库文件"><span class="toc-number">17.</span> <span class="toc-text">10. 查看装载器可以找到的库文件</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#11-查看动态加载的库文件"><span class="toc-number">18.</span> <span class="toc-text">11. 查看动态加载的库文件</span></a></li></ol></div></div><div class="post-content"><h1 id="第十二章-Linux工具集"><a href="#第十二章-Linux工具集" class="headerlink" title="第十二章 Linux工具集"></a>第十二章 Linux工具集</h1><h1 id="1-快速查看工具"><a href="#1-快速查看工具" class="headerlink" title="1. 快速查看工具"></a>1. 快速查看工具</h1><ul>
 <li><p>快速查看工具    </p>
 <ul>
 <li><p>file</p>
@@ -744,4 +744,251 @@ Dump of assembler code for function main:
 </ul>
 </li>
 </ul>
-<h1 id="第十三章-平台实践"><a href="#第十三章-平台实践" class="headerlink" title="第十三章 平台实践"></a>第十三章 平台实践</h1><h1 id="1-连接过程调试"><a href="#1-连接过程调试" class="headerlink" title="1. 连接过程调试"></a>1. 连接过程调试</h1></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/" data-id="cioej71au00xk5afy5his58oe" class="article-share-link">分享到</a><div class="tags"><a href="/tags/高级C-C-编译技术/">高级C&amp;C++编译技术</a></div><div class="post-nav"><a href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/" class="next">《高级C、C++编译技术》阅读笔记1(基础知识)</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">240</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
+<h1 id="第十三章-平台实践"><a href="#第十三章-平台实践" class="headerlink" title="第十三章 平台实践"></a>第十三章 平台实践</h1><h1 id="1-连接过程调试"><a href="#1-连接过程调试" class="headerlink" title="1. 连接过程调试"></a>1. 连接过程调试</h1><ul>
+<li><p>设置<code>LD_DEBUG</code>变量</p>
+<ul>
+<li><p>列出预设值</p>
+<pre><code>$ LD_DEBUG=help cat
+Valid options for the LD_DEBUG environment variable are:
+
+  libs        display library search paths
+  reloc       display relocation processing
+  files       display progress for input file
+  symbols     display symbol table processing
+  bindings    display information about symbol binding
+  versions    display version dependencies
+  scopes      display scope information
+  all         all previous options combined
+  statistics  display relocation statistics
+  unused      determined unused DSOs
+  help        display this help message and exit
+</code></pre></li>
+<li><p>设置方法</p>
+<ul>
+<li>与调用链接器的命令写在同一行</li>
+<li><p>设置环境变量，在正在shell生命周期中使用</p>
+<pre><code>export LD_DEBUG=&lt;option&gt;
+</code></pre></li>
+<li><p>撤销设置</p>
+<pre><code>unset LD_DEBUG
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="2-确定二进制文件类型"><a href="#2-确定二进制文件类型" class="headerlink" title="2. 确定二进制文件类型"></a>2. 确定二进制文件类型</h1><ul>
+<li><p>file：简单、快速、优雅</p>
+<pre><code>$ file TestFwmRsl 
+TestFwmRsl: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.24, stripped
+</code></pre></li>
+<li><p>readelf：详细信息</p>
+<pre><code>$ readelf -h TestFwmRsl | grep Type
+  Type:                         EXEC (Executable file)
+</code></pre><ul>
+<li>EXEC:可执行文件</li>
+<li>DYN：共享目标文件</li>
+<li>REL：可重定位文件</li>
+</ul>
+</li>
+<li><p>objdump：内容简单一些</p>
+<pre><code>$ objdump -f TestFwmRsl 
+
+TestFwmRsl:     file format elf32-i386
+architecture: i386, flags 0x00000112:
+EXEC_P, HAS_SYMS, D_PAGED
+start address 0x0806ff98
+</code></pre><ul>
+<li>EXEC_P：可执行文件</li>
+<li>DYNAMIC：共享目标文件</li>
+<li>无输出</li>
+</ul>
+</li>
+</ul>
+<h1 id="3-确定二进制入口点"><a href="#3-确定二进制入口点" class="headerlink" title="3. 确定二进制入口点"></a>3. 确定二进制入口点</h1><ul>
+<li><p>获取可执行文件入口点</p>
+<ul>
+<li>即程序内存映射中第一条指令的位置</li>
+<li><p>readelf：详细信息</p>
+<pre><code>$ readelf -h TestFwmRsl | grep Entry
+  Entry point address:               0x806ff98
+</code></pre></li>
+<li><p>objdump：简单一些</p>
+<pre><code>$ objdump -f TestFwmRsl | grep start
+start address 0x0806ff98
+</code></pre></li>
+</ul>
+</li>
+<li><p>获取动态库入库点</p>
+<ul>
+<li>动态库会映射到客户二进制文件的内存中，因此只有运行时才能获取到真正的入口点</li>
+<li><p>方法：</p>
+<ul>
+<li><p>1) 设置LD_DEBUG环境变量运行gdb，以打印出加载库信息</p>
+<pre><code>LD_DEBUG=files gdb -q ./TestFwmRsl
+</code></pre></li>
+<li><p>2) 在main函数设置断点，然后运行</p>
+<pre><code>b main        
+r
+</code></pre></li>
+<li><p>3) 运行程序到断点，对entry处的地址进行反汇编：</p>
+<pre><code>set disassembly-flavor intel
+disassemble 0xb7fd8390
+</code></pre></li>
+</ul>
+</li>
+<li><p>示例：</p>
+<pre><code>$ LD_DEBUG=files gdb -q ./TestFwmRsl 
+
+...
+Reading symbols from /home/dvr/Development/GTest/test_framwork/environment/output/opt/videosphere/TestFwmRsl...(no debugging symbols found)...done.
+(gdb) b main
+Breakpoint 1 at 0x806fb05
+
+(gdb) r
+Starting program: /home/dvr/Development/GTest/test_framwork/environment/output/opt/videosphere/TestFwmRsl 
+
+...
+
+file=libSQLitePP.so [0];  needed by /home/dvr/Development/GTest/test_framwork/environment/output/opt/videosphere/TestFwmRsl [0]
+     16771:    file=libSQLitePP.so [0];  generating link map
+     16771:      dynamic: 0xb7ae9c90  base: 0xb7a41000   size: 0x000aa814
+     16771:        entry: 0xb7a558c0  phdr: 0xb7a41034  phnum:          5
+...
+
+(gdb) set disassembly-flavor intel
+(gdb) disassemble 0xb7e1a770
+Dump of assembler code for function __do_global_dtors_aux:
+   0xb7a558c0 &lt;+0&gt;:    push   ebp
+   0xb7a558c1 &lt;+1&gt;:    mov    ebp,esp
+   0xb7a558c3 &lt;+3&gt;:    push   esi
+   0xb7a558c4 &lt;+4&gt;:    push   ebx
+   0xb7a558c5 &lt;+5&gt;:    call   0xb7a55977 &lt;__i686.get_pc_thunk.bx&gt;
+   0xb7a558ca &lt;+10&gt;:    add    ebx,0x9451a
+   0xb7a558d0 &lt;+16&gt;:    sub    esp,0x10
+   0xb7a558d3 &lt;+19&gt;:    cmp    BYTE PTR [ebx+0x159c],0x0
+   0xb7a558da &lt;+26&gt;:    jne    0xb7a55939 &lt;__do_global_dtors_aux+121&gt;
+   0xb7a558dc &lt;+28&gt;:    mov    eax,DWORD PTR [ebx-0x8]
+...
+</code></pre></li>
+</ul>
+</li>
+</ul>
+<h1 id="4-列出符号信息"><a href="#4-列出符号信息" class="headerlink" title="4. 列出符号信息"></a>4. 列出符号信息</h1><ul>
+<li>列出所有符号<ul>
+<li>nm</li>
+<li>readelf</li>
+<li>objdump</li>
+</ul>
+</li>
+<li><p>列出对外可见符号</p>
+<pre><code>readelf -s 
+objdump -t
+</code></pre></li>
+<li><p>列出导出符号列表，用于动态链接</p>
+<pre><code>readelf --dyn-syms
+objdump -T
+</code></pre></li>
+</ul>
+<h1 id="5-查看节信息"><a href="#5-查看节信息" class="headerlink" title="5. 查看节信息"></a>5. 查看节信息</h1><ul>
+<li><p>查看所有节</p>
+<pre><code>readelf -S
+objdump -t
+</code></pre></li>
+<li><p>查看动态节信息</p>
+<pre><code>readelf -d
+objdump -p
+</code></pre><ul>
+<li><p>可以看到有价值的信息：</p>
+<ul>
+<li><code>DP_RPATH</code>和<code>DT_RUNPATH</code></li>
+<li>SONAME字段值</li>
+<li>所需动态库列表(<code>DT_NEEDED</code>)</li>
+</ul>
+</li>
+<li><p>检测是否使用-fPIC构建动态库</p>
+<pre><code># 判读是否使用-fPIC的脚本
+$ if readelf -d &lt;.so&gt; | grep TEXTREL &gt; /dev/null;then echo &quot;TEXTREL found, no -fPIC&quot;;else echo &quot;use -fPIC&quot;;fi
+
+# 示例，libFramework.so使用了-fPIC
+$ if readelf -d ./fwlibs/libFramework.so | grep TEXTREL &gt; /dev/null;then echo &quot;TEXTREL found, no -fPIC&quot;;else echo &quot;use -fPIC&quot;;fi
+use -fPIC
+</code></pre><ul>
+<li>构建动态库时没有使用-fPIC会在动态节生成TEXTREL字段</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>查看重定位信息</p>
+<pre><code>readelf -r
+objdump -R
+</code></pre></li>
+<li><p>查看数据节</p>
+<pre><code>readelf -x &lt;section&gt; 
+objdump -s -j &lt;section&gt;
+</code></pre></li>
+</ul>
+<h1 id="6-查看段信息"><a href="#6-查看段信息" class="headerlink" title="6. 查看段信息"></a>6. 查看段信息</h1><pre><code>readelf --segments
+objdump -p
+</code></pre><h1 id="7-反汇编代码"><a href="#7-反汇编代码" class="headerlink" title="7. 反汇编代码"></a>7. 反汇编代码</h1><ul>
+<li><p>反汇编二进制文件</p>
+<ul>
+<li><p>反汇编文件</p>
+<pre><code>objdump -d
+</code></pre></li>
+<li><p>指定汇编风格</p>
+<pre><code>objdump -d -M intel
+</code></pre></li>
+<li><p>查看源代码</p>
+<pre><code>objdump -d -M intel -S
+</code></pre></li>
+<li><p>反汇编特定节</p>
+<pre><code>objdump -d -S -M intel -j .plt
+</code></pre></li>
+</ul>
+</li>
+<li><p>反汇编正在运行的程序</p>
+<ul>
+<li>需要使用gdb配合<code>LD_DEBUG</code>，运行时指定地址</li>
+</ul>
+</li>
+</ul>
+<h1 id="8-判断是否为调试模式"><a href="#8-判断是否为调试模式" class="headerlink" title="8. 判断是否为调试模式"></a>8. 判断是否为调试模式</h1><ul>
+<li><p>输出非空时为调试模式</p>
+<pre><code>readelf --debug-dump=line 
+</code></pre></li>
+</ul>
+<h1 id="9-查看加载时依赖项"><a href="#9-查看加载时依赖项" class="headerlink" title="9. 查看加载时依赖项"></a>9. 查看加载时依赖项</h1><ul>
+<li><p>递归查看所有依赖项，不安全的方式，可能需要执行程序</p>
+<pre><code>ldd
+</code></pre></li>
+<li><p>查看直接依赖项，安全</p>
+<pre><code>objdump -p &lt;&gt; | grep NEEDED
+readelf -d &lt;&gt; | grep NEEDED
+</code></pre></li>
+</ul>
+<h1 id="10-查看装载器可以找到的库文件"><a href="#10-查看装载器可以找到的库文件" class="headerlink" title="10. 查看装载器可以找到的库文件"></a>10. 查看装载器可以找到的库文件</h1><ul>
+<li><p>对装载器已知有效的库文件运行时路径</p>
+<pre><code>$ ldconfig -p 
+944 libs found in cache `/etc/ld.so.cache&apos;
+    libzip.so.2 (libc6) =&gt; /usr/lib/libzip.so.2
+    libzephyr.so.4 (libc6) =&gt; /usr/lib/libzephyr.so.4
+    libzeitgeist-1.0.so.1 (libc6) =&gt; /usr/lib/libzeitgeist-1.0.so.1
+    libz.so.1 (libc6) =&gt; /lib/i386-linux-gnu/libz.so.1
+    libz.so (libc6) =&gt; /usr/lib/i386-linux-gnu/libz.so
+    libyelp.so.0 (libc6) =&gt; /usr/lib/libyelp.so.0
+    libyajl.so.1 (libc6) =&gt; /usr/lib/i386-linux-gnu/libyajl.so.1
+    libx86.so.1 (libc6) =&gt; /lib/libx86.so.1
+    libxtables.so.7 (libc6) =&gt; /lib/libxtables.so.7
+...
+</code></pre></li>
+</ul>
+<h1 id="11-查看动态加载的库文件"><a href="#11-查看动态加载的库文件" class="headerlink" title="11. 查看动态加载的库文件"></a>11. 查看动态加载的库文件</h1><ul>
+<li>readelf、objdump都只能进行静态分析，无法分析动态库进行动态加载的运行时行为</li>
+<li>通过strace列出系统调用顺序</li>
+<li>使用<code>LD_DEBUG=files</code>选项</li>
+<li>查看<code>/proc/&lt;pid&gt;/maps</code>文件</li>
+<li>可以用gdb调试，防止程序过快结束</li>
+<li>lsof将进程打开的文件列表输出到标准输出，可以看到各种类型的文件打开的情况</li>
+</ul>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/" data-id="ciofwnanx018rchfymhvt0kcv" class="article-share-link">分享到</a><div class="tags"><a href="/tags/高级C-C-编译技术/">高级C&amp;C++编译技术</a></div><div class="post-nav"><a href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第九章-电子邮件/" class="next">第三部分 应用层安全(第九章 电子邮件)</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">241</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第三部分-应用层安全-第九章-电子邮件/">第三部分 应用层安全(第九章 电子邮件)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-EffectiveSTL-条款47-避免产生只写代码/">条款47 避免产生只写代码</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-EffectiveSTL-条款46-考虑使用函数对象代替函数作算法的参数/">条款46 考虑使用函数对象代替函数作算法的参数</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-说明/">说明</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-网络安全基础-第一部分-网络概念与威胁入门/">第一部分 网络概念与威胁入门</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-程序员的自我修养-《程序员的自我修养——链接、装载与库》阅读笔记/">《程序员的自我修养——链接、装载与库》阅读笔记</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/20/阅读笔记-实战LinuxShell编程与服务器管理-《实战Linux-Shell-编程与服务器管理》阅读笔记/">《实战Linux Shell 编程与服务器管理》阅读笔记</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
