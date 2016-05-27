@@ -1,0 +1,596 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>《C++ Templates》阅读笔记 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">《C++ Templates》阅读笔记</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">《C++ Templates》阅读笔记</h1><div class="post-meta">May 28, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/C-Templates/">C++Templates</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#第2章-函数模板"><span class="toc-number">1.</span> <span class="toc-text">第2章 函数模板</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第3章-类模板"><span class="toc-number">2.</span> <span class="toc-text">第3章 类模板</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第4章-非类型模板参数"><span class="toc-number">3.</span> <span class="toc-text">第4章 非类型模板参数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第5章-技巧性基础知识"><span class="toc-number">4.</span> <span class="toc-text">第5章 技巧性基础知识</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第6章-模板实战"><span class="toc-number">5.</span> <span class="toc-text">第6章 模板实战</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第7章-模板术语"><span class="toc-number">6.</span> <span class="toc-text">第7章 模板术语</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第8章-深入模板基础"><span class="toc-number">7.</span> <span class="toc-text">第8章 深入模板基础</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第9章-模板中的名称"><span class="toc-number">8.</span> <span class="toc-text">第9章 模板中的名称</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第10章-实例化"><span class="toc-number">9.</span> <span class="toc-text">第10章 实例化</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第11章-模板实参演绎"><span class="toc-number">10.</span> <span class="toc-text">第11章 模板实参演绎</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第12章-特化与重载"><span class="toc-number">11.</span> <span class="toc-text">第12章 特化与重载</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第13章-未来的方向"><span class="toc-number">12.</span> <span class="toc-text">第13章 未来的方向</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第14章-模板的多态威力"><span class="toc-number">13.</span> <span class="toc-text">第14章 模板的多态威力</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第15章-trait与policy类"><span class="toc-number">14.</span> <span class="toc-text">第15章 trait与policy类</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第16章-模板与继承"><span class="toc-number">15.</span> <span class="toc-text">第16章 模板与继承</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第17章-metaprogram"><span class="toc-number">16.</span> <span class="toc-text">第17章 metaprogram</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第18章-表达式模板"><span class="toc-number">17.</span> <span class="toc-text">第18章 表达式模板</span></a></li></ol></div></div><div class="post-content"><h1 id="第2章-函数模板"><a href="#第2章-函数模板" class="headerlink" title="第2章 函数模板"></a>第2章 函数模板</h1><pre><code>1    class关键字在template中应该尽量避免，容易给人误导        
+2    在声明和引入类型参数的时候，不能用关键字struct代替typename    10    
+3    对于实例化模板参数的每种类型，都从模板产生出一个不同的实体    11    
+4    &quot;在一个编译过程中，模板会被编译两次：
+    1、实例化之前，先检测模板代码本身的语法正确性
+    2、实例化过程中，检查模板代码的所有调用是否有效&quot;    12    
+5    引发模板实例化的时候，编译器需要查看模板定义    12    
+6    模板不进行自动类型推导，所有类型必须正确匹配，可以通过对实参进行强制类型转换，或者显示指定参数类型解决    13    
+7    一个非函数模板可以和一个同名的函数模板同时存在，而且该函数模板可以被实例化成这个非模板函数。在调用的时候，编译器优先选择调用非模板函数，除非模板可以产生一个更好的匹配函数。（如果要强行匹配模板，用&lt;&gt;调用）    16    
+8    可以通过显示指定一个空模板实参列表来限定必须通过模板匹配调用(如定义函数模板返回值)    16    
+9    函数所有重载版本的声明都应该位于该函数被调用的位置之前    19    
+</code></pre><h1 id="第3章-类模板"><a href="#第3章-类模板" class="headerlink" title="第3章 类模板"></a>第3章 类模板</h1><pre><code>10    对于类模板，成员函数只有在被使用的时候才会被实例化    26    
+11    如果类模板中含有静态成员，那么实例化的每种类型都会实例化这些静态成员，但对于同一给定实例化的所有对象，共享同一静态成员    26    
+12    如果要特化一个类模板，要特化该类所有的成员函数，，否则就不是特化整个类    27    
+13    将deque作为基本容器的好处，删除元素时，deque会释放内存，重新分配内存时，deque的元素不需要重新移动    28    
+补充    两个&gt; &gt;之间留个空格    27    
+补充    特化类：template&lt;&gt;        
+</code></pre><h1 id="第4章-非类型模板参数"><a href="#第4章-非类型模板参数" class="headerlink" title="第4章 非类型模板参数"></a>第4章 非类型模板参数</h1><pre><code>14    浮点数和类对象不能作为非类型模板参数    37    
+15    字符串文字是内部链接对象，不能用作模板实参，除非将其声明为外部的（extern，P106）    38    
+16    指向内部链接的指针，不能用作模板参数    38    
+补充    函数模板实例通常被看做是用来命名一组重载函数的集合（即使只有一个函数），根据标准，重载函数的集合不能用于模板参数的推导，所以要对实例化进行强制类型转换    37
+</code></pre><h1 id="第5章-技巧性基础知识"><a href="#第5章-技巧性基础知识" class="headerlink" title="第5章 技巧性基础知识"></a>第5章 技巧性基础知识</h1><pre><code>17    C++标准化过程中，引入关键字typename是为了说明，模板内部的标识符可以是一个类型    39    
+18    通常而言，当某个依赖于模板参数的名称是一个类型时，就应该使用typename。    40    
+19    只有当前面存在依赖于模板参数的对象时，我们才需要在模板内部使用.template标记    41    ？
+20    对于那些在基类中的声明，并且依赖于模板参数的符号，应该在前面使用this-&gt;或者Base&lt;T&gt;::    (using指示符？不推荐Base&lt;T&gt;::，将失去多态效果)    41    
+21    嵌套类和成员函数都可以作为模板    42    
+22    &quot;将模板的参数声明为模板的模板参数，可以将其参数绑定至前面的模板参数：
+        template&lt;typename T, template&lt;typename, typename&gt; class CONT = std:: vector&gt; 
+        class Stack {…};
+    实例化： Stack&lt;int, std::list&gt; nstk; Stack&lt;float&gt; fstk;
+    如果不声明为绑定：
+        template&lt;typename T, typename CONT = std:: vector&lt;T&gt; &gt; 
+        class Stack {…};
+    实例化： Stack&lt;int, std::list&lt;int&gt; &gt; stk;&quot;    46    
+23    函数模板不支持模板的模板参数    47    
+24    内建类型的初始化： T x = T();    52    
+24    &quot;字符串作为函数模板的实参时，如果实参是引用参数，类型为字符串数组(此时字符串长度和类型相关)，如果是非引用类型，会出现数组到指针类型的转换，类型为指向字符串首地址的指针。
+        template &lt;typename T&gt;
+        void ref(T const&amp; x) { cout&lt;&lt;&quot;&quot;ref type(T const&amp; x) : &quot;&quot;&lt;&lt;typeid(x).name()&lt;&lt;endl; }
+        template &lt;typename T&gt;
+        void nonref(T x) { cout&lt;&lt;&quot;&quot;nonref type(T x) : &quot;&quot;&lt;&lt;typeid(x).name()&lt;&lt;endl; }
+
+        main()
+        {
+        ref(&quot;&quot;hello&quot;&quot;);
+        nonref(&quot;&quot;hello&quot;&quot;);
+        }
+
+        输出：
+        ref type(T const&amp; x) : char[6]
+        nonref type(T x) : const char*&quot;    53    
+</code></pre><h1 id="第6章-模板实战"><a href="#第6章-模板实战" class="headerlink" title="第6章 模板实战"></a>第6章 模板实战</h1><pre><code>25    从某种意义上讲，模板是宏和普通声明之间的一种构造    57    
+26    使用者同时包含模板的声明和定义，称为包含模型    59    
+27    包含模型显著增加了使用者的代码量，和编译时间，这是最大的不足    60    
+28    非内联函数模板与内联函数和宏的重要区别是：非内联函数模板在调用位置不会被扩展，而是基于某种类型实例化以后，才产生一份新的代码拷贝。    60    
+29    显式实例化可以在需要的时候才进行，精确控制模块实例化的位置，同时避免包含模板定义的庞大文件开销，把模板定义的源文件封装起来。但客户端就不能基于其它类型进行实例化，而且必须跟踪每个实例化的实例，以避免重复定义，不利于大型程序开发。    62    
+30    内联函数不可以被export，export必须在template关键字前面且不能和inline关键字一起用    65    
+31    &quot;分离模型的制约因素：
+    分离模型中模板定义和实例化的耦合由编译器处理，对代码不可见，当模板定义修改时，实例化的代码也需要重新编译，与包含模型没有本质区别。但正是由于这种耦合在代码上的不可见性，导致基于代码的依赖性处理工具如make、nmake也不再实用。其次，当exported模板遇到编译错误时，如何引用被隐藏的模板定义是一个挑战。&quot;    66    
+32    模板不等于内联    67    
+33    预编译头文件：保证各编译模块的#include的相同部分只被编译一次，通常有一个总体的include.h头文件编译会比分散放到各个源文件快很多，因为头文件被放在一起只会编译一次    68    
+34    concept通常用于表示：在模板库中重复需求的约束集合，某个concept可以是其它concept的进一步细化    70    
+35    调试模板代码的主要工作是判断模板实现和模板定义中哪些concept被违反了    71    
+36    提前验证模板实参是否符合一系列约束的办法：通过语言扩展或者通过提前使用参数    73    
+37    提前使用参数即是把模板错误强制在浅式实例化中    74    
+38    典型而言，一个模板的实现可能会为模板库中标记的每个concept都开发一个archetype    80    
+39    分离模型只是一个理论模型，并没有以实现为基础    80    
+</code></pre><h1 id="第7章-模板术语"><a href="#第7章-模板术语" class="headerlink" title="第7章 模板术语"></a>第7章 模板术语</h1><pre><code>40    在C++中，类和联合都被称为类类型（class type）    83    
+41    类是指用关键字class或者struct引入的类类型    83    
+42    类类型包含联合，类不包含联合    83    
+43    模板类说明，该类是一个模板，代表的是整个类家族的参数化描述    83    
+44    实例化过程并不是产生特化的唯一方式，可以显示指定特化    84    
+45    声明是一种C++构造，它引入一个名称到某个C++作用域中，这种引入通常包含对所引入名称的一个局部分类。    85    
+46    &quot;如果已经确定C++构造的细节，或已分配变量的内存：
+    对于类和函数,提供一对花括号内的实体
+    对于变量，进行初始化和不带extern关键字的声明
+    对于模板，本身具有代码实体&quot;    85    
+47    &quot;一处定义原则ODR：
+    全局变量、静态数据成员、非内联函数、成员函数在整个程序中只能定义一次
+    类类型和内联函数在每个编译单元中只能定义一次，在链接的所有不同编译单元中的定义必须相同&quot;    86    
+48    template-id，指的是模板名称与尖括号内实参的组合: ArrayInClass&lt;double,10&gt;    86    
+49    模板参数指：模板声明或定义内部，关键字typename后面所列举的名称    86    
+50    模板实参指：替换模板参数的各个对象    86    
+51    模板实参可以不局限于标识符名称    86    
+52    如果使用typename-id进行替换，这种模板实参取代模板参数的替换为显式替换，隐式替换类似于用缺省参数来替换模板参数    86    
+53    一个基本原则是：模板实参必须是一个可以在编译期确定的模板实体或者值    86    
+54    因为模板参数是编译期实体，所以可以用来生成有效的模板实参，因此存在一种从简单模板构造出复杂模板的机制。    87    
+</code></pre><h1 id="第8章-深入模板基础"><a href="#第8章-深入模板基础" class="headerlink" title="第8章 深入模板基础"></a>第8章 深入模板基础</h1><pre><code>55    在模板类外部定义的成员模板可以具有多个模板参数子句template&lt;...&gt;，顺序是从最外围的类模板开始，依次到达内部模板    92    
+56    Union也可以定义为模板    93    
+57    &quot;缺省调用实参可以依赖于模板参数：
+        template&lt;typename T&gt;
+        void fill(Array&lt;T&gt;*, T const&amp; = T() ); //对基本类型T()为0&quot;    93    
+58    成员函数模板不能为虚函数。因为虚函数的实现需要一个大小固定的表，每个虚函数对应表的一个入口。然而，成员函数模板的实例化个数要整个程序编译完才能确定，与这个表冲突。类模板的普通成员可以是虚函数。    94    
+59    类模板不能和另外一个实体共享名称，普通class则可以  95：
+        int C；
+        class C; // 正确
+        template&lt;typename T&gt; class C; // 错误!&quot;    95    
+        60    &quot;这是因为模板的名字是具有链接的，但不能具有C链接
+
+        extern &quot;&quot;C++&quot;&quot; template&lt;typename T&gt; 
+        void normal();  //默认情况，可以省去链接规范
+
+        extern &quot;&quot;C&quot;&quot; template&lt;typename T&gt; 
+        void invalid();  //错误，模板不能具有C链接规范
+
+        extern &quot;&quot;Other&quot;&quot; template&lt;typename T&gt; 
+        void other_link();  //非标准链接，可能被别的语言支持
+
+
+61    模板通常具有外部链接，除非static修饰的函数模板。因此，不能在函数内部声明模板。    96    
+62    &quot;基本模板：没有在模板名称后面添加一堆尖括号的声明。当声明局部特化的时候，声明的就是非基本模板。函数模板必须是基本模板，即函数模板不能偏特化。    
+        template &lt;typename T&gt; class Box;   //基本模板
+        template &lt;typename T&gt; clase Box&lt;T&gt;; //错误 &quot;    96    
+63    模板参数的名称可以省略不写，但后面需要使用时就不能省略。    96    
+64    在同一对尖括号内部，后面的模板参数声明可以引用前面的模板参数名称    97    
+65    非类型模板参数只能由const和volatile修饰，不能是static等，非类型模板参数只能是右值，不能被取址或者赋值    98    
+66    模板的模板参数是代表类模板的占位符，但不能使用关键字struct或union，它作为一个类型用来定义和声明。    98    
+67    通常模板的模板参数名并不会在后面被用到，所以经常省略不写    99    
+68    替换失败非错误（SFINAE）原则是函数模板可以重载的重要因素    102    
+69    SFINAE原则保护的只是允许试图创建无效的类型，但并不允许试图计算无效的表达式。因为表达式自身的错误并不会在模板参数绑定的过程中出现    103    
+70    当实参匹配指针或者引用类型的参数时，用户定义的类型转换和派生类到基类的转换在模板中是不会进行的，唯一考虑的隐式类型转换是const和volatile    105    
+71    从函数模板实例化的函数一定不等于普通函数，即使声明相同。所以，从成员函数模板产生的函数永远也不会改写一个虚函数（即成员函数模板不能是虚函数），从构造函数模板产生的构造函数也一定不会是缺省构造函数。    109    
+72    友元函数的声明也可以是一个定义（不能是模板函数的实例，也不能受限），友元类则不可以    109    
+73    可以命名一个特定的类模板实例为友元    109    
+74    不能在友元声明中定义一个模板实例，只能定义一个特化，因此命名一个实例的友元声明是不能作为定义的    110    
+75    &quot;当类声明的友元函数名称后面没有跟一对尖括号&lt;&gt;时：
+    1.如果名称不受限，一定不能呢个是一个模板实例，此时可以定义一个友元函数
+    2.如果受限，则必须引用一个已经声明的函数或函数模板。普通函数的匹配高于函数模板，此时不能定义函数&quot;    111    
+76    在类模板里声明友元函数时，可以用模板参数来标识友元函数    111    
+77    &quot;对于任何只在模板内部声明的实体，都要等到模板实例化以后才存在(只允许类被实例化一次)：
+        template&lt;typename T&gt;
+        class Creator {
+            friend void appear() {}
+        }
+        Creator&lt;void&gt; obj1; // ok
+        Creator&lt;double&gt; obj2; // error: appear()被第二次生成，两个不同的实例化过程生成了两个完全相同的定义。&quot;    112    
+78    &quot;因此，在模板内部定义的友元函数，一般必须包含模板的模板参数，否则这个模板就只能被实例化一次。
+        template&lt;typename T&gt;
+        class Creator {
+            friend void appear(Creator&lt;T&gt;*) {}  //每个T生成一个不同的友元函数，这是个普通函数
+        }
+        Creator&lt;void&gt; obj1; // 生成void appear(Creator&lt;void&gt;*)
+        Creator&lt;double&gt; obj2; //生成void appear(Creator&lt;double&gt;*)&quot;    112    
+79    尽管模板中定义的友元函数可以作为模板的一部分被生成，但函数本身仍然是普通函数，而不是模板的实例    112    
+80    模板中定义的友元函数是内联函数，在两个不同的编译单元可以生成相同的函数。    113    
+81    需要让模板的所有实例都是友元时，可以定义友元模板，与友元函数一致，与该模板对应的特化会自动被看成友元    113    
+</code></pre><h1 id="第9章-模板中的名称"><a href="#第9章-模板中的名称" class="headerlink" title="第9章 模板中的名称"></a>第9章 模板中的名称</h1><pre><code>82    模板也是一种构造，它必须处理多种上下文相关信息：
+    (1)模板出现的上下文 
+    (2)模板实例化的上下文 
+    (3)用来实例化模板的模板实参的上下文    115    
+83    
+    受限名称：使用域运算符::或者成员运算符.-&gt;修饰的名称
+    依赖型名称：依赖于模板参数的名称，如std::vector&lt;T&gt;::iterator,当T已知时就不是一个依赖名称    115    
+84    受限名称的查找在一个受限作用域内部进行，如果该作用域是一个类，那么查找范围可以到达它的基类，非受限名称由内至外逐层查找，这被称为普通查找    117    
+85    非受限名称有时可以使用依赖于模板参数的查找（argument-dependent lookup, ADL），也称为koenig查找，由Andrew Koenig提出。ADL允许编译器在找不到函数名时，到参数的名称空间去查找。    118    
+86    ADL会查找这些实参的associated class和associated namespace    119    
+87    ADL只能应用于非受限名称，如果把被调函数的名称用圆括号括起来，也不会使用ADL
+        namespace X {
+            template&lt;typename T&gt;void f(T);
+        }
+        namespace N {
+            using namespace X;
+            enum E { e1 };
+            void f(E) { cout &lt;&lt; &quot;&quot;N::f(N::E) called&quot;&quot; &lt;&lt;endl; }
+        }
+
+        void f(int){
+            cout &lt;&lt; &quot;&quot;::f(int) called&quot;&quot; &lt;&lt; endl;             
+        } 
+
+        int main(void)
+        {
+            ::f(N::e1);  //::f(int) called，受限名称，不使用ADL，所以调用全局的
+            f(N::e1);    //N::f(N::E) called，非受限名称，通过ADL在命名空间N中找到N::f()
+
+            return 0;
+        }&quot;    119    
+88    如果友元函数首次被声明在类中，可以认为该友元函数是被声明在该类的作用域中。通常，友元声明在外围类作用域中是不可见的    121    
+89    如果友元函数所在的类属于ADL的关联类集合，该友元声明可见。
+        template &lt;typename T&gt;
+        class C {
+            …
+            friend void f();
+            friend void f(C&lt;T&gt; const&amp;);
+        };
+
+        void g(C&lt;int&gt;* p)
+        {
+            f();         //无参数，无法ADL，调用无效
+            f(*p);       //ADL， 因为*p 的类型为C&lt;int&gt;，将导致一个C&lt;int&gt;实例化
+        }
+            121    
+90    对于涉及在关联类中友元函数的查找行为，实际上会导致该关联类被实例化。    121    
+91    在类本身的作用域中插入该类名，可以被看做在类作用域中的非受限名称，在类中是可访问的，称为插入式类名
+        int C;
+
+        class C {
+            private:
+                int i[2];
+            public:
+                static int f() {
+                    return sizeof(C);
+                    }
+        };
+
+        int f()
+        {
+            return sizeof(C);
+        }
+
+        int main()
+        {   
+            cout &lt;&lt; C::f() &lt;&lt; &quot;&quot; &quot;&quot; &lt;&lt; ::f() &lt;&lt; endl;
+        }
+            121    
+92    类模板的插入式类名称如果是一个非受限名称，且后面没有紧跟实参列表，那么是不会被看作模板名称的    123    
+93    编译包含两个基本步骤——符号标记和解析。符号标记指扫描源代码的过程把源代码当字符序列读入，然后根据字符序列生成一系列标记。    123    
+94    解析比扫描困难，解析主要是面向上下文无关语言的，为了解决C++的上下文相关性，编译器使用符号表把扫描器和解析器结合起来    123    
+95    C++解析器会先查找&lt;之前的名称，只有该名称是一个模板名称时，才会把&lt;看作左尖括号，其它情况下会把&lt;看成小于符号    124    
+96    两个&gt;会被C++编译器看作右移标记&gt;&gt;，字符序列&lt;:的结果会是一个连字符，是[的另一种表示方法。这写都是因为编译器采用的maximum much原则：C++实现应该让一个标记具有尽可能多的字符。    125    
+97    &quot;模板中的上下文相关性：
+        bool test = Invert&lt;(1&gt;0)&gt;::result;  //圆括号是必须的
+        List&lt;List&lt;&gt; &gt;a;   //空格是必须的
+        List&lt; ::X&gt; many_X;  //空格是必须的&quot;    125    
+98    模板中不能依赖其它模板的名称，因为其它模板的内容可能会由于显式特化而失效    125    
+99    通常而言，依赖型受限名称（指含模板参数的受限名称）不会代表一个类型，除非使用typename修饰。对于类型名，如果不加上typename修饰，那么替换模板实参之后，就不会看出类型名，从而使程序无效。    126    
+100    &quot;满足123时才可用typename， 满足4时必须用：
+    1. 在模板中
+    2. 名称受限
+    3. 名称不位于继承列表和初始化列表中
+    4. 名称依赖于模板参数&quot;    126    
+101    &quot;typename用法辨析：
+        template&lt;typename1 T&gt;
+        class S: typename2 X&lt;T&gt;::Base {
+            S(): typename3 X&lt;T&gt;::Base( typename4 X&lt;T&gt;::Base(0) ) { }
+            typename5 X&lt;T&gt; f() {
+                typname6 X&lt;T&gt;::C *p;
+                X&lt;T&gt;::D* q;
+                }
+            typename7 X&lt;int&gt;::C* s;
+        };
+
+        class U {
+            typename8 X&lt;int&gt;::C* pc;
+        };
+
+        1、4、6 必须
+        7 可有可无，不依赖模板参数
+        2 3 在继承列表和初始化列表中，5 不是受限名称， 8 不在模板中&quot;    127    
+102    如果需要声明模板中的类型，需要用typename进行说明：
+        typename Outter&lt;T&gt;::template Middle&lt;T&gt;::template Inner&lt;T&gt;::func;    128    
+103    如果一个模板内部声明的的类型名又是一个模板，需要用template修饰：
+        typename Outter&lt;T&gt;::template Inner&lt;T&gt;::func;    128    
+104    可以通过using指示符把基类模板中的名称引入派生类模板，这样还可以破坏类的继承访问规则    129    
+105    using声明只对基类的类型名起作用，对基类的模板名不起作用    130    
+106    ADL查找的名称，不能是带实参的模板：
+        namespace N {
+            class X {
+            public: int a;
+            };
+
+            template&lt;int I&gt;void select(X*) { cout &lt;&lt; I &lt;&lt; endl; }        
+        }
+
+        void g(N::X* xp)
+            {
+            select&lt;3&gt;(xp);  //错，&lt;3&gt;和select模板的解析会陷入死循环，应改为N::select&lt;3&gt;(xp);
+            }    130    
+107    非依赖型基类，指基类用是用非依赖型名称表示的。意味着一看到模板的定义，编译器就可以在基类中准确查找到非依赖型名称,。即对于模板中的非依赖型名称，将会在看到的第一时间进行查找    131    
+108    对于模板中的非依赖型基类，其派生类中的非受限名称会首先在这个基类中查找：
+        template &lt;typename X&gt;
+        class Base {
+        public:
+            int basefield;
+            typedef int T;
+        };
+
+        class D1: public Base&lt;void&gt; {           //不是模板
+            public:
+                void f() { basefield = 3; }
+        };
+
+        template &lt;typename T&gt;
+        class D2: public Base&lt;double&gt; {           //非依赖型基类，类型已经确定
+            public:
+                void f() { basefield = 7; }
+                T strange;                      // T 取自基类int，而不是派生类
+        };
+
+
+        void g(D2&lt;int*&gt;&amp; d2, int* p)
+        {
+            d2.strange = p;                     //错误，类型不匹配，strange类型为int，不是int*
+        }    131    
+</code></pre><h1 id="第10章-实例化"><a href="#第10章-实例化" class="headerlink" title="第10章 实例化"></a>第10章 实例化</h1><pre><code>109    模板实例化复杂的主要原因：模板实例化的结果不局限于源代码的单一位置，会受来自于模板本身位置，使用模板的位置，定义模板实参的位置的影响。    137    
+110    声明指向模板类型的指针或引用不需要模板定义，如果期望知道模板大小或者访问模板成员，就需要知道整个模板的定义：
+        template &lt;typename T&gt; class A; //声明
+        template &lt;typename T&gt; class A { public: void f(); }; //定义
+
+        A&lt;int&gt;* pa = NULL;                    //不需要定义，只需要声明
+        pa = new A&lt;int&gt;;                      //需要定义
+
+        void func(A&lt;int&gt;&amp; rfa) {              //不需要定义，只需要声明
+            rfa.f();                          //需要定义
+        }    138    
+111    模板实例化过程：根据相应的模板实体，适当替换模板参数，从而获得一个普通类或者函数    142    
+112    两阶段查找：
+    阶段1：见到模板定义时，用普通规则和ADL规则查找非依赖名称，并用普通规则查找非受限的依赖型名称，放入候选集合，但它的查找结果（候选集合）不完整
+    阶段2：实例化点POI，用普通规则和ADL规则查找受限依赖型名称，再次用ADL规则查找非受限的依赖型名称，形成完整的查找结果（候选集合），然后借助于重载解析选出最佳结果    142    
+113    对函数模板的实例化，POI在使用模板之后最近的名字空间中。
+    对于类模板的实例化，POI在使用它之前最近的名字空间中。    
+        template&lt;typename T&gt; func(T t) {}
+        template&lt;typename T&gt; class A { … };
+        (1)
+        void test() {
+            (2)
+            func&lt;int&gt;(1);
+            sizeof(A&lt;int&gt;);
+            (3)
+        }
+        (4)
+        函数模板func&lt;T&gt;的实例化POI点为(4)
+        类模板A&lt;T&gt;的实例化POI点为(1)    144    
+114    对于二次POI，非依赖型名称与主POI规则相同，依赖型名称放在在主POI之前
+        template&lt;typename T&gt; class A { public: typedef int Int; };
+
+        template&lt;typename T&gt; func() {
+            A&lt;int&gt;::Int v1 = 1;             //1 非依赖型名称，不能用typename
+            typename A&lt;T&gt;::Int v2 = 2;      //2
+        }
+        (1)
+        int main() {
+            func&lt;double&gt;();                 //3 
+        }2:(2a)(2b)
+
+        3为主POI，位置在2，可以是2a，或者2b，还要看二次POI的结果：
+        1为非依赖名称，POI与主POI规则相同，在(1)
+        2为依赖名称，POI在主POI之前，即为2a，所以主POI的位置为2b    145    
+115    对于一个编译单元内的多个POI都要求ODR原则，类模板只保留首个POI，忽略其它的，函数模板则保留所有的。    145    
+116    编译器在每个编译单元都实例化同一个类模板并不会产生问题，因为类定义不会直接生成低层次代码。但函数模板就不同了，被实例化的普通非内联函数的多个定义，会违反ODR（一处定义）原则    149    
+117    为了使链接器能处理函数模板的实例化，编译器从一个编译单元到另一个时，会携带编译信息，标明已经被实例化的函数模板，防止在另一个编译单元中生成重复定义    150    
+118    贪婪实例化：先实例化所有的，链接时去除重复，编译时间长，代码体积大
+    询问实例化：维护实例化信息（定义和有效性），依赖源代码和数据库生成
+    迭代实例化：编译时不实例化，链接时遇到缺乏定义的错误返回编译器实例化，把错误信息推到链接期，需要记录源代码的定义位置，需要多次重复链接    151-155    
+119    模板的显式实例化由template关键字和后面的特化声明组成    155    
+120    异常规范可以省略，否则必须与模板一致    156    
+121    类模板的成员可以单独实例化，通过显式实例化类模板本身，同时就显式实例化了所有成员    156    
+</code></pre><h1 id="第11章-模板实参演绎"><a href="#第11章-模板实参演绎" class="headerlink" title="第11章 模板实参演绎"></a>第11章 模板实参演绎</h1><pre><code>122    每一个实参-参数对的分析都是独立的，如果最后得出的结论发生矛盾，那么演绎过程将失败    163    
+123    演绎的结果，需满足模板的隐式接口要求    164    
+124    对于非引用参数（T&amp;），演绎类型T时忽略const和valitile关键字，如果是数组或者函数，发生decay转型成对应的指针类型
+    对于引用参数，则直接取引用的类型
+        template&lt;typename T&gt; void f(T);    //非引用参数，decay并忽略const和valitile关键
+        template&lt;typename T&gt; void g(T&amp;);   //引用参数，直接取所引用的类型
+        double x[20];
+        const int y = 1;
+
+        f(x);                              //非引用参数，decay，T=double *
+        g(x);                              //引用参数，直接取类型，T=double[20]
+        f(y);                              //非引用参数，忽略const，T=int
+        g(y);                              //引用参数，直接取类型，T=const int
+        f(1);                              //非引用参数，忽略const，T=int
+        g(1);                              //引用参数，直接取类型，T=const int出错，右值表达式不能具有const 类型    164    
+125    对字符串要尤其小心，如果为引用参数，类型会带有字符串长度，容易引起错误，一般采用非引用参数：
+        template&lt;typename T&gt;  
+        inline const T&amp; max( const T&amp; a, const T&amp; b) {    //引用参数，直接取所引用的类型
+            return a &gt; b ? a : b;
+        }
+
+        max(&quot;&quot;abc&quot;&quot;, &quot;&quot;def&quot;&quot;);      //正确，T为char const[3]
+        max(&quot;&quot;abc&quot;&quot;, &quot;&quot;abcd&quot;&quot;);     //错误，&quot;&quot;abc&quot;&quot;的类型为char const[3]，&quot;&quot;abcd&quot;&quot;的类型为char const[4]
+
+        最好将定义改为：
+        inline T&amp; max(T a, T b)；
+        max(&quot;&quot;abc&quot;&quot;, &quot;&quot;abcd&quot;&quot;);      //正确，T为char*
+            165    
+126    对于复杂参数，推导的过程从最顶层开始匹配：
+        template&lt;typename T&gt; void f1(T*);
+        template&lt;typename T, int N&gt; void f2(T(&amp;)[N]);
+        template&lt;typename T1, typename T2, typename T3&gt; void f3(T1 (T2::*)(T3*));
+
+        int ***p1;
+        bool p2[2];
+        class p3 { void f(double*); };
+
+        f1(p1);    //T=int**
+        f2(p2);    //T=bool, N=2
+        f3(&amp;p3::f);//T1=void，T2=p3，T3=double    166    
+127    模板参数匹配接受3种类型的转换：
+    1. non-const - &gt; const
+    2. array -&gt; pointer
+    3. derived -&gt; base&quot;    168    
+128    模板参数类型推导只能运用于函数模板    169    
+129    函数模板的函数默认调用实参，如果依赖于模板类型参数，只有在函数调用是不提供实参的情况下才实例化    169    
+130    函数模板的函数默认调用实参不能用于实参推导：
+        template&lt;typename T&gt; void f(T x = 1);
+        f&lt;int&gt;();   //正确
+        f();        //错误    170    
+131    Barton-Nachman方法：为了解决早期C++函数模板不能重载的问题，将函数作为模板类的普通友元函数定义在模板类的内部。它本身是一个普通函数，定义在类的内部，被隐式看做一个内联函数，借助于模板类的实例化被声明为一个具体函数，插入到全局作用域中。由于其是个普通函数，所以可以进行任意重载。    171    
+132    在类模板的实例化过程中，伴随生成一个非模板的普通函数，由于其不是生成自函数模板，所以不进行实参推导，但可以进行重载。在实参匹配的过程中，还可能考虑隐式类型转换。    171    
+133    在外围作用域中插入的这个友元函数，只能通过ADL才可见，因此函数参数必须和包含友元函数的类有具体关联
+        class A{};
+        template&lt;typename T&gt;
+        class B {
+        public:
+            B(T t) {}
+            friend void f(const B&lt;T&gt;&amp; b) {}
+        }
+
+        A a;
+        B&lt;A&gt; b(a);
+        f(b);               //正确
+        f(a);               //错误，a与类B没有关联，无法ADL    172    
+</code></pre><h1 id="第12章-特化与重载"><a href="#第12章-特化与重载" class="headerlink" title="第12章 特化与重载"></a>第12章 特化与重载</h1><pre><code>134    同名函数模板可以同时存在，实例化体也可以同时存在，即使参数类型和返回类型相同。模板实例化时选择类型参数替换后具有最佳匹配的。
+        template&lt;typename T&gt;int f(T){ return 1; }     //1
+        template&lt;typename T&gt;int f(T*){ return 2; }    //2
+
+        cout &lt;&lt; f&lt;int*&gt;((int*)0) &lt;&lt;endl;               //实例化模板1
+        cout &lt;&lt; f&lt;int&gt;((int*)0) &lt;&lt;endl;                //实例化模板2    179    
+135    如果函数产生自模板，声明内容还包括返回类型、函数模板参数和模板实参    180    
+136    导致重载二义性的模板定义和实例化只有声明在不同的编译单元才是合法的    180    
+137    指定模板实参，重载解析起作用，不指定，模板实参推导起作用
+        template&lt;typename T&gt;int f(T){ return 1; }     //1
+        template&lt;typename T&gt;int f(T*){ return 2; }    //2
+
+        cout &lt;&lt; f&lt;int*&gt;((int*)0) &lt;&lt;endl;               //实例化模板1，更加匹配
+        cout &lt;&lt; f&lt;int&gt;((int*)0) &lt;&lt;endl;                //实例化模板2，更加匹配
+        cout &lt;&lt; f(0) &lt;&lt;endl;                           //实例化模板1，更加匹配
+        cout &lt;&lt; f((int*)0) &lt;&lt;endl;                     //实例化模板2，重载解析规则选更特殊的模板定义    183    
+138    函数模板和非模板函数可以同时重载，实际的函数调用会优先选择非函数模板
+        template&lt;typename T&gt; void f(T t) { cout &lt;&lt; &quot;&quot;template&quot;&quot; &lt;&lt; endl; }
+        void f(int t) { cout &lt;&lt; &quot;&quot;non-template&quot;&quot; &lt;&lt; endl; }
+
+        f(1);       //输出non-template，优先匹配非模板    185    
+139    函数模板重载：名字相同，形参数目或类型不同，或名字相同的普通非模板函数
+    函数模板特化：指定一个或多个函数模板的模板形参实际类型，不会引入新的模板    186    
+140    函数模板不能偏特化，类模板不能重载    186    
+141    类模板的全局特化不需要与原来的实现有任何关联，只和模板名称关联    186    
+142    如果模板有缺省模板实参，特化时对缺省实参的替换可选
+        template&lt;typename T, typename U = int&gt; class A {...};    //原模板定义
+        template&lt;&gt; class A&lt;char&gt; {...};                          //模板特化
+
+        A&lt;int&gt; a1;            //实例化原模板定义
+        A&lt;char&gt; a2;           //实例化模板特化
+        A&lt;char, int&gt; a3;      //实例化模板特化
+        A&lt;char, char&gt; a4;     //实例化原模板定义&quot;    187    
+        143    &quot;在类外定义特化的成员时，不加template&lt;&gt; 前缀
+        template&lt;typename T&gt; class A { void func1(); };    //原模板定义
+        template&lt;typename T&gt; A&lt;T&gt;::func1() {}              //成员定义
+
+        template&lt;&gt; class A&lt;char&gt; { void func2(); };        //模板特化
+        A&lt;char&gt;::func1() {}                                //特化成员定义    187    
+144    全局特化和模板实例化生成的版本不能共存于程序中，但通常只有在同一个编译单元时编译器才报错：
+        template&lt;typename T&gt; class A { void func1(); };    //原模板定义
+        A(char) a;                                         //已经实例化为char
+        template&lt;&gt; class A&lt;char&gt; { void func2(); };        //错误，实例化类型已存在&quot;    188    
+        145    &quot;当模板实例化和全局特化在不同的编译单元时，非常危险，道理同上，此时编译器不报错：
+        //file1
+        template&lt;typename T&gt; 
+        class A { public: enum { MAX = 10}; };             //原模板定义
+        char buffer[A&lt;void&gt;::MAX];                         //实例化，数组大小为10
+        extern void clear(const char*);
+        int main() {  clear(buffer); }                     //主程序
+
+        //file2
+        template&lt;typename T&gt; class A;                      //声明
+        template&lt;&gt; class A&lt;void&gt; {                         //特化为void类型
+             public: 
+                    enum { MAX = 100}; 
+        };
+        void clear(const char* buf) {
+            for(int i=0; i &lt;  A&lt;void&gt;::MAX; ++i)           //采用特化定义，与原数组大小不符，内存越界！
+                buf[i] = &apos;\0&apos;;
+        }    189    
+146    函数模板特化可以通过实参推导，不用显示声明模板实参。不能包含缺省参数，只能应用基本模板定义的缺省参数
+        template&lt;typename T&gt; int f(T t = 1) {}
+        template&lt;&gt; int f(int t) {}               //实参推导
+        template&lt;&gt; int f(doubule t = 1.1) {}     //错误，不能定义缺省参数    190    
+147    全特化在整个程序中只能出现一次    191    
+148    函数模板特化必须紧跟在基本模板定义后面，以免从模板直接生成函数    191    
+149    除了成员模板以外，类模板的成员函数和普通静态成员变量也可以被全局特化，使用template&lt;&gt;前缀
+        template&lt;typename T&gt; 
+        class A {
+        public:
+            char c;
+            static int a;
+            void func() { cout &lt;&lt; &quot;&quot;genertic &quot;&quot;}
+        };
+        template&lt;typename T&gt; int A&lt;T&gt;::a = 1;   //基本模板定义
+        template&lt;&gt; int A&lt;char&gt;::a = 1;     //成员全特化定义
+        template&lt;&gt; void A&lt;char&gt;::func() { cout &lt;&lt; &quot;&quot;specialized&quot;&quot;; }   //成员全特化定义
+
+        类A&lt;char&gt;的其它成员仍然默认使用基本模板的    191    
+150    普通类的静态成员变量和成员函数不允许在类外声明，类模板的特化成员可以进行非定义的类外声明
+        template&lt;typename T&gt; int A&lt;T&gt;::a;   //错误，基本模板定义不允许在类外声明
+        template&lt;&gt; int A&lt;char&gt;::a;             //成员全特化，可以进行非定义的类外声明，注意，是声明不是定义    193    
+151    只能通过默认构造的静态全局成员，全局特化只要提供声明就好
+        class A {};
+        template&lt;typename T&gt; class B { static A a; int b; };
+        template&lt;&gt; int B&lt;int&gt;::a = 1;
+        template&lt;&gt; A B&lt;int&gt;::a;         //默认构造的，只要声明    193    
+152    有嵌套类模板时对外部类的特化：
+        template&lt;typename T&gt; 
+        class A {
+        public:
+            template&lt;typename U&gt;        //嵌套类模板
+            class B {
+                static int b;
+            };
+        };
+        template&lt;typename T&gt; template&lt;typename U&gt; int A&lt;T&gt;::B&lt;U&gt;::b = 1;   
+
+        template&lt;&gt;
+            template&lt;typename U&gt;        //对外部类的全局特化
+            class A&lt;char&gt;::B {       
+                static char b;          //嵌套类发生变化
+            };
+        template&lt;&gt; template&lt;typename U&gt; char A&lt;char&gt;::B&lt;U&gt;::b = &apos;c&apos;;     194    
+153    针对嵌套类模板本身的全局特化，只能针对外围类的某个给定实例，此时外围类和嵌套类都需要template&lt;&gt;说明
+        template&lt;&gt;
+            template&lt;&gt;                  //两个都是全局特化
+            class A&lt;char&gt;::B&lt;char&gt; {       
+               enum { b = 1; }          //嵌套类发生变化
+            };    194    
+154    类模板的局部特化语法：模板参数声明+类名后显示指定模板实参列表： 
+        template&lt;typename T&gt;  class A {};        //基本模板
+        template&lt;typename T&gt;  class A&lt;T*&gt; {};    //模板特化    195    
+155    进行匹配时，全局特化优于局部特化    196    
+156    局部特化的参数列表不能有默认值，只能使用基本模板的默认值    196    
+157    局部特化的模板参数（&lt;&gt;里面的）个数可以和基本模板不同，可多可少，但模板实参（类名后面的）要和基本模板在种类上匹配    196    
+158    metaprogramming指借助于模板实例化机制，在编译器执行一些重要的计算    198    
+159    模板特化与重载机制的区别：特别在实例化的时候会先查找基本模板，再考虑调用哪一个特化的实现。对函数模板重载进行查找的时候，所有的重载函数模板都放入重载集里面，重载函数模板可能来自不同的名字空间和类，可能性大大增加。    198    
+</code></pre><h1 id="第13章-未来的方向"><a href="#第13章-未来的方向" class="headerlink" title="第13章 未来的方向"></a>第13章 未来的方向</h1><pre><code>160    C++标准不允许我们在std名字空间增加新的模板，但运行特化std中的模板    207    
+161    重载的函数模板之间的参数必须有本质区别    207    
+补充    类模板可以被偏特化，函数模板只能被重载    207    
+</code></pre><h1 id="第14章-模板的多态威力"><a href="#第14章-模板的多态威力" class="headerlink" title="第14章 模板的多态威力"></a>第14章 模板的多态威力</h1><pre><code>162    
+    动多态（dynamic polymorphism）：运行期处理，运行期多态
+    静多态（static polymorphism） ：使用单一的泛型标记，来关联不同的特定行为，在编译期处理，编译期多态    225    
+163    运行期多态的设计思想在于：对几个相关的对象类型，确定一个共同功能集，然后在基类中，把这些共同的功能声明为多个虚函数接口。    225    
+164    对于运行期多态而言，最重要的特性是处理不同类型的对象的能力（继承与虚函数）。    228    
+165    编译期多态的隐式公共性：不同类型所支持的相同操作，具体类型之间的定义是互相独立的    228    
+166    运行期多态：
+    绑定的：具有多态行为的接口是预先确定的，即入侵的或插入的
+    动态的：接口绑定在运行期
+    编译期多态：
+    非绑定的：接口没有预先确定，非入侵的或非插入的
+    静态的：接口绑定在编译期    231    
+167    运行期多态的优点：
+    代码小、
+    可完全编译，发布时不需要源文件（二进制库和头文件）
+    编译期多态的优点：
+    不需要公共基类表达接口
+    代码效率高（没有指针的间接调用，非虚函数内联的可能性大）
+    对特定类型只需要提供部分接口
+    更好的类型安全性（编译期对绑定做检查）    232    
+168    STL的关键之处在于算法并不是容器的成员函数，而是以泛型的方式编写的，因此任何容器（和线性的元素集合）都可以使用这些算法。从本质上讲，容器在针对集合方面的操作都被外包到迭代器上了    234    
+169    通常把算法所使用的由容器提供给迭代器的接口叫做一个concept（约束），它说明一个类型(即模板)要并入这个框架，就必须履行（或实现）这些约束    236    
+170    与迭代器的概念相比，运行期多态的虚函数调用机制是一种重量级的实现机制，会对效率产生很大影响，可能是几个数量级的    236    
+171    容器类型是把模板引入C++的主要动力    236    
+172    运行期多态通常要作出基于某一领域的决定    238    
+</code></pre><h1 id="第15章-trait与policy类"><a href="#第15章-trait与policy类" class="headerlink" title="第15章 trait与policy类"></a>第15章 trait与policy类</h1><pre><code>173    traits可以用来标识由主类型（主要的模板参数）所关联的一些额外类型（额外模板参数）    243    
+174    在所在类的内部，C++只允许对整型和枚举静态成员变量进行初始化，要初始化其它的可以用函数返回值替代完成    245    
+175    trait可以是一个机制，用于提供关于模板参数类型的所有必要信息。Trait提供了一种配置具体元素的途径。    247    
+176    参数化trait的目的在于：添加一个具有缺省值的模板参数，该缺省值是由trait模板决定的。在有缺省值的情况下，可以让用户省略或者改写类型    247    
+177    一个policy类就是一个提供了一个接口的类，该接口能在算法中应用一个或多个policy    249    
+178    不同的trait和不同的policy应该是交互的    251    
+179    policy更加注重行为，trait更加注重类型。    251    
+180    trait作为一个模板，提供了一种实现“额外层次间接性”的途径    251    
+181    trait描述了模板参数的一些自然的额外属性，policy描述了一些可配置行为    252    
+182    通过模板的模板参数来访问policy class的主要优点在于：借助于某个依赖于模板参数的类型，就可以很容易的让policy class携带一些状态信息（静态成员变量），缺点则是，policy类被实现为模板类，模板参数的个数是确定的，当需要变动时，客户端代码也随之需要修改    254    
+183    
+    值函数：函数接收的参数是值，返回的结果也是值
+    类型函数：接收某些类型实参，生成一个类型作为函数的返回结果，如sizeof    256    
+184    借助于局部特化，可以实现类型抽取    258    
+185    类型函数通常和可应用类型一起实现    259    
+186    根据容器类型来参数化一个模板，从而在使用该模板的时候，不需要给出容器元素类型和其它特征的参数    258    
+187    通过SFINAE实例化不同的函数，得到不同的执行结果，从而实现不同的功能或者判断不同的类型    259    
+188    对于一个已经有const进行类型替换的模板参数，c++仍然运行在前面使用const限定符    263    
+189    将函数模板的第一个函数参数改写为受限类型，可以根据后面的参数推导，这样能适应各种参数形式的变化    264    
+190    
+    property trait： 用于确定参数的一些属性，如表示什么类型，提示哪一个类型等
+    policy trait：应如何对待这些类型，针对的是与模板参数相关的一些更加独有的属性，通常封装在成员函数内部。policy class通常是独立于其它模板参数的    268    
+</code></pre><h1 id="第16章-模板与继承"><a href="#第16章-模板与继承" class="headerlink" title="第16章 模板与继承"></a>第16章 模板与继承</h1><pre><code>191    空基类：只包含类型成员、非虚成员函数、静态数据成员的类    281    
+192    EBCO空基类优化：当空类做基类时，只要不与同类型的另一个对象或子对象分配到同一地址（多重继承），就不需分配空间。    282    
+    补充    空基类优化的模板解决方案：将可能为类类型的模板形参，与其它成员合在一个pair模板中，实参类型为空时，成员体积最小化    285    
+193    一般的，CRTP适用于仅能作成员函数的接口（如构造函数、析构函数和下标运算）的实现提取出来    288    
+    补充    CRTP传递派生类模板参数的目的是为了对不同的继承对象起作用    286    
+194    C++允许通过模板直接参数化3种实体：类型、常数和模板。同时，模板还能间接参数化其它属性，如成员函数的虚拟性    289
+</code></pre><h1 id="第17章-metaprogram"><a href="#第17章-metaprogram" class="headerlink" title="第17章 metaprogram"></a>第17章 metaprogram</h1><pre><code>195    metaprogramming指对一个程序进行编程，编译系统会执行我们所写的代码来生成新的代码    293    
+196    metaprogramming意味着一种反射的特性：metaprograming组件只是程序的一部分，而且也只生成一部分代码或程序    293    
+197    metaprogramming的特点在于某些用户定义的计算可以在编译期进行，通过能够为性能优化和接口简单性带来好处    293    
+198    使用模板来进行计算通常是有限制的，C++标准建议最多只进行17层的递归实例化，因为模板实例化通常都要消耗巨大的编译器资源，而且扩展的递归实例化也会很快降低编译器的效率，甚至耗光所有可用资源    304    
+199    metaprogramming有时候可以隐藏在普通模板内部，并且用于实现那些对性能要求很严格的算法，从而大大提高效率    304    
+200    在递归实例化时，趋向于避免在模板实参中使用递归嵌套的实例化    305    
+</code></pre><h1 id="第18章-表达式模板"><a href="#第18章-表达式模板" class="headerlink" title="第18章 表达式模板"></a>第18章 表达式模板</h1><pre><code>201    表达式模板有时依赖于深层的嵌套模板实例化，与metaprogramming的递归实例化非常相似。最初开发这两种技术都是为了支持高性能数组，metaprogramming主要用于小的、大小固定的数组，表达式模板则适用于在运行期确定大小的中等大小的数组    313    
+202    对于元素个数少的数组，除非能够分配非常快速的内存配置器，否则创建多余临时对象的过程通常都会占用每个操作的大部分时间；而对于元素个数很多的数组而言，则是完全不允许生成临时对象的，因为根本没有足够的内存来容纳。对效率要求很严格的数值操作，通常都期望能把内存空间用于存储现成的计算结果，而如果我们吧内存空间用于存储不需要的局部变量，那么性能会大大下降。    317    
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/28/阅读笔记-C-Templates-《C-Templates》阅读笔记/" data-id="ciopzq08r00c0o363wonj46i0" class="article-share-link">分享到</a><div class="tags"><a href="/tags/C-Templates/">C++Templates</a></div><div class="post-nav"><a href="/2016/05/28/阅读笔记-EffectiveC-三、关于const的讨论/" class="pre">三、关于const的讨论</a><a href="/2016/05/28/阅读笔记-EffectiveC-七、你到底爱不爱我——何时使用virtual析构函数/" class="next">七、你到底爱不爱我——何时使用virtual析构函数</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">246</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-附录A-密码学/">附录A 密码学</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十章-web安全/">第三部分 应用层安全(第十章 web安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十一章-远程访问安全/">第三部分 应用层安全(第十一章 远程访问安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第九章-电子邮件/">第三部分 应用层安全(第九章 电子邮件)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

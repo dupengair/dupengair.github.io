@@ -1,0 +1,100 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第十五章 Unix域套接字 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第十五章 Unix域套接字</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第十五章 Unix域套接字</h1><div class="post-meta">May 28, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、概述"><span class="toc-number">1.</span> <span class="toc-text">一、概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、套接字地址结构"><span class="toc-number">2.</span> <span class="toc-text">二、套接字地址结构</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、socketpair"><span class="toc-number">3.</span> <span class="toc-text">三、socketpair</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、套接字函数"><span class="toc-number">4.</span> <span class="toc-text">四、套接字函数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、描述符传递"><span class="toc-number">5.</span> <span class="toc-text">五、描述符传递</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、接收发送者的凭证-uid、pid、gid-…"><span class="toc-number">6.</span> <span class="toc-text">六、接收发送者的凭证(uid、pid、gid …)</span></a></li></ol></div></div><div class="post-content"><h1 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h1><ol>
+<li>UNIX域支持套接字<ul>
+<li>字节流套接字</li>
+<li>数据报套接字</li>
+</ul>
+</li>
+<li>用途<ul>
+<li>比TCP套接字快一倍</li>
+<li>可以传递描述符</li>
+<li>可以传递用户凭证(用户ID和组ID)，以提供额外的安全措施</li>
+</ul>
+</li>
+<li>Unix域用文件系统的路径名来标识客户端和服务端的协议地址<ul>
+<li>需要bind到套接字上</li>
+<li>如果路径已存在，会bind失败，需要先unlink路径名</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、套接字地址结构"><a href="#二、套接字地址结构" class="headerlink" title="二、套接字地址结构"></a>二、套接字地址结构</h1><pre><code>#include &lt;sys/un.h&gt;
+struct sockaddr_un {
+    sa_family_t sun_family;
+    char        sun_path[14];
+};
+</code></pre><ul>
+<li><code>sun_path</code>数组中的路径名必需以空字符结尾</li>
+</ul>
+<h1 id="三、socketpair"><a href="#三、socketpair" class="headerlink" title="三、socketpair"></a>三、socketpair</h1><pre><code>#include &lt;sys/socket.h&gt;
+int socketpair(int family, int type, int protocol, int sockfd[2]);
+成功返回0，失败返回-1
+</code></pre><ul>
+<li>创建两个随后连接起来的套接字，只用于Unix域套接字</li>
+<li>family必需为<code>AF_LOCAL</code>，protocol必需为0</li>
+<li>type可以为<code>SOCK_STREAM</code>或者<code>SOCK_DGRAM</code></li>
+<li>新创建的描述符作为sockfd[0]和sockfd[1]返回</li>
+<li>这样得到的结果为流管道，与PIPE的区别为流管道是全双工的</li>
+<li>书上说Berkeley的实现是半双工(？)</li>
+</ul>
+<h1 id="四、套接字函数"><a href="#四、套接字函数" class="headerlink" title="四、套接字函数"></a>四、套接字函数</h1><ol>
+<li>bind绑定后的路径名默认权限是0777，并按照当前umask值进行修正</li>
+<li>路径名需要为绝对路径，不然对端就需要知道本端的应用程序路径才能成功通信</li>
+<li>connect指定的路径必需是已绑定的Unix域套接字且已打开，type也需要一致，错误条件如下：<ul>
+<li>路径未绑定到套接字</li>
+<li>路径绑定的套接字未打开(没监听)</li>
+<li>监听的套接字类型不符</li>
+</ul>
+</li>
+<li>connect连接域套接字对路径的权限测试，相当于open写打开</li>
+<li>Unix域字节流套接字类似TCP<ul>
+<li>提供无记录边界的字节流服务</li>
+<li>监听队列满时，立即返回ECONNREFUSED错误（注意TCP套接字上，监听队列满时，忽略新到达的SYN，等待客户端重试）</li>
+</ul>
+</li>
+<li>Unix域字数据报套接字类似UDP<ul>
+<li>提供有记录边界的不可靠数据报服务</li>
+<li>在未绑定的Unix域套数据报接字上发送数据报不会自动绑定一个临时路径(TCP或UDP套接字则会自动绑定一个临时端口进行发送)</li>
+<li>所以除非数据报发送端已绑定路径名到其套接字，否则接收端无法发送应答，因为服务端的recvfrom会返回空路径做对端地址，导致sendto错误</li>
+</ul>
+</li>
+</ol>
+<h1 id="五、描述符传递"><a href="#五、描述符传递" class="headerlink" title="五、描述符传递"></a>五、描述符传递</h1><ol>
+<li><p>自然的传递</p>
+<ul>
+<li>fork调用返回以后，子进程共享父进程所有打开的描述符</li>
+<li>exec调用执行以后，所有描述符的打开状态不变</li>
+</ul>
+</li>
+<li><p>过程</p>
+<ul>
+<li>创建Unix字节流套接字，不推荐数据报套接字，可能被丢弃</li>
+<li>可被传递的描述符不限类型(文件、套接字…)</li>
+<li>发送进程穿件msghdr结构，通过<code>msg_control</code>成员作为辅助数据，通过sendmsg发送</li>
+<li>接收进程通过recvmsg接收消息，这个消息由内核来专门处理</li>
+<li>在sendmsg后，即使发送进程在接收进程调用recvmsg前闭了描述符，对于接收进程仍然处于打开状态</li>
+<li>接收到的描述符值与发送的不同是正常的，传递描述符的过程是创建新的描述符，指向内核中相同的文件表项</li>
+<li>如果接收进程调用recvmsg时没有可用空间，这个被传递的描述符就会被关闭</li>
+<li>接收进程调用recvmsg的过程中避免使用MSG_PEEK标志，否则后果不可预料<ul>
+<li><code>MSG_PEEK</code>：允许查看已可读取的数据，而且系统不在recv或recvfrom返回</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="六、接收发送者的凭证-uid、pid、gid-…"><a href="#六、接收发送者的凭证-uid、pid、gid-…" class="headerlink" title="六、接收发送者的凭证(uid、pid、gid …)"></a>六、接收发送者的凭证(uid、pid、gid …)</h1><ol>
+<li><p>用于服务器验证客户端是否有权限请求相应服务</p>
+<pre><code>#include &lt;sys/socket.h&gt;
+struct cmsgcred {
+    pid_t cmcred_pid;
+    uid_t cmcred_uid;
+    uid_t cmcred_eupid;
+    gid_t cmcred_gid;
+    short cmcred_ngroups;
+    gid_t cmcred_gourps[CMGROUP_MAX];
+};
+</code></pre><ul>
+<li>FreeBSD使用</li>
+<li><code>CMGROUP_MAX</code>通常为16，<code>cmcred_groups</code>至少为1，<code>cmcred_ngroups</code>第一个元素是有效组ID</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/28/阅读笔记-unix网络编程Ed3-第十五章-Unix域套接字/" data-id="ciopzq0oc00x4o36355ovwny5" class="article-share-link">分享到</a><div class="tags"><a href="/tags/unix网络编程Ed3/">unix网络编程Ed3</a></div><div class="post-nav"><a href="/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/" class="next">《高级C、C++编译技术》阅读笔记2(工具使用)</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">246</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-附录A-密码学/">附录A 密码学</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十章-web安全/">第三部分 应用层安全(第十章 web安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十一章-远程访问安全/">第三部分 应用层安全(第十一章 远程访问安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第九章-电子邮件/">第三部分 应用层安全(第九章 电子邮件)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

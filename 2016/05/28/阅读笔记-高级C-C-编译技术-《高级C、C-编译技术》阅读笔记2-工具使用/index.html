@@ -1,0 +1,994 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>《高级C、C++编译技术》阅读笔记2(工具使用) | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">《高级C、C++编译技术》阅读笔记2(工具使用)</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">《高级C、C++编译技术》阅读笔记2(工具使用)</h1><div class="post-meta">May 28, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/高级C-C-编译技术/">高级C&amp;C++编译技术</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#第十二章-Linux工具集"><span class="toc-number">1.</span> <span class="toc-text">第十二章 Linux工具集</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#1-快速查看工具"><span class="toc-number">2.</span> <span class="toc-text">1. 快速查看工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-详细信息分析工具"><span class="toc-number">3.</span> <span class="toc-text">2. 详细信息分析工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-部署阶段工具"><span class="toc-number">4.</span> <span class="toc-text">3. 部署阶段工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-运行时分析工具"><span class="toc-number">5.</span> <span class="toc-text">4. 运行时分析工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-静态库工具"><span class="toc-number">6.</span> <span class="toc-text">5. 静态库工具</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第十三章-平台实践"><span class="toc-number">7.</span> <span class="toc-text">第十三章 平台实践</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#1-连接过程调试"><span class="toc-number">8.</span> <span class="toc-text">1. 连接过程调试</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-确定二进制文件类型"><span class="toc-number">9.</span> <span class="toc-text">2. 确定二进制文件类型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-确定二进制入口点"><span class="toc-number">10.</span> <span class="toc-text">3. 确定二进制入口点</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-列出符号信息"><span class="toc-number">11.</span> <span class="toc-text">4. 列出符号信息</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-查看节信息"><span class="toc-number">12.</span> <span class="toc-text">5. 查看节信息</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#6-查看段信息"><span class="toc-number">13.</span> <span class="toc-text">6. 查看段信息</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#7-反汇编代码"><span class="toc-number">14.</span> <span class="toc-text">7. 反汇编代码</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#8-判断是否为调试模式"><span class="toc-number">15.</span> <span class="toc-text">8. 判断是否为调试模式</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#9-查看加载时依赖项"><span class="toc-number">16.</span> <span class="toc-text">9. 查看加载时依赖项</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#10-查看装载器可以找到的库文件"><span class="toc-number">17.</span> <span class="toc-text">10. 查看装载器可以找到的库文件</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#11-查看动态加载的库文件"><span class="toc-number">18.</span> <span class="toc-text">11. 查看动态加载的库文件</span></a></li></ol></div></div><div class="post-content"><h1 id="第十二章-Linux工具集"><a href="#第十二章-Linux工具集" class="headerlink" title="第十二章 Linux工具集"></a>第十二章 Linux工具集</h1><h1 id="1-快速查看工具"><a href="#1-快速查看工具" class="headerlink" title="1. 快速查看工具"></a>1. 快速查看工具</h1><ul>
+<li><p>快速查看工具    </p>
+<ul>
+<li><p>file</p>
+<ul>
+<li><p>查看二进制文件基本信息</p>
+<pre><code>$ file VS110-B2-B/main/dvsdk/libthread_db-1.0.so 
+VS110-B2-B/main/dvsdk/libthread_db-1.0.so: ELF 32-bit LSB shared 
+object, ARM, version 1 (SYSV), dynamically linked (uses shared 
+libs), BuildID[sha1]=0xcd116fc09def3a96eb37589b5094b3baee242329, 
+for GNU/Linux 2.6.16, not stripped
+</code></pre></li>
+</ul>
+</li>
+<li><p>size</p>
+<ul>
+<li><p>获取ELF文件字节长度信息</p>
+<pre><code>$ size VS110-B2-B/main/dvsdk/libthread_db-1.0.so 
+   text       data        bss        dec        hex    filename
+  17024        612         16      17652       44f4    VS110-B2-B/main/dvsdk/libthread_db-1.0.so
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="2-详细信息分析工具"><a href="#2-详细信息分析工具" class="headerlink" title="2. 详细信息分析工具"></a>2. 详细信息分析工具</h1><ol>
+<li><p>详细信息分析工具</p>
+<ul>
+<li><p>ldd</p>
+<ul>
+<li>列出可执行文件启动时需要静态加载的动态库，即加载时依赖项</li>
+<li>会递归搜索依赖项</li>
+<li><p>无法列出动态加载项</p>
+<pre><code>$ ldd TestFwmRsl 
+linux-gate.so.1 =&gt;  (0xb774a000)
+libFramework.so =&gt; ./fwlibs/libFramework.so (0xb74ff000)
+libpthread.so.0 =&gt; /lib/i386-linux-gnu/libpthread.so.0 (0xb74cf000)
+libuuid.so =&gt; ./fwlibs/libuuid.so (0xb74cb000)
+libcrypto.so.1.0.0 =&gt; /lib/i386-linux-gnu/libcrypto.so.1.0.0 (0xb7320000)
+libdl.so.2 =&gt; /lib/i386-linux-gnu/libdl.so.2 (0xb731b000)
+...
+</code></pre></li>
+<li><p>某些版本的ldd可能会尝试执行程序来获得依赖信息，所以不应对不受信任的可执行文件执行ldd命令</p>
+</li>
+<li><p>替代命令(只会读取直接依赖的库)：</p>
+<ul>
+<li><p>objdump -p </p>
+<pre><code>$ objdump -p TestFwmRsl | grep NEEDED
+  NEEDED               libFramework.so
+  NEEDED               libpthread.so.0
+  NEEDED               libuuid.so
+  NEEDED               libcrypto.so.1.0.0
+  NEEDED               libdl.so.2
+  NEEDED               librt.so.1
+  NEEDED               libldap-2.4.so.2
+  NEEDED               liblber-2.4.so.2
+  NEEDED               libssl.so.1.0.0
+  NEEDED               libSQLitePP.so
+  NEEDED               libstdc++.so.6
+  NEEDED               libm.so.6
+  NEEDED               libgcc_s.so.1
+  NEEDED               libc.so.6
+</code></pre></li>
+<li><p>readelf -d</p>
+<pre><code>$ readelf -d TestFwmRsl | grep NEEDED
+ 0x00000001 (NEEDED)                     Shared library: [libFramework.so]
+ 0x00000001 (NEEDED)                     Shared library: [libpthread.so.0]
+ 0x00000001 (NEEDED)                     Shared library: [libuuid.so]
+ 0x00000001 (NEEDED)                     Shared library: [libcrypto.so.1.0.0]
+ 0x00000001 (NEEDED)                     Shared library: [libdl.so.2]
+ 0x00000001 (NEEDED)                     Shared library: [librt.so.1]
+ 0x00000001 (NEEDED)                     Shared library: [libldap-2.4.so.2]
+ 0x00000001 (NEEDED)                     Shared library: [liblber-2.4.so.2]
+ 0x00000001 (NEEDED)                     Shared library: [libssl.so.1.0.0]
+ 0x00000001 (NEEDED)                     Shared library: [libSQLitePP.so]
+ 0x00000001 (NEEDED)                     Shared library: [libstdc++.so.6]
+ 0x00000001 (NEEDED)                     Shared library: [libm.so.6]
+ 0x00000001 (NEEDED)                     Shared library: [libgcc_s.so.1]
+ 0x00000001 (NEEDED)                     Shared library: [libc.so.6]
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>nm</p>
+<ul>
+<li>输出符号以及对应类型</li>
+<li><p>nm</p>
+<ul>
+<li>列出二进制文件的所有符号</li>
+<li><p>无法列出strip过后的符号，需要-D参数</p>
+<pre><code>$ nm Asio_context.o
+00000000 t _GLOBAL__sub_I__ZN8TestAsio11TaskContext15defaultMaxTasksE
+         U _Unwind_Resume
+         U _ZN10TestEngine11Prettyprint9EnvPrintfEPKc
+         U _ZN10TestSystem4Pipe4ReadEPvj
+         U _ZN10TestSystem4Pipe5WriteEPvj
+         U _ZN10TestSystem4Pipe6CreateEv
+         U _ZN10TestSystem4Pipe7DestroyEv
+         U _ZN10TestSystem4PipeD1Ev
+         U _ZN10TestSystem4Time3NowE
+
+$ nm TestFwmRsl 
+nm: TestFwmRsl: no symbols
+</code></pre></li>
+</ul>
+<ul>
+<li><p>nm -D</p>
+<ul>
+<li>只列出动态节的符号，即动态库中对外可见的符号</li>
+<li><p>可以列出strip过后的符号</p>
+<pre><code>$ nm -D TestFwmRsl 
+080d5f20 B BackTraceCount
+080d5f40 B BackTraceMutex
+0808cc70 T CountProcFromName
+080b3570 W DeleteThreadLocalValue
+0808ca60 T FindProcNameFromPid
+0808cb70 T FindProcPidFromName    
+080893f0 T _Z10HandlePipei
+0808bb60 T _Z10HandleQuiti
+0808bd00 T _Z10HandleSEGVi
+08089ef0 T _Z10SetQuitingb
+08089f20 T _Z11InitOptionsiPPcR7Options
+08089510 T _Z11maskingSigni
+...
+</code></pre></li>
+</ul>
+</li>
+<li><p>nm -C </p>
+<ul>
+<li><p>列出未经过名称修饰的符号</p>
+<pre><code>$ nm -DC TestFwmRsl | head -n 30
+080d5f20 B BackTraceCount
+080d5f40 B BackTraceMutex
+0808cc70 T CountProcFromName
+080b3570 W DeleteThreadLocalValue
+0808ca60 T FindProcNameFromPid
+0808cb70 T FindProcPidFromName
+080893f0 T HandlePipe(int)
+0808bb60 T HandleQuit(int)
+0808bd00 T HandleSEGV(int)
+08089ef0 T SetQuiting(bool)
+08089f20 T InitOptions(int, char**, Options&amp;)
+08089510 T maskingSign(int)
+...
+</code></pre></li>
+</ul>
+</li>
+<li><p>nm -D –no-demangle</p>
+<ul>
+<li>列出名字修饰后的动态符号</li>
+<li>可用来检测C++输出的C规范ABI接口，防止在ABI函数声明中忘记加入extern “C”</li>
+</ul>
+</li>
+<li><p>nm -A &lt;动态库&gt; | grep &lt;符号&gt;</p>
+<ul>
+<li><p>在动态库中查询含有指定符号的库</p>
+<pre><code>$ nm -AD * | grep 
+TestFwmMsg:080b9288 V _ZTVN7testing11EnvironmentE
+TestFwmRsl:080beb48 V _ZTVN7testing11EnvironmentE
+TestFwmThd:080bd328 V _ZTVN7testing11EnvironmentE
+TestStartFwm:080b8cc8 V _ZTVN7testing11EnvironmentE
+</code></pre></li>
+</ul>
+</li>
+<li><p>nm -u </p>
+<ul>
+<li><p>列出苦衷未定义的符号(这些符号在运行时由其它库提供)</p>
+<pre><code>$ nm -Du TestFwmRsl  | head -n 20
+ w _ITM_deregisterTMCloneTable
+ w _ITM_registerTMCloneTable
+ w _Jv_RegisterClasses
+ U _Unwind_Resume
+ U _ZN9Framework4Core10CFramework10GetLibraryEv
+ U _ZN9Framework4Core10CFramework10GetUserPwdERKNS_6Helper4Guid4GuidESsSsRSsSs
+ U _ZN9Framework4Core10CFramework10IsResourceERKNS_6Helper4Guid4GuidE
+ U _ZN9Framework4Core10CFramework10RemoveHostERNS_6Helper4Guid4GuidE
+ U _ZN9Framework4Core10CFramework10ResetUsersERKNS_6Helper4Guid4GuidES6_Rj
+ U _ZN9Framework4Core10CFramework11AddResourceEN5boost10shared_ptrINS0_9CResourceEEERNS_6Helper4Guid4GuidEbb
+ U _ZN9Framework4Core10CFramework11CloneModuleERKNS_6Helper4Guid4GuidEb
+ U _ZN9Framework4Core10CFramework11GetLogLevelERNS_6Helper4Guid4GuidERKS4_RKSsS9_RjSA_
+ U _ZN9Framework4Core10CFramework11GetLoggerIdESs
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>objdump</p>
+<ul>
+<li>反汇编功能强大，除ELF外还支持超过50种格式</li>
+<li><p>1) 解析EFL头</p>
+<pre><code>$ objdump -f TestFwmRsl 
+
+TestFwmRsl:     file format elf32-i386
+architecture: i386, flags 0x00000112:
+EXEC_P, HAS_SYMS, D_PAGED
+start address 0x0806ff98
+</code></pre><ul>
+<li>查看静态库时，objdump -f 会打印库中每个找到的目标文件的ELF头信息</li>
+</ul>
+</li>
+<li><p>2) 查看节信息</p>
+<pre><code>$ objdump -h TestFwmRsl 
+
+TestFwmRsl:     file format elf32-i386
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .interp       00000013  08048134  08048134  00000134  2**0
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  1 .note.ABI-tag 00000020  08048148  08048148  00000148  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  2 .hash         00002d48  08048168  08048168  00000168  2**2
+  ...
+</code></pre></li>
+<li><p>3) 查看符号</p>
+<pre><code>$ objdump -t Asio_context.o | head -n 20
+
+Asio_context.o:     file format elf32-i386
+
+SYMBOL TABLE:
+00000000 l    df *ABS*    00000000 Asio_context.cpp
+00000000 l    d  .text    00000000 .text
+00000000 l    d  .data    00000000 .data
+00000000 l    d  .bss    00000000 .bss
+00000000 l    d  .text.unlikely    00000000 .text.unlikely
+00000000 l     F .text.unlikely    0000001e _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc.part.7
+00000000 l    d  .text._ZNSt15basic_stringbufIcSt11char_traitsIcESaIcEED2Ev    00000000 .text._ZNSt15basic_stringbufIcSt11char_traitsIcESaIcEED2Ev
+...
+</code></pre></li>
+<li><p>4) 查看动态库导出符号</p>
+<pre><code>$ objdump -T TestFwmRsl 
+
+TestFwmRsl:     file format elf32-i386
+
+DYNAMIC SYMBOL TABLE:
+00000000      DF *UND*    00000000  GLIBCXX_3.4.11 _ZNSsC1ESt16initializer_listIcERKSaIcE
+0807be30 g    DF .text    0000008d  Base        _ZN10TestSystem4TimeC1Ev
+0807c590 g    DF .text    00000005  Base        _ZN10TestSystem11LnxThdpImpl6GetPidEv
+0807cba0 g    DF .text    0000002a  Base        _ZN10TestSystem11LinuxThread11SetPriorityEi
+08073e70 g    DF .text    000006e1  Base        _ZN10TestMethod12CpuUseMethod3EndERl
+00000000      DF *UND*    00000000  GLIBC_2.0   waitpid
+...
+</code></pre></li>
+<li><p>5) 查看动态节</p>
+<pre><code>$ objdump -p TestFwmRsl
+
+TestFwmRsl:     file format elf32-i386
+
+Program Header:
+    PHDR off    0x00000034 vaddr 0x08048034 paddr 0x08048034 align 2**2
+         filesz 0x00000100 memsz 0x00000100 flags r-x
+  INTERP off    0x00000134 vaddr 0x08048134 paddr 0x08048134 align 2**0
+         filesz 0x00000013 memsz 0x00000013 flags r--
+    LOAD off    0x00000000 vaddr 0x08048000 paddr 0x08048000 align 2**12
+         filesz 0x0008cebd memsz 0x0008cebd flags r-x
+    LOAD off    0x0008d000 vaddr 0x080d5000 paddr 0x080d5000 align 2**12
+         filesz 0x00000908 memsz 0x000012dc flags rw-
+ DYNAMIC off    0x0008d058 vaddr 0x080d5058 paddr 0x080d5058 align 2**2
+         filesz 0x00000158 memsz 0x00000158 flags rw-
+    NOTE off    0x00000148 vaddr 0x08048148 paddr 0x08048148 align 2**2
+         filesz 0x00000020 memsz 0x00000020 flags r--
+EH_FRAME off    0x0007bdb4 vaddr 0x080c3db4 paddr 0x080c3db4 align 2**2
+         filesz 0x00001e54 memsz 0x00001e54 flags r--
+   STACK off    0x00000000 vaddr 0x00000000 paddr 0x00000000 align 2**2
+         filesz 0x00000000 memsz 0x00000000 flags rw-
+
+Dynamic Section:
+  NEEDED               libFramework.so
+  NEEDED               libpthread.so.0
+  NEEDED               libuuid.so
+  NEEDED               libcrypto.so.1.0.0
+  NEEDED               libdl.so.2
+  NEEDED               librt.so.1
+  NEEDED               libldap-2.4.so.2
+  NEEDED               liblber-2.4.so.2
+  NEEDED               libssl.so.1.0.0
+  NEEDED               libSQLitePP.so
+  NEEDED               libstdc++.so.6
+  NEEDED               libm.so.6
+  NEEDED               libgcc_s.so.1
+  NEEDED               libc.so.6
+  RPATH                ../../usr/lib:./fwlibs
+  INIT                 0x0806caf0
+  FINI                 0x080bd3e8
+  INIT_ARRAY           0x080d5000
+  INIT_ARRAYSZ         0x00000050
+  FINI_ARRAY           0x080d5050
+  FINI_ARRAYSZ         0x00000004
+  HASH                 0x08048168
+  STRTAB               0x08052340
+  SYMTAB               0x0804aeb0
+  STRSZ                0x0001886c
+  SYMENT               0x00000010
+  DEBUG                0x00000000
+  PLTGOT               0x080d51b4
+  PLTRELSZ             0x00000e70
+  PLTREL               0x00000011
+  JMPREL               0x0806bc80
+  REL                  0x0806bb90
+  RELSZ                0x000000f0
+  RELENT               0x00000008
+  VERNEED              0x0806ba40
+  VERNEEDNUM           0x00000005
+  VERSYM               0x0806abac
+
+Version References:
+  required from libgcc_s.so.1:
+    0x0b792650 0x00 17 GCC_3.0
+    0x0d696910 0x00 11 GLIBC_2.0
+  required from librt.so.1:
+    0x09691974 0x00 09 GLIBC_2.3.4
+  required from libc.so.6:
+    0x09691974 0x00 15 GLIBC_2.3.4
+    0x09691f73 0x00 12 GLIBC_2.1.3
+    0x0d696911 0x00 07 GLIBC_2.1
+    0x0d696910 0x00 05 GLIBC_2.0
+  required from libpthread.so.0:
+    0x0d696912 0x00 14 GLIBC_2.2
+    0x09691973 0x00 13 GLIBC_2.3.3
+    0x0d696911 0x00 06 GLIBC_2.1
+    0x0d696910 0x00 03 GLIBC_2.0
+  required from libstdc++.so.6:
+    0x0bafd171 0x00 16 CXXABI_1.3.1
+    0x056bafd3 0x00 10 CXXABI_1.3
+    0x02297f89 0x00 08 GLIBCXX_3.4.9
+    0x08922974 0x00 04 GLIBCXX_3.4
+    0x0297f861 0x00 02 GLIBCXX_3.4.11
+</code></pre><ul>
+<li>需要注意最后一部分内容</li>
+</ul>
+</li>
+<li><p>6) 查看重定位节</p>
+<pre><code>$ objdump -R TestFwmRsl  | head -n 15
+
+TestFwmRsl:     file format elf32-i386
+
+DYNAMIC RELOCATION RECORDS
+OFFSET   TYPE              VALUE 
+080d51b0 R_386_GLOB_DAT    __gmon_start__
+080d5920 R_386_COPY        _ZTVSt9basic_iosIcSt11char_traitsIcEE
+080d5940 R_386_COPY        _ZNSs4_Rep20_S_empty_rep_storageE
+080d5950 R_386_COPY        __environ
+080d5958 R_386_COPY        _ZTTSt19basic_istringstreamIcSt11char_traitsIcESaIcEE
+080d5980 R_386_COPY        _ZTVSt18basic_stringstreamIcSt11char_traitsIcESaIcEE
+...
+</code></pre></li>
+<li><p>7) 查看指定节中的数据</p>
+<pre><code>$ objdump -s -j .dynamic TestFwmRsl
+
+TestFwmRsl:     file format elf32-i386
+
+Contents of section .dynamic:
+ 80d5058 01000000 01000000 01000000 1e5c0000  .............\..
+ 80d5068 01000000 9c5e0000 01000000 a75e0000  .....^.......^..
+ 80d5078 01000000 ba5e0000 01000000 c55e0000  .....^.......^..
+ 80d5088 01000000 e95e0000 01000000 fa5e0000  .....^.......^..
+ 80d5098 01000000 0b5f0000 01000000 d3600000  ....._.......`..
+ 80d50a8 01000000 e2600000 01000000 0b700000  .....`.......p..
+ 80d50b8 01000000 15700000 01000000 45700000  .....p......Ep..
+ 80d50c8 0f000000 5f730000 0c000000 f0ca0608  ...._s..........
+ 80d50d8 0d000000 e8d30b08 19000000 00500d08  .............P..
+ ...
+</code></pre></li>
+<li><p>8) 反汇编代码</p>
+<ul>
+<li><p>指定汇编风格</p>
+<pre><code>osphere$ objdump -d -Mintel TestFwmRsl 
+
+TestFwmRsl:     file format elf32-i386
+
+Disassembly of section .init:
+
+0806caf0 &lt;_init&gt;:
+ 806caf0:    53                       push   ebx
+ 806caf1:    83 ec 08                 sub    esp,0x8
+ 806caf4:    e8 00 00 00 00           call   806caf9 &lt;_init+0x9&gt;
+ 806caf9:    5b                       pop    ebx
+ 806cafa:    81 c3 bb 86 06 00        add    ebx,0x686bb
+ 806cb00:    8b 83 fc ff ff ff        mov    eax,DWORD PTR [ebx-0x4]
+ 806cb06:    85 c0                    test   eax,eax
+ 806cb08:    74 05                    je     806cb0f &lt;_init+0x1f&gt;
+</code></pre></li>
+<li><p>与源码对照</p>
+<pre><code>osphere$ objdump -d -S -Mintel TestFwmRs
+...
+
+8AddEventWatchPointESsPFvRN8TestAsio11TaskContextEPvES4_+0x790&gt;
+ 8078208:    bb 00 e8 06 08           mov    ebx,0x806e800
+ 807820d:    85 db                    test   ebx,ebx
+ 807820f:    8d 48 fc                 lea    ecx,[eax-0x4]
+ 8078212:    74 48                    je     807825c &lt;_ZN10TestEngine8Listener18AddEventWatchPointESsPFvRN8TestAsio11TaskContextEPvES4_+0x81c&gt;
+ 8078214:    83 cb ff                 or     ebx,0xffffffff
+ 8078217:    f0 0f c1 19              lock xadd DWORD PTR [ecx],ebx
+ 807821b:    85 db                    test   ebx,ebx
+ 807821d:    0f 8f bb fc ff ff        jg     8077ede &lt;_ZN10TestEngine8Listener
+</code></pre></li>
+<li><p>反汇编指定节：</p>
+<pre><code>$ objdump -d -S -Mintel -j .plt TestFwmRsl
+
+TestFwmRsl:     file format elf32-i386
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>                Disassembly of section .plt:
+
+                0806cb20 &lt;_ZNSsC1ESt16initializer_listIcERKSaIcE@plt-0x10&gt;:
+                 806cb20:    ff 35 b8 51 0d 08        push   DWORD PTR ds:0x80d51b8
+                 806cb26:    ff 25 bc 51 0d 08        jmp    DWORD PTR ds:0x80d51bc
+                 806cb2c:    00 00                    add    BYTE PTR [eax],al
+                    ...
+
+                0806cb30 &lt;_ZNSsC1ESt16initializer_listIcERKSaIcE@plt&gt;:
+                 806cb30:    ff 25 c0 51 0d 08        jmp    DWORD PTR ds:0x80d51c0
+                 806cb36:    68 00 00 00 00           push   0x0
+                 806cb3b:    e9 e0 ff ff ff           jmp    806cb20 &lt;_init+0x30&gt;
+
+* readelf
+    + 与objdump的区别：
+        - 只支持ELF文件
+        - 不依赖二进制文件描述库，因此可以独立提供ELF格式信息
+
+    + 1) 解析EFL头
+
+            $ readelf -h TestFwmRsl
+            ELF Header:
+              Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00 
+              Class:                             ELF32
+              Data:                              2&apos;s complement, little endian
+              Version:                           1 (current)
+              OS/ABI:                            UNIX - System V
+              ABI Version:                       0
+              Type:                              EXEC (Executable file)
+              Machine:                           Intel 80386
+              Version:                           0x1
+              Entry point address:               0x806ff98
+              Start of program headers:          52 (bytes into file)
+              Start of section headers:          580148 (bytes into file)
+              Flags:                             0x0
+              Size of this header:               52 (bytes)
+              Size of program headers:           32 (bytes)
+              Number of program headers:         8
+              Size of section headers:           40 (bytes)
+              Number of section headers:         28
+              Section header string table index: 27
+
+        - 查看静态库时，可以打印每个目标文件的ELF头信息
+
+    + 2) 查看节信息
+
+            $ readelf -S TestFwmRsl
+            There are 28 section headers, starting at offset 0x8da34:
+
+            Section Headers:
+              [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+              [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+              [ 1] .interp           PROGBITS        08048134 000134 000013 00   A  0   0  1
+              [ 2] .note.ABI-tag     NOTE            08048148 000148 000020 00   A  0   0  4
+              [ 3] .hash             HASH            08048168 000168 002d48 04   A  4   0  4
+              [ 4] .dynsym           DYNSYM          0804aeb0 002eb0 007490 10   A  5   1  4
+              [ 5] .dynstr           STRTAB          08052340 00a340 01886c 00   A  0   0  1
+              [ 6] .gnu.version      VERSYM          0806abac 022bac 000e92 02   A  4   0  2
+              [ 7] .gnu.version_r    VERNEED         0806ba40 023a40 000150 00   A  5   5  4
+              [ 8] .rel.dyn          REL             0806bb90 023b90 0000f0 08   A  4   0  4
+              [ 9] .rel.plt          REL             0806bc80 023c80 000e70 08   A  4  11  4
+              [10] .init             PROGBITS        0806caf0 024af0 000024 00  AX  0   0  4
+              [11] .plt              PROGBITS        0806cb20 024b20 001cf0 04  AX  0   0 16
+              [12] .text             PROGBITS        0806e810 026810 04ebd8 00  AX  0   0 16
+              [13] .fini             PROGBITS        080bd3e8 0753e8 000015 00  AX  0   0  4
+              [14] .rodata           PROGBITS        080bd400 075400 0069b4 00   A  0   0 32
+              [15] .eh_frame_hdr     PROGBITS        080c3db4 07bdb4 001e54 00   A  0   0  4
+              [16] .eh_frame         PROGBITS        080c5c08 07dc08 00ab2c 00   A  0   0  4
+              [17] .gcc_except_table PROGBITS        080d0734 088734 004789 00   A  0   0  4
+              [18] .init_array       INIT_ARRAY      080d5000 08d000 000050 00  WA  0   0  4
+              [19] .fini_array       FINI_ARRAY      080d5050 08d050 000004 00  WA  0   0  4
+              [20] .jcr              PROGBITS        080d5054 08d054 000004 00  WA  0   0  4
+              [21] .dynamic          DYNAMIC         080d5058 08d058 000158 08  WA  5   0  4
+              [22] .got              PROGBITS        080d51b0 08d1b0 000004 04  WA  0   0  4
+              [23] .got.plt          PROGBITS        080d51b4 08d1b4 000744 04  WA  0   0  4
+              [24] .data             PROGBITS        080d58f8 08d8f8 000010 00  WA  0   0  4
+              [25] .bss              NOBITS          080d5920 08d908 0009bc 00  WA  0   0 32
+              [26] .comment          PROGBITS        00000000 08d908 00003b 01  MS  0   0  1
+              [27] .shstrtab         STRTAB          00000000 08d943 0000f1 00      0   0  1
+            Key to Flags:
+              W (write), A (alloc), X (execute), M (merge), S (strings)
+              I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
+              O (extra OS processing required) o (OS specific), p (processor specific)
+
+    + 3) 查看符号
+
+            $ readelf -s TestFwmRsl 
+
+            Symbol table &apos;.dynsym&apos; contains 1865 entries:
+               Num:    Value  Size Type    Bind   Vis      Ndx Name
+                 0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+                 1: 00000000     0 FUNC    GLOBAL DEFAULT  UND _ZNSsC1ESt16initializer_l@GLIBCXX_3.4.11 (2)
+                 2: 0807be30   141 FUNC    GLOBAL DEFAULT   12 _ZN10TestSystem4TimeC1Ev
+                 3: 0807c590     5 FUNC    GLOBAL DEFAULT   12 _ZN10TestSystem11LnxThdpI
+                 4: 0807cba0    42 FUNC    GLOBAL DEFAULT   12 _ZN10TestSystem11LinuxThr
+                 5: 08073e70  1761 FUNC    GLOBAL DEFAULT   12 _ZN10TestMethod12CpuUseMe
+                 6: 00000000     0 FUNC    GLOBAL DEFAULT  UND waitpid@GLIBC_2.0 (3)
+                ...
+
+    + 4) 查看动态符号
+
+            $ readelf --dyn-syms TestFwmRsl 
+
+            Symbol table &apos;.dynsym&apos; contains 1865 entries:
+               Num:    Value  Size Type    Bind   Vis      Ndx Name
+                 0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+                 1: 00000000     0 FUNC    GLOBAL DEFAULT  UND _ZNSsC1ESt16initializer_l@GLIBCXX_3.4.11 (2)
+                 2: 0807be30   141 FUNC    GLOBAL DEFAULT   12 _ZN10TestSystem4TimeC1Ev
+                 3: 0807c590     5 FUNC    GLOBAL DEFAULT   12 _ZN10TestSystem11LnxThdpI
+                 4: 0807cba0    42 FUNC    GLOBAL DEFAULT   12 _ZN10TestSystem11LinuxThr
+                 5: 08073e70  1761 FUNC    GLOBAL DEFAULT   12 _ZN10TestMethod12CpuUseMe
+                 6: 00000000     0 FUNC    GLOBAL DEFAULT  UND waitpid@GLIBC_2.0 (3)
+                ...
+
+    +  5) 查看动态节
+
+            $ readelf -d TestFwmRsl 
+
+            Dynamic section at offset 0x8d058 contains 38 entries:
+              Tag        Type                         Name/Value
+             0x00000001 (NEEDED)                     Shared library: [libFramework.so]
+             0x00000001 (NEEDED)                     Shared library: [libpthread.so.0]
+             0x00000001 (NEEDED)                     Shared library: [libuuid.so]
+             0x00000001 (NEEDED)                     Shared library: [libcrypto.so.1.0.0]
+             0x00000001 (NEEDED)                     Shared library: [libdl.so.2]
+             0x00000001 (NEEDED)                     Shared library: [librt.so.1]
+             0x00000001 (NEEDED)                     Shared library: [libldap-2.4.so.2]
+             0x00000001 (NEEDED)                     Shared library: [liblber-2.4.so.2]
+             0x00000001 (NEEDED)                     Shared library: [libssl.so.1.0.0]
+             0x00000001 (NEEDED)                     Shared library: [libSQLitePP.so]
+             0x00000001 (NEEDED)                     Shared library: [libstdc++.so.6]
+             0x00000001 (NEEDED)                     Shared library: [libm.so.6]
+             0x00000001 (NEEDED)                     Shared library: [libgcc_s.so.1]
+             0x00000001 (NEEDED)                     Shared library: [libc.so.6]
+             0x0000000f (RPATH)                      Library rpath: [../../usr/lib:./fwlibs]
+             0x0000000c (INIT)                       0x806caf0
+             0x0000000d (FINI)                       0x80bd3e8
+             0x00000019 (INIT_ARRAY)                 0x80d5000
+             0x0000001b (INIT_ARRAYSZ)               80 (bytes)
+             0x0000001a (FINI_ARRAY)                 0x80d5050
+             ...
+
+    + 6) 查看重定位节
+
+            $ readelf -r TestFwmRsl | head -n 20
+
+            Relocation section &apos;.rel.dyn&apos; at offset 0x23b90 contains 30 entries:
+             Offset     Info    Type            Sym.Value  Sym. Name
+            080d51b0  0006f106 R_386_GLOB_DAT    00000000   __gmon_start__
+            080d5920  00006805 R_386_COPY        080d5920   _ZTVSt9basic_iosIcSt11
+            080d5940  0000a505 R_386_COPY        080d5940   _ZNSs4_Rep20_S_empty_r
+            080d5950  00069a05 R_386_COPY        080d5950   __environ
+            080d5958  0000ae05 R_386_COPY        080d5958   _ZTTSt19basic_istrings
+            080d5980  0000cb05 R_386_COPY        080d5980   _ZTVSt18basic_stringst
+            080d59c0  0000e205 R_386_COPY        080d59c0   _ZN9Framework6Helper4G
+            080d59d8  00014605 R_386_COPY        080d59d8   _ZTTSt19basic_ostrings
+            080d5a00  00016805 R_386_COPY        080d5a00   _ZN9Framework4Core7CLo
+            080d5a08  00019d05 R_386_COPY        080d5a08   _ZN9Framework4Core7CLo
+            080d5a10  00022405 R_386_COPY        080d5a10   _ZNSbIwSt11char_traits
+            080d5a20  00022b05 R_386_COPY        080d5a20   _ZTVSt15basic_streambu
+            080d5a60  00023205 R_386_COPY        080d5a60   stdout
+            080d5a80  00026f05 R_386_COPY        080d5a80   _ZTVN10__cxxabiv117__c
+
+    + 7) 查看节中的数据
+
+            $ readelf -x .dynamic TestFwmRsl
+
+            Hex dump of section &apos;.dynamic&apos;:
+              0x080d5058 01000000 01000000 01000000 1e5c0000 .............\..
+              0x080d5068 01000000 9c5e0000 01000000 a75e0000 .....^.......^..
+              0x080d5078 01000000 ba5e0000 01000000 c55e0000 .....^.......^..
+              0x080d5088 01000000 e95e0000 01000000 fa5e0000 .....^.......^..
+              0x080d5098 01000000 0b5f0000 01000000 d3600000 ....._.......`..
+              0x080d50a8 01000000 e2600000 01000000 0b700000 .....`.......p..
+              0x080d50b8 01000000 15700000 01000000 45700000 .....p......Ep..
+              0x080d50c8 0f000000 5f730000 0c000000 f0ca0608 ...._s..........
+              0x080d50d8 0d000000 e8d30b08 19000000 00500d08 .............P..
+              0x080d50e8 1b000000 50000000 1a000000 50500d08 ....P.......PP..
+              0x080d50f8 1c000000 04000000 04000000 68810408 ............h...
+              0x080d5108 05000000 40230508 06000000 b0ae0408 ....@#..........
+              0x080d5118 0a000000 6c880100 0b000000 10000000 ....l...........
+              0x080d5128 15000000 00000000 03000000 b4510d08 .............Q..
+              0x080d5138 02000000 700e0000 14000000 11000000 ....p...........
+              0x080d5148 17000000 80bc0608 11000000 90bb0608 ................
+              0x080d5158 12000000 f0000000 13000000 08000000 ................
+              0x080d5168 feffff6f 40ba0608 ffffff6f 05000000 ...o@......o....
+              0x080d5178 f0ffff6f acab0608 00000000 00000000 ...o............
+              0x080d5188 00000000 00000000 00000000 00000000 ................
+              0x080d5198 00000000 00000000 00000000 00000000 ................
+              0x080d51a8 00000000 00000000                   ........
+
+    + 8) 检查是否包含调试信息            
+
+            $ readelf --debug-dump TestFwmRsl
+
+        - 没有调试信息为空行
+</code></pre><h1 id="3-部署阶段工具"><a href="#3-部署阶段工具" class="headerlink" title="3. 部署阶段工具"></a>3. 部署阶段工具</h1><ul>
+<li><p>部署阶段工具</p>
+<ul>
+<li><p>chrpath</p>
+<ul>
+<li><p>修改ELF二进制文件的rpath(即<code>DT_RPATH</code>字段)</p>
+<pre><code>$ readelf -d TestFwmRsl | grep RPATH
+ 0x0000000f (RPATH)                      Library rpath: [../../usr/lib:./fwlibs]
+</code></pre><ul>
+<li>只能在源字符串长度范围内修改，如果原来是空的，则不能修改</li>
+<li>可以删除原有的<code>DT_RPATH</code>字段</li>
+<li>可以将<code>DT_RPATH</code>转换成<code>DT_RUNPATH</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>patchelf</p>
+<ul>
+<li>不属于标准仓库</li>
+<li>可以设置和修改二进制文件的<code>DT_RUNPATH</code>字段</li>
+<li>可以随意设置字符串</li>
+</ul>
+</li>
+<li><p>strip</p>
+<ul>
+<li>清除动态加载过程中不需要的符号</li>
+</ul>
+</li>
+<li><p>ldconfig</p>
+<ul>
+<li>可以通过ldconfig缓存指定装载器运行时的库搜索路径</li>
+<li>通常将ldconfig作为软件包安装的最后一步执行，指定共享库搜索路径<ul>
+<li>/etc/ld.so.conf：搜索的目录列表</li>
+<li>/etc/ld.so.cache：搜到的文件名以ASCII文本的形式记录</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="4-运行时分析工具"><a href="#4-运行时分析工具" class="headerlink" title="4. 运行时分析工具"></a>4. 运行时分析工具</h1><ul>
+<li><p>运行时分析工具</p>
+<ul>
+<li><p>strace</p>
+<ul>
+<li>跟踪进程产生的系统调用</li>
+<li>可以分析加载时的依赖项</li>
+</ul>
+</li>
+<li><p>addr2line</p>
+<ul>
+<li><p>当使用调试模式构建二进制文件时(-g -O0)，程序崩溃处的PC计数器会打印，可以通过这个命令将其转换为源代码的行号</p>
+<pre><code># 00 pc 0000d8cc6 /usr/mylibs/libxyz.so
+$ addr2line -C -f -e /usr/mylibs/libxyz.so 0000d8cc6
+ /projects/mylib/src/mylib.c: 45
+</code></pre></li>
+</ul>
+</li>
+<li><p>gdb</p>
+<ul>
+<li><p>有用的选项：</p>
+<ul>
+<li>set disassembly-flaver <intel|att></intel|att></li>
+<li>disassemble &lt;函数名&gt;</li>
+<li>/r：显示额外汇编指令的十六进制代码</li>
+<li><p>/m：汇编指令中插入对于的C/C++代码</p>
+<pre><code>(gdb) disassemble /rm main
+Dump of assembler code for function main:
+   0x0806fb00 &lt;+0&gt;:    55    push   %ebp
+   0x0806fb01 &lt;+1&gt;:    89 e5    mov    %esp,%ebp
+   0x0806fb03 &lt;+3&gt;:    56    push   %esi
+   0x0806fb04 &lt;+4&gt;:    53    push   %ebx
+   0x0806fb05 &lt;+5&gt;:    83 e4 f0    and    $0xfffffff0,%esp
+   0x0806fb08 &lt;+8&gt;:    83 ec 10    sub    $0x10,%esp
+   0x0806fb0b &lt;+11&gt;:    8b 45 0c    mov    0xc(%ebp),%eax
+   0x0806fb0e &lt;+14&gt;:    c6 05 5c 62 0d 08 01    movb   $0x1,0x80d625c
+   0x0806fb15 &lt;+21&gt;:    89 44 24 04    mov    %eax,0x4(%esp)
+   0x0806fb19 &lt;+25&gt;:    8d 45 08    lea    0x8(%ebp),%eax
+   0x0806fb1c &lt;+28&gt;:    89 04 24    mov    %eax,(%esp)
+   0x0806fb1f &lt;+31&gt;:    e8 cc c0 03 00    call   0x80abbf0 &lt;_ZN7testing14InitGoogleTestEPiPPc&gt;
+   0x0806fb24 &lt;+36&gt;:    c7 04 24 04 01 00 00    movl   $0x104,(%esp)
+   0x0806fb2b &lt;+43&gt;:    e8 80 d0 ff ff    call   0x806cbb0 &lt;_Znwj@plt&gt;
+   0x0806fb30 &lt;+48&gt;:    c7 00 70 eb 0b 08    movl   $0x80beb70,(%eax)
+   0x0806fb36 &lt;+54&gt;:    89 c3    mov    %eax,%ebx
+   0x0806fb38 &lt;+56&gt;:    e8 03 66 03 00    call   0x80a6140 &lt;_ZN7testing8UnitTest11GetInstanceEv&gt;
+   0x0806fb3d &lt;+61&gt;:    89 5c 24 04    mov    %ebx,0x4(%esp)
+   0x0806fb41 &lt;+65&gt;:    89 04 24    mov    %eax,(%esp)
+   0x0806fb44 &lt;+68&gt;:    e8 d7 5b 03 00    call   0x80a5720 &lt;_ZN7testing8UnitTest14AddEnvironmentEPNS_11EnvironmentE&gt;
+   0x0806fb49 &lt;+73&gt;:    e8 62 0b 02 00    call   0x80906b0 &lt;_ZN10TestEngine2TSIN13TestFramework5Tests9TestRsLTSEE5GetTSEv&gt;
+   0x0806fb4e &lt;+78&gt;:    e8 ed 65 03 00    call   0x80a6140 &lt;_ZN7testing8UnitTest11GetInstanceEv&gt;
+   0x0806fb53 &lt;+83&gt;:    8b 40 24    mov    0x24(%eax),%eax
+   0x0806fb56 &lt;+86&gt;:    8b 70 4c    mov    0x4c(%eax),%esi
+   0x0806fb59 &lt;+89&gt;:    8b 58 48    mov    0x48(%eax),%ebx
+---Type &lt;return&gt; to continue, or q &lt;return&gt; to quit---
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="5-静态库工具"><a href="#5-静态库工具" class="headerlink" title="5. 静态库工具"></a>5. 静态库工具</h1><ul>
+<li><p>静态库工具</p>
+<ul>
+<li><p>ar</p>
+<ul>
+<li><p>创建静态库：</p>
+<ul>
+<li>ar -rcs &lt;库文件名&gt; &lt;目标文件列表&gt;</li>
+</ul>
+</li>
+<li><p>列出静态库的目标文件</p>
+<ul>
+<li>ar -t &lt;库文件名&gt;</li>
+</ul>
+</li>
+<li><p>从静态库删除目标文件</p>
+<ul>
+<li>ar -d &lt;库文件名&gt; &lt;要删除的目标文件&gt;</li>
+</ul>
+</li>
+<li><p>添加新的目标文件到静态库</p>
+<ul>
+<li>ar -r &lt;库文件名&gt; &lt;要添加的目标文件&gt;</li>
+</ul>
+</li>
+<li><p>移动库文件顺序</p>
+<ul>
+<li>ar -m -b &lt;文件移动到该目标文件前面&gt; &lt;库文件名&gt; &lt;要移动的文件&gt;</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="第十三章-平台实践"><a href="#第十三章-平台实践" class="headerlink" title="第十三章 平台实践"></a>第十三章 平台实践</h1><h1 id="1-连接过程调试"><a href="#1-连接过程调试" class="headerlink" title="1. 连接过程调试"></a>1. 连接过程调试</h1><ul>
+<li><p>设置<code>LD_DEBUG</code>变量</p>
+<ul>
+<li><p>列出预设值</p>
+<pre><code>$ LD_DEBUG=help cat
+Valid options for the LD_DEBUG environment variable are:
+
+  libs        display library search paths
+  reloc       display relocation processing
+  files       display progress for input file
+  symbols     display symbol table processing
+  bindings    display information about symbol binding
+  versions    display version dependencies
+  scopes      display scope information
+  all         all previous options combined
+  statistics  display relocation statistics
+  unused      determined unused DSOs
+  help        display this help message and exit
+</code></pre></li>
+<li><p>设置方法</p>
+<ul>
+<li>与调用链接器的命令写在同一行</li>
+<li><p>设置环境变量，在正在shell生命周期中使用</p>
+<pre><code>export LD_DEBUG=&lt;option&gt;
+</code></pre></li>
+<li><p>撤销设置</p>
+<pre><code>unset LD_DEBUG
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="2-确定二进制文件类型"><a href="#2-确定二进制文件类型" class="headerlink" title="2. 确定二进制文件类型"></a>2. 确定二进制文件类型</h1><ul>
+<li><p>file：简单、快速、优雅</p>
+<pre><code>$ file TestFwmRsl 
+TestFwmRsl: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.24, stripped
+</code></pre></li>
+<li><p>readelf：详细信息</p>
+<pre><code>$ readelf -h TestFwmRsl | grep Type
+  Type:                         EXEC (Executable file)
+</code></pre><ul>
+<li>EXEC:可执行文件</li>
+<li>DYN：共享目标文件</li>
+<li>REL：可重定位文件</li>
+</ul>
+</li>
+<li><p>objdump：内容简单一些</p>
+<pre><code>$ objdump -f TestFwmRsl 
+
+TestFwmRsl:     file format elf32-i386
+architecture: i386, flags 0x00000112:
+EXEC_P, HAS_SYMS, D_PAGED
+start address 0x0806ff98
+</code></pre><ul>
+<li>EXEC_P：可执行文件</li>
+<li>DYNAMIC：共享目标文件</li>
+<li>无输出</li>
+</ul>
+</li>
+</ul>
+<h1 id="3-确定二进制入口点"><a href="#3-确定二进制入口点" class="headerlink" title="3. 确定二进制入口点"></a>3. 确定二进制入口点</h1><ul>
+<li><p>获取可执行文件入口点</p>
+<ul>
+<li>即程序内存映射中第一条指令的位置</li>
+<li><p>readelf：详细信息</p>
+<pre><code>$ readelf -h TestFwmRsl | grep Entry
+  Entry point address:               0x806ff98
+</code></pre></li>
+<li><p>objdump：简单一些</p>
+<pre><code>$ objdump -f TestFwmRsl | grep start
+start address 0x0806ff98
+</code></pre></li>
+</ul>
+</li>
+<li><p>获取动态库入库点</p>
+<ul>
+<li>动态库会映射到客户二进制文件的内存中，因此只有运行时才能获取到真正的入口点</li>
+<li><p>方法：</p>
+<ul>
+<li><p>1) 设置LD_DEBUG环境变量运行gdb，以打印出加载库信息</p>
+<pre><code>LD_DEBUG=files gdb -q ./TestFwmRsl
+</code></pre></li>
+<li><p>2) 在main函数设置断点，然后运行</p>
+<pre><code>b main        
+r
+</code></pre></li>
+<li><p>3) 运行程序到断点，对entry处的地址进行反汇编：</p>
+<pre><code>set disassembly-flavor intel
+disassemble 0xb7fd8390
+</code></pre></li>
+</ul>
+</li>
+<li><p>示例：</p>
+<pre><code>$ LD_DEBUG=files gdb -q ./TestFwmRsl 
+
+...
+Reading symbols from /home/dvr/Development/GTest/test_framwork/environment/output/opt/videosphere/TestFwmRsl...(no debugging symbols found)...done.
+(gdb) b main
+Breakpoint 1 at 0x806fb05
+
+(gdb) r
+Starting program: /home/dvr/Development/GTest/test_framwork/environment/output/opt/videosphere/TestFwmRsl 
+
+...
+
+file=libSQLitePP.so [0];  needed by /home/dvr/Development/GTest/test_framwork/environment/output/opt/videosphere/TestFwmRsl [0]
+     16771:    file=libSQLitePP.so [0];  generating link map
+     16771:      dynamic: 0xb7ae9c90  base: 0xb7a41000   size: 0x000aa814
+     16771:        entry: 0xb7a558c0  phdr: 0xb7a41034  phnum:          5
+...
+
+(gdb) set disassembly-flavor intel
+(gdb) disassemble 0xb7e1a770
+Dump of assembler code for function __do_global_dtors_aux:
+   0xb7a558c0 &lt;+0&gt;:    push   ebp
+   0xb7a558c1 &lt;+1&gt;:    mov    ebp,esp
+   0xb7a558c3 &lt;+3&gt;:    push   esi
+   0xb7a558c4 &lt;+4&gt;:    push   ebx
+   0xb7a558c5 &lt;+5&gt;:    call   0xb7a55977 &lt;__i686.get_pc_thunk.bx&gt;
+   0xb7a558ca &lt;+10&gt;:    add    ebx,0x9451a
+   0xb7a558d0 &lt;+16&gt;:    sub    esp,0x10
+   0xb7a558d3 &lt;+19&gt;:    cmp    BYTE PTR [ebx+0x159c],0x0
+   0xb7a558da &lt;+26&gt;:    jne    0xb7a55939 &lt;__do_global_dtors_aux+121&gt;
+   0xb7a558dc &lt;+28&gt;:    mov    eax,DWORD PTR [ebx-0x8]
+...
+</code></pre></li>
+</ul>
+</li>
+</ul>
+<h1 id="4-列出符号信息"><a href="#4-列出符号信息" class="headerlink" title="4. 列出符号信息"></a>4. 列出符号信息</h1><ul>
+<li>列出所有符号<ul>
+<li>nm</li>
+<li>readelf</li>
+<li>objdump</li>
+</ul>
+</li>
+<li><p>列出对外可见符号</p>
+<pre><code>readelf -s 
+objdump -t
+</code></pre></li>
+<li><p>列出导出符号列表，用于动态链接</p>
+<pre><code>readelf --dyn-syms
+objdump -T
+</code></pre></li>
+</ul>
+<h1 id="5-查看节信息"><a href="#5-查看节信息" class="headerlink" title="5. 查看节信息"></a>5. 查看节信息</h1><ul>
+<li><p>查看所有节</p>
+<pre><code>readelf -S
+objdump -t
+</code></pre></li>
+<li><p>查看动态节信息</p>
+<pre><code>readelf -d
+objdump -p
+</code></pre><ul>
+<li><p>可以看到有价值的信息：</p>
+<ul>
+<li><code>DP_RPATH</code>和<code>DT_RUNPATH</code></li>
+<li>SONAME字段值</li>
+<li>所需动态库列表(<code>DT_NEEDED</code>)</li>
+</ul>
+</li>
+<li><p>检测是否使用-fPIC构建动态库</p>
+<pre><code># 判读是否使用-fPIC的脚本
+$ if readelf -d &lt;.so&gt; | grep TEXTREL &gt; /dev/null;then echo &quot;TEXTREL found, no -fPIC&quot;;else echo &quot;use -fPIC&quot;;fi
+
+# 示例，libFramework.so使用了-fPIC
+$ if readelf -d ./fwlibs/libFramework.so | grep TEXTREL &gt; /dev/null;then echo &quot;TEXTREL found, no -fPIC&quot;;else echo &quot;use -fPIC&quot;;fi
+use -fPIC
+</code></pre><ul>
+<li>构建动态库时没有使用-fPIC会在动态节生成TEXTREL字段</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>查看重定位信息</p>
+<pre><code>readelf -r
+objdump -R
+</code></pre></li>
+<li><p>查看数据节</p>
+<pre><code>readelf -x &lt;section&gt; 
+objdump -s -j &lt;section&gt;
+</code></pre></li>
+</ul>
+<h1 id="6-查看段信息"><a href="#6-查看段信息" class="headerlink" title="6. 查看段信息"></a>6. 查看段信息</h1><pre><code>readelf --segments
+objdump -p
+</code></pre><h1 id="7-反汇编代码"><a href="#7-反汇编代码" class="headerlink" title="7. 反汇编代码"></a>7. 反汇编代码</h1><ul>
+<li><p>反汇编二进制文件</p>
+<ul>
+<li><p>反汇编文件</p>
+<pre><code>objdump -d
+</code></pre></li>
+<li><p>指定汇编风格</p>
+<pre><code>objdump -d -M intel
+</code></pre></li>
+<li><p>查看源代码</p>
+<pre><code>objdump -d -M intel -S
+</code></pre></li>
+<li><p>反汇编特定节</p>
+<pre><code>objdump -d -S -M intel -j .plt
+</code></pre></li>
+</ul>
+</li>
+<li><p>反汇编正在运行的程序</p>
+<ul>
+<li>需要使用gdb配合<code>LD_DEBUG</code>，运行时指定地址</li>
+</ul>
+</li>
+</ul>
+<h1 id="8-判断是否为调试模式"><a href="#8-判断是否为调试模式" class="headerlink" title="8. 判断是否为调试模式"></a>8. 判断是否为调试模式</h1><ul>
+<li><p>输出非空时为调试模式</p>
+<pre><code>readelf --debug-dump=line 
+</code></pre></li>
+</ul>
+<h1 id="9-查看加载时依赖项"><a href="#9-查看加载时依赖项" class="headerlink" title="9. 查看加载时依赖项"></a>9. 查看加载时依赖项</h1><ul>
+<li><p>递归查看所有依赖项，不安全的方式，可能需要执行程序</p>
+<pre><code>ldd
+</code></pre></li>
+<li><p>查看直接依赖项，安全</p>
+<pre><code>objdump -p &lt;&gt; | grep NEEDED
+readelf -d &lt;&gt; | grep NEEDED
+</code></pre></li>
+</ul>
+<h1 id="10-查看装载器可以找到的库文件"><a href="#10-查看装载器可以找到的库文件" class="headerlink" title="10. 查看装载器可以找到的库文件"></a>10. 查看装载器可以找到的库文件</h1><ul>
+<li><p>对装载器已知有效的库文件运行时路径</p>
+<pre><code>$ ldconfig -p 
+944 libs found in cache `/etc/ld.so.cache&apos;
+    libzip.so.2 (libc6) =&gt; /usr/lib/libzip.so.2
+    libzephyr.so.4 (libc6) =&gt; /usr/lib/libzephyr.so.4
+    libzeitgeist-1.0.so.1 (libc6) =&gt; /usr/lib/libzeitgeist-1.0.so.1
+    libz.so.1 (libc6) =&gt; /lib/i386-linux-gnu/libz.so.1
+    libz.so (libc6) =&gt; /usr/lib/i386-linux-gnu/libz.so
+    libyelp.so.0 (libc6) =&gt; /usr/lib/libyelp.so.0
+    libyajl.so.1 (libc6) =&gt; /usr/lib/i386-linux-gnu/libyajl.so.1
+    libx86.so.1 (libc6) =&gt; /lib/libx86.so.1
+    libxtables.so.7 (libc6) =&gt; /lib/libxtables.so.7
+...
+</code></pre></li>
+</ul>
+<h1 id="11-查看动态加载的库文件"><a href="#11-查看动态加载的库文件" class="headerlink" title="11. 查看动态加载的库文件"></a>11. 查看动态加载的库文件</h1><ul>
+<li>readelf、objdump都只能进行静态分析，无法分析动态库进行动态加载的运行时行为</li>
+<li>通过strace列出系统调用顺序</li>
+<li>使用<code>LD_DEBUG=files</code>选项</li>
+<li>查看<code>/proc/&lt;pid&gt;/maps</code>文件</li>
+<li>可以用gdb调试，防止程序过快结束</li>
+<li>lsof将进程打开的文件列表输出到标准输出，可以看到各种类型的文件打开的情况</li>
+</ul>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/" data-id="ciopzq0q1016so363rqh6tkfb" class="article-share-link">分享到</a><div class="tags"><a href="/tags/高级C-C-编译技术/">高级C&amp;C++编译技术</a></div><div class="post-nav"><a href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十五章-Unix域套接字/" class="pre">第十五章 Unix域套接字</a><a href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/" class="next">第二部分 底层网络安全(第六章 网络层协议)</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">246</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-附录A-密码学/">附录A 密码学</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十章-web安全/">第三部分 应用层安全(第十章 web安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十一章-远程访问安全/">第三部分 应用层安全(第十一章 远程访问安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第九章-电子邮件/">第三部分 应用层安全(第九章 电子邮件)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>《http权威指南》阅读笔记 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">《http权威指南》阅读笔记</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">《http权威指南》阅读笔记</h1><div class="post-meta">May 28, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/http权威指南/">http权威指南</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#第一部分-HTTP：Web的基础"><span class="toc-number">1.</span> <span class="toc-text">第一部分 HTTP：Web的基础</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第1章-HTTP概述"><span class="toc-number">2.</span> <span class="toc-text">第1章 HTTP概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第2章-URL与资源"><span class="toc-number">3.</span> <span class="toc-text">第2章 URL与资源</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第3章-http报文"><span class="toc-number">4.</span> <span class="toc-text">第3章 http报文</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第4章-连接管理"><span class="toc-number">5.</span> <span class="toc-text">第4章 连接管理</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第二部分-HTTP结构"><span class="toc-number">6.</span> <span class="toc-text">第二部分 HTTP结构</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第7章-缓存"><span class="toc-number">7.</span> <span class="toc-text">第7章 缓存</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第8章-集成点：网关、隧道和中继"><span class="toc-number">8.</span> <span class="toc-text">第8章 集成点：网关、隧道和中继</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第9章-web机器人"><span class="toc-number">9.</span> <span class="toc-text">第9章 web机器人</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第三部分-识别、认证与安全"><span class="toc-number">10.</span> <span class="toc-text">第三部分 识别、认证与安全</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第11章-客户端识别与cookie机制"><span class="toc-number">11.</span> <span class="toc-text">第11章 客户端识别与cookie机制</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第12章-基本认证机制"><span class="toc-number">12.</span> <span class="toc-text">第12章 基本认证机制</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第13章-摘要认证"><span class="toc-number">13.</span> <span class="toc-text">第13章 摘要认证</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第14章-安全HTTP"><span class="toc-number">14.</span> <span class="toc-text">第14章 安全HTTP</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第四部分-实体、编码和国际化"><span class="toc-number">15.</span> <span class="toc-text">第四部分 实体、编码和国际化</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第15章-实体和编码"><span class="toc-number">16.</span> <span class="toc-text">第15章 实体和编码</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第16章-国际化"><span class="toc-number">17.</span> <span class="toc-text">第16章 国际化</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第17章-内容协商与转码"><span class="toc-number">18.</span> <span class="toc-text">第17章 内容协商与转码</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第五部分-内如发布与分发"><span class="toc-number">19.</span> <span class="toc-text">第五部分 内如发布与分发</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第18章-Web主机托管"><span class="toc-number">20.</span> <span class="toc-text">第18章 Web主机托管</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#第20章-重定向与负载均衡"><span class="toc-number">21.</span> <span class="toc-text">第20章 重定向与负载均衡</span></a></li></ol></div></div><div class="post-content"><h1 id="第一部分-HTTP：Web的基础"><a href="#第一部分-HTTP：Web的基础" class="headerlink" title="第一部分 HTTP：Web的基础"></a>第一部分 HTTP：Web的基础</h1><h1 id="第1章-HTTP概述"><a href="#第1章-HTTP概述" class="headerlink" title="第1章 HTTP概述"></a>第1章 HTTP概述</h1><pre><code>1    HTTP使用的是可靠的数据传输协议——TCP    4
+2    通过Web传输的对象都打上了名为MIME（Multipurpose Internet Mail Extension）类型的数据格式标签    6
+3    当浏览器从服务器取回一个对象时，会去查看相关的MIME类型，看看它是否知道应该如何处理这个对象    6
+4    URI——统一资源标识符(Uniform Resource Identifier) URL有两种形式：URL和URN    7
+5    URL——统一资源定位符，明确说明如何从一个精确、固定的位置获取资源。scheme（方案） + addr + resource    7
+6    URN——统一资源名，与目前资源所在地无关，可以将资源四处搬运，可以用同一个名字通过多种网络协议来访问资源    8
+7    一个HTTP事物由一条客户端-&gt;服务器的请求命令和一个服务器-&gt;客户端的响应结果组成    9
+8    所有的处理过程都是使用数字码，解释性的原因短语文本伴随数字码    10
+9    HTTP报文都是纯文本，不是二进制代码，可扩展性和可调试性强。客户端-&gt;服务器：请求报文，服务器-&gt;客户端：响应报文    11
+10    HTTP报文：
+    起始行：第一行，请求报文：做什么，响应报文：出现什么情况
+    首部：0个或多个，键值对，:分隔，以一个空行结束
+    主体：任意二进制数据或文本 12
+11    HTTP的URL没有端口号时默认为80    14
+12    代理：可以对请求和响应进行过滤
+    缓存：客户端从附近的缓存下载会更快
+    网关：通常用于将HTTP流量转换成其它协议
+    隧道：对HTTP报文进行盲转发的特殊代理
+    Agent代理：代表用户发起自动HTTP请求的客户端    19
+</code></pre><h1 id="第2章-URL与资源"><a href="#第2章-URL与资源" class="headerlink" title="第2章 URL与资源"></a>第2章 URL与资源</h1><pre><code>13    URL通过描述资源的位置来标识资源，URN通过名字来识别资源，与所处的位置无关    26
+14    URL可以通过HTTP之外的协议来访问资源： scheme://server/addr    27
+15    scheme以字母开始，由第一个:与其余部分隔开    29
+16    @将用户名密码与server的地址分开： usr:password@server    30
+17    /将路径划分成段，;分隔参数与路径：   scheme://usr:password@server/addr;param=val    31
+18    ?分隔查询与路径，查询和路径通常一起发给网关，所以网关可以当做其它应用程序的访问点——CGI    32
+19    网关通常要求查询以键值对出现，通过&amp;分隔：scheme://server/addr.cgi?key=val    32
+20    通过#引用资源内部的一个片段：scheme://server/addr.html#res1    33
+21    URL可分为绝对的/相对的，相对的可以从基础URL中推导，同时保证了一组资源的可移植性    34
+22    自动扩展URL：主机名、浏览历史    37
+23    URL字符转义：用来表示不安全字符，%HEX（ASCII）    
+</code></pre><h1 id="第3章-http报文"><a href="#第3章-http报文" class="headerlink" title="第3章 http报文"></a>第3章 http报文</h1><pre><code>24    报文的三个组成部分：起始行（start line）、首部(header)和实体(body)    46
+25    事务（Transaction）：流入（inbound）流出（outbound）    46
+26    起始行：CRLF结尾，应用程序需要可接受单个换行符。主体：可以为文本或二进制，也可以为空    48
+27    版本：主次版本号都是整数  reason短语只对人类有意义    49
+28    首部：&lt;name&gt;: &lt;value&gt; CRLF, 首部可以0个或者多个，以空行结尾    50
+29    请求行：&lt;method&gt; &lt;request-URL&gt; &lt;version&gt;    50
+30    响应行：&lt;version&gt; &lt;status&gt; &lt;reason&gt;    51
+31    状态码：
+    100-199：信息提示
+    200-299：成功
+    300-399：重定向
+    400-499：客户端错误
+    500-599：服务端错误    52
+32    首部：通用首部、请求首部、响应首部、实体首部、扩展首部    54
+33    首部延续行：以空格或制表符开头    55
+34    安全方法：不产生动作，即http请求不会在服务器上产生什么结果    56
+35    使用安全方法的目的是当使用可能引发某一动作的不安全方法时，允许HTTP应用程序通知用户    56
+36    服务器必现保证HEAD返回的方法和GET相同    57
+37    PUT的语义是让服务器用请求的主体部分创建一个URL命名的新文档    58
+38    POST用于向服务器发送数据，PUT用于向服务器上的资源存储数据    58
+39    TRACE请求在目的服务器上发起一个环回诊断，不能带有主体，响应的主体包含了响应服务器收到的请求的精确副本    58
+40    OPTIONS查询服务器功能    60
+41    DELETE删除服务器资源，不保证一定执行，HTTP规范允许服务器在不通知客户端的情况下撤销请求    60
+42    对发送要求严，对接收要做宽松    61
+43    100 Continue用于客户端要发送一个实体的主体给服务器，希望在发送前查看一下服务器是否会接收    62
+44    
+    1、客户端只有避免向服务器发送一个无法处理的实体才应该使用，发送实体前发送一个值为100 Continue的Expect请求首部并等待响应
+    2、服务器回100 Continue或者错误码，如果没有收到则决不应该发送100 Continue的响应  63
+45    重定向用于通知客户端用替代位置访问资源，或者提供替代响应而不是资源内容，在不打扰使用者的情况下透明的转入新位置    64
+46    可通过某些重定向状态码对资源的应用程序副本和服务器副本比较    65
+</code></pre><h1 id="第4章-连接管理"><a href="#第4章-连接管理" class="headerlink" title="第4章 连接管理"></a>第4章 连接管理</h1><pre><code>47    TCP通过端口号保持打开的连接持续运行    82
+48    TCP连接4元组：&lt;源端口，源地址，目的端口，目的地址&gt; 标识唯一的连接    82
+49    http事务性能很大程度上取决于底层TCP通道的性能    85
+50    由于TCP握手时延，只传输少量数据的频繁http连接会严重减低性能    87
+51    TCP慢启动在连接初期会限制连接的最大速度，限制一个TCP端点在任意时刻可以传输的分组数，每成功接收一个分组后扩大可发送的分组    89
+52    TCP在发送一个分组前会将大量数据绑定在一起，Nagle算法鼓励发送全尺寸的段，通过TCP_NODELAY属性可以禁用    90
+53    TCP端口关闭时会在内存维护一个控制块，记录连接IP和端口，并且维持最大分段期的两倍，大概2分钟，以避免创建重复地址和端口的连接，即TIME_WAIT时间。会带来端口耗尽，和大量连接消耗内存的问题。    90
+54    端口耗尽：系统端口数有限，系统可用的链接 = 端口数 / TIME_WAIT时间 （如：65535/120=500次/秒）    91
+55    Connection首部：
+    1.close代表操作完成后关闭当前连接
+    2.报文转发给下一跳地址前，要删除Connection首部    92
+56    并行连接：多个http连接并发进行，网络带宽不足，内存消耗大    95
+57    持久连接：事务处理结束后仍然保持打开状态。避免建立链接阶段和慢启动的拥塞适应阶段    96
+58    服务器响应中不包含Connection: Keep-Alive时，客户端认为不支持长链接，会在回响发出后关闭链接    98
+59    现代代理决不能转发Connection和逐跳首部    101
+60    透明的web应用程序正确实现持久链接是非常重要的    102
+61    HTTP/1.1默认所有链接都是持久链接，要关闭链接必需显式添加Connection:close首部。但客户端和服务端仍然可以随时关闭空闲链接，不发送Connection:close首部不意味链接永远打开    104
+62    持久链接的规则：
+    1. 一旦发送了Connection:close首部，客户端就无法继续发送请求
+    2. 只有链接的实体和首部的Content-Length一致，链接上的所有报文都有正确的长度时，链接才能持久
+    3. 每个持久链接都只适用于一跳传输
+    4. 如果客户端收到整条响应前链接关闭，客户端就要重新发起请求    104
+63    HTTP/1.1允许在持久链接上可选的使用请求管道，在响应到达之前，可以将多条请求放入队列    105
+64    管道化链接的限制：
+    1.如果无法确认是持久链接，不应使用管道
+    2.必需与请求相同的顺序回送响应，http报文没有序号，如果响应失序就无法与请求匹配
+    3.不应用管道发送产生副作用的请求如POST？
+    4.客户端必需做好任意时刻链接会被关闭的准备，准备好重发未完成的请求    105
+65    如果一个事务，不管是执行一次还是多少次，得到的结果都相同，这个事务就是幂等的。客户端不应该以管道化方式传输非幂等请求，要发送一条非幂等请求，就需要等来自待前一条的响应状态    108
+66    使用管道化的持久链接时，使用半关闭来防止对等实体手动非预期的写入错误非常重要。关闭输出信道是很安全的，输入信道就比较危险，除非知道另一端不打算发送数据。    109
+67    实现正常关闭应该首先关闭输出信道，然后等待对方关闭其输出信道。    110
+68    代理连接的是多个使用相同协议的端点，网关连接的是使用不同协议的端点，扮演协议转换器    137
+69    反向代理假扮web服务器，可以发起与其它web服务器的通信，以按需获取内容    140
+70    出口代理，本地网络出口点，控制本地网络与外部网络之间的流量
+        访问代理，放在ISP访问点，处理来自客户的聚合需求
+        反向代理，部署在网络边缘，放在web服务器之前作为替代    144
+</code></pre><h1 id="第二部分-HTTP结构"><a href="#第二部分-HTTP结构" class="headerlink" title="第二部分 HTTP结构"></a>第二部分 HTTP结构</h1><h1 id="第7章-缓存"><a href="#第7章-缓存" class="headerlink" title="第7章 缓存"></a>第7章 缓存</h1><pre><code>71    文档命中率说明阻止了多少通往外部网络的web事务，字节命中率说明节省了多少带宽    176
+72    客户端判断响应来自缓存的方法是比较Date首部与当前时间    176
+73    refresh按钮会发布一个附加Cache-Control首部的GET请求，强制要求验证缓存    194
+</code></pre><h1 id="第8章-集成点：网关、隧道和中继"><a href="#第8章-集成点：网关、隧道和中继" class="headerlink" title="第8章 集成点：网关、隧道和中继"></a>第8章 集成点：网关、隧道和中继</h1><pre><code>74    网关可以作为某种翻译器来使用，它抽象出了一种到达资源的方法。网关是资源和应用程序之间的粘合剂    208
+75    CGI为每个请求引发一个新进程，导致服务器开销太大    215
+76    CONNECT方法请求隧道网关建立一条到达任意目的服务器和端口的TCP连接，对后继的数据进行盲转发。    217
+77    隧道可以通过HTTP应用程序访问非HTTP协议的程序，在HTTP中嵌入非HTTP流量    217
+</code></pre><h1 id="第9章-web机器人"><a href="#第9章-web机器人" class="headerlink" title="第9章 web机器人"></a>第9章 web机器人</h1><pre><code>78    Web爬虫会递归地对各种信息性的Web站点进行遍历，递归地追踪这些Web链接的机器人会沿着HEML超链接创建的网络爬行。    226
+79    爬虫要通过简单的HTML解析，将要创建的新链接提取出来，还要避免环路的出现.    228
+80    环路会造成机器人陷阱，暂停或减缓机器人的爬行进程    228
+81    如果一个站点有robots.txt文件，那么在访问这个站点的任意url之前，机器人都必须获取它进行处理    242
+</code></pre><h1 id="第三部分-识别、认证与安全"><a href="#第三部分-识别、认证与安全" class="headerlink" title="第三部分 识别、认证与安全"></a>第三部分 识别、认证与安全</h1><h1 id="第11章-客户端识别与cookie机制"><a href="#第11章-客户端识别与cookie机制" class="headerlink" title="第11章 客户端识别与cookie机制"></a>第11章 客户端识别与cookie机制</h1><pre><code>82    很少浏览器会发送From首部，以防止服务器收集Email地址用于垃圾邮件收发    273
+83    User-Agent 实现定制内容与特定浏览器及其属性的良好互操作    273
+84    Referer 说明了用户之前访问过哪个页面，通过它可以更好的理解用户的浏览行为，以及兴趣所在    273
+85    cookie是识别用户，实现持久会话的最好方式，分为两类：会话cookie和持久cookie    278
+86    会话cookie是一种临时cookie，记录用户访问站点的设置和偏好，退出浏览器时删除    278
+87    如果设置了Discard参数，或者没有设置Expires或Max-Age参数说明过期时间，就是会话cookie    278
+88    cookie中包含了一个由名值对构成的列表，通过Set-Cookie(Ser-&gt;Cli)响应，通常包含一个服务器为跟踪产生的识别码    279
+89    浏览器会记住从服务器返回的Set-Cookie首部中的cookie内容，存储在浏览器的cookie数据库中    280
+90    产生cookie的服务器可以向Set-Cookie首部添加一个Domain属性来控制哪些站点可以看到这个cookie    282
+91    cookie的基本思想就是让浏览器积累一组服务器特有的信息，每次访问服务器时都提供给它    280
+</code></pre><h1 id="第12章-基本认证机制"><a href="#第12章-基本认证机制" class="headerlink" title="第12章 基本认证机制"></a>第12章 基本认证机制</h1><pre><code>92    web服务器会将受保护的文档组织成一个安全域，每个安全域可以有不同的授权用户集    297
+93    基本认证协议没有使用Authentication-Info首部    298
+94    浏览器用冒号将用户名和密码连接起来，生成一个打包字符串，再进行Base64编码    299
+95    可以在代理服务器上对访问策略进行集中管理    299
+</code></pre><h1 id="第13章-摘要认证"><a href="#第13章-摘要认证" class="headerlink" title="第13章 摘要认证"></a>第13章 摘要认证</h1><pre><code>96    摘要认证遵循的箴言是“决不通过网络发送密码”，客户端不发送密码，而是发送一个指纹，即密码的摘要且编码不可逆。客户端服务器都知道密码，服务器可以验证摘要是否和密码匹配    304
+97    MD5摘要算法会将任意长度的字符序列转换为一个128位的摘要，这个摘要通常被写成32个十六进制的字符，每个字符4位    306
+98    服务器可以向客户端发送一个随机数的特殊令牌，客户端计算摘要前附加到密码上，以避免重放攻击。随机数是在WWW-Authenticate质询中传给客户端的，如果客户端要最服务器进行认证，可以发送客户端随机数。    307
+99    随机数过期时，服务端返回带新随机数的401响应让客户端重试，WWW-Authenticate首部指定响应为stale=true，表示更新随机数，不用再输入用户名密码    312
+100    如果客户端预先知道下一个随机数，就可以在服务器发出请求之前，生成正确的Authorization首部。可以在Authentication-Info首部中与前一次认证成功的200 OK响应一同发送    312
+101    这样也破坏了对同一台服务器的多条请求的管道化功能，因为发送下一条请求之前一定要收到下一个随机数，会造成很大的性能损失    314
+102    重用随机数使得重放攻击成为可能，通过控制重用随机数的生存期，在安全和性能找到平衡    314
+103    随机数公式：BASE64(time-stamp H(time-stamp &quot;:&quot; Etag &quot;:&quot; private-key))，time-stamp是不会重复的服务器时间，Etag与请求实体有关从而防止对已更新资源版本的重放请求，private-key是服务区私有数据    315
+104    通过提供客户端随机值允许客户端对服务器进行认证    315
+105    客户端面对多重质询时，必须以支持的最强质询机制来应答    318
+106    域值realm与服务器的标准根URL一起，定义了保护空间。在基本认证中，客户端会假定请求URI中或其下的所有路径与当前的质询处于同一个保护空间内。摘要认证中，domain列表中的所有URI和逻辑上处于这些前缀下的所有URI处于同一个保护空间    319
+107    代理可修改URI，摘要认证会验证URI的完整性    319
+108    摘要认证的重点在于提供一种防篡改认证机制，但并不一定要把这种保护扩展到数据上去，具有一定保护级别的首部只有WWW-Authenticat和Authorization    320
+109    可以完全避免重放攻击的方法是为每个事务分配唯一的随机数    320
+</code></pre><h1 id="第14章-安全HTTP"><a href="#第14章-安全HTTP" class="headerlink" title="第14章 安全HTTP"></a>第14章 安全HTTP</h1><pre><code>110    对称加密编解码使用的密是一样的，发送端和接收端需要相同的密钥才能通信。每对通信实体都要自己的私有密钥，会造成膨胀    332
+111    非对称加密发送端通过公钥对报文编码，接收端通过私钥进行解码，私钥保存在接收端所以只有接收端可以解码。一般服务端保存私钥，如果客户端要对服务端认证，就需要另一份私钥。    332
+112    分开密钥的目的是让所有人都能对报文编码，拥有私钥的才能解码，这样就可以形成一对多的通信过程    333
+113    可以对报文进行签名，以说明报文的编写者，证明报文没有被篡改。作者用私钥计算报文的校验和，攻击者没有私钥也就无法伪造正确的校验码，所以作者的私钥就像指纹一样。    335
+114    数字证书包括证书信息、公钥、对象和数字签名    337
+115    现代浏览器会自动获取服务器的数字证书    338
+116    HTTP报文发送给TCP之前，先发送给了安全层进行加密，这个安全层是通过SSL和TLS实现的    339
+117    http端口80，https端口443    340
+118    一旦建立了TCP链接，客户端和服务端就会初始化SSL层沟通加密参数，并且交换密钥    341
+119    安全https事务总是要求使用服务器证书    343
+</code></pre><h1 id="第四部分-实体、编码和国际化"><a href="#第四部分-实体、编码和国际化" class="headerlink" title="第四部分 实体、编码和国际化"></a>第四部分 实体、编码和国际化</h1><h1 id="第15章-实体和编码"><a href="#第15章-实体和编码" class="headerlink" title="第15章 实体和编码"></a>第15章 实体和编码</h1><pre><code>120    首部字段以空白的CRLF行结束    360
+121    除非使用分块编码，否则Content-Length就是带有实体的主体必须使用的。采用分块编码时，数据是分为一系列的块来发送的，每块都有大小说明    362
+122    确定主体长度：
+    1 不允许主体：HEAD方法
+    2 含有Transfer-Encoding首部，此时忽略Content-Length首部，实体为零字节块
+    3 Content-Length为实体长度
+    4 采用multipart/byteranges，且没Content-Length，多部分报文的每个部分都要说明长度
+    5 其它，实体在连结关闭时结束    363
+123    服务器使用Content-MD5首部发送对实体主体运行MD5的计算结果。只有产生响应的原始服务器可以计算并发送Content-MD5首部。    364
+124    Content-Type首部说明了实体主体的MIME类型，客户端使用MIME类型来解释和处理其内容。Content-Type说明的是原始主体的媒体类型，如果实体经过内容编码，这个类型是编码前的。    364
+125    Content-Type首部的可选参数可以进一步说明实体类型，如charset说明实体转换为文本文件的字符集    365
+137    multipart类型说明实体由多个各自独立的部分组成，有各自描述内容的集合，通过分界字符串相连    365
+138    http支持多部分主体通常是两种情况：提交表格或则承载若干文档片段的范围响应    365
+139    内容编码后的报文Content-Type，Content-Length为编码后的主体长度，增加Content-Encoding首部    368
+140    客户端将支持的内容编码方式放在Accept-Encoding首部发送    370
+141    传输编码作用在整个报文上，使报文的自身结构发生了变化，这是为了改善报文数据在网络中的传输方式    371
+142    Transfer-Encoding首部告诉接收方报文采用的传输编码，TE首部用于客户端请求服务器时告诉其自己可以接受的传输编码，最新规范只定义了分块编码    372
+143    分块编码是一种传输编码，因此是报文的属性，而不是主体的属性。当采用持久链接时，服务器必需将报文大小写入Content-Length首部，当主体内容动态创建时，在发送前可能无法知道主体的长度。分块编码允许服务器把主体分块发送，只要说明每块的大小，从而解决了这个问题,    373
+144    首部后跟随一系列分块，每个分块包含长度和数据，长度为16进制，以字节计算，通过CRLF与数据分隔    373
+145    因为客户端不知道服务器是否接受分块编码，服务器不会在响应中携带TE首部，所以要做好收到411 Length Required的拒绝分块的准备    373
+146    如果客户端的TE首部说明可以接受拖挂，就可以在分块的报文最后加上拖挂，产生原始响应的服务器也可以。拖挂中可以包含附带的首部字段，除了Transfer-Encoding、Trailer、Content-Length，其它首部都可以作为拖挂发送，拖挂的值一般是报文开始时无法确定的值    374
+147    所有的HTTP/1.1应用程序必须至少支持分块编码，如果服务器收到无法理解的经过传输编码的报文，应恢复501 Unimplemented    375
+148    新鲜度由Expires和Cache-Control来控制。Expires以绝对过期时间为准，客户端和服务器同步困难。Cache-Control以秒数设定有效使用期。    377
+149    当文档已过期，服务器的内容仍然与缓存的内容相同时，再请求服务器的文档会浪费带宽。可以仅当资源改变时才请求副本，这就是有条件的请求。有条件的首部方法仅在条件为真时才执行，否则服务器返回错误码。Modify检查Last-Modified验证码，Match检查Etag    378
+150    http验证码分为弱验证码和强验证码，弱验证码如对象大小、最后修改时间（以秒为单位），不一定能唯一标识资源的一个实例，强验证码如资源内容的加密校验核。当服务器只想对文件进行修饰，避免传输流量过大时，可以在标记前加入“W/”若实体标记，这时只有这个实体在语义上发生了重大变化时标记才会变化，而强实体标记会反应任何变化。    379
+151    客户端可以向服务端发送有条件的请求，说明能唯一标识客户端当前副本的验证码，使服务器只有在资源和客户端副本不同的情况下才发送新副本。    380
+152    范围请求允许客户端只请求文档的某个范围，Range首部可以请求多个任意顺序，可以相互重叠的任意范围。这有一个前提，上一次从客户端请求的实体对象到本次请求没有改变过，且客户端的请求范围仅当和服务端的实体是同一个版本才有意义。    380
+153    Range首部在P2P文件共享客户端中广泛应用，它们从不同对等实体同时下载文档的不同范围    381
+154    差异编码通过交换对象改变的部分而不是完整对象来优化传输性能，它依赖客户端和服务器之间针对特定的对象实例来交换信息    382
+155    客户端在If-None-Match首部中发送它持有的页面版本的唯一标识，这个标识来自于之前服务器响应中的Etag。然后在A-IM首部中说明客户端接受的算法，可以将差异用于老版本得到新版本，表示客户端可以接受差异。如果只发送I-N-M首部，服务器就会发送完整版本的页面    382
+156    服务端返回226 IM Used响应，在IM首部说明用于计算差异的算法，新的Etag首部和Delta-Base首部说明计算差异的基线文档Etag，这个理论上应该和客户端I-N-M首部发送的相同    383
+</code></pre><h1 id="第16章-国际化"><a href="#第16章-国际化" class="headerlink" title="第16章 国际化"></a>第16章 国际化</h1><pre><code>157    Http应用程序通过字符集编码请求和显示不同字母表中的文本，使用语言标记来根据用户语言说明并限制内容    388
+158    服务端通过Content-Type首部中的charset参数和Content-Language首部说明服务端文档的字母表和语言，客户端通过Accept-Charset首部和Accept-Lanuage首部告诉服务器其支持的字符集编码和语言、优先顺序等    388
+159    二进制经过编码方案转换为字符代码，再从编码的字符集中选择其代表的字符进行显示，字符编码方案和编码后的字符集由charset决定    390
+160    客户端通过Accept-Charset首部告诉服务器，响应为Content-Type首部中的charset参数，这是不对称的    393
+161    字符集将数字字符代码映射为实际显示的字符，字符编码方案把字符代码编码为二进制码    395
+162    如果一个字形代替另一个的时候，文本的意思发生改变，就是不同的字符    397
+163    编码后的字符集把整数映射到字符    397
+164    iso-8859-1是HTML的默认字符集，也称为Latin1，主要是西欧语言，如英语、法语    398
+165    Content-Language首部描述实体的目标受众语言，不仅限于文本，可列出多种语言    403
+166    标记可有多个部分，用-分隔，第一个标记为主子标记，只能含有字母。标记不区分大小写，习惯上一般用小写.第一和第二个子标记有IANA维护    404
+167    URI的每个转义字符是一组3个字符的转义序列，由%加上两个十六进制字符组成，要转移的字符本身在0~127内    409
+</code></pre><h1 id="第17章-内容协商与转码"><a href="#第17章-内容协商与转码" class="headerlink" title="第17章 内容协商与转码"></a>第17章 内容协商与转码</h1><pre><code>168    内容协商可以分为客户端驱动、服务器驱动、透明（通过代理）    414
+169    客户端驱动是，服务器有两个方法为客户端提供选项：直接发送html文档或是返回HTTP/1.1响应时，使用300 Multiple Choises响应。弊端是增加延时、需要多次请求和多个URL（每个页面一个）    415
+170    服务器驱动可通过内容协商首部集Accept或是其它首部，如果结论不明确，服务器需要猜测    415
+171    实体首部集(Content-)与内容协商首部集（Accept-）的差异：实体首部集用于描述报文从服务器传输给客户端过程必须的报文主体属性，内容协商首部集用于客户端发送给服务端交换偏好信息    416
+172    客户端可以通过质量值来描述对不同语言偏好的，优先级与偏好的排列顺序无关，只与q值有关    417
+173    透明协商时，服务器在响应中发送Vary首部，以告知中间节点需要使用哪些首部进行内容协商    419
+174    转码是服务器把现存文档转换成客户端可用的文档，包括格式转换、信息综合、内容注入    423
+</code></pre><h1 id="第五部分-内如发布与分发"><a href="#第五部分-内如发布与分发" class="headerlink" title="第五部分 内如发布与分发"></a>第五部分 内如发布与分发</h1><h1 id="第18章-Web主机托管"><a href="#第18章-Web主机托管" class="headerlink" title="第18章 Web主机托管"></a>第18章 Web主机托管</h1><pre><code>175    HTTP/1.0允许URL部分路径导致缺乏主机信息，1.1要求服务器必需处理完整URL    432
+176    HOST首部包含主机和端口号。如果HTTP请求报文的URL是绝对的（包含主机和端口），忽略HOST，如果URL没有主机部分，从Host提取，否则    438
+177    CDN是对特定内容进行分发的专门网络，可以是Web服务器、反向代理或缓存.反向代理和镜像服务器的区别为反向代理是需求驱动的，代表原始服务器中的一个特定集合，只保存客户端请求的内容    440
+</code></pre><h1 id="第20章-重定向与负载均衡"><a href="#第20章-重定向与负载均衡" class="headerlink" title="第20章 重定向与负载均衡"></a>第20章 重定向与负载均衡</h1><pre><code>178    重定向到代理就像从一条主要通路上将流量分流到一条本地快捷路径    471
+179    http重定向优势是服务器知道客户端IP，理论上可以做出最佳选择    474
+180    DNS轮转能分摊多个客户端的总负荷，但不会平衡单个客户端的负载，单个客户端会在很长时间连到一台服务器    479
+</code></pre></div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/28/阅读笔记-http权威指南-《http权威指南》阅读笔记/" data-id="ciopzq0lg00sxo363fgsihmjw" class="article-share-link">分享到</a><div class="tags"><a href="/tags/http权威指南/">http权威指南</a></div><div class="post-nav"><a href="/2016/05/28/阅读笔记-TCPIP详解Vol1-第七章-Ping/" class="pre">第七章 Ping</a><a href="/2016/05/28/阅读笔记-MoreEffectiveC-四、非必要不提供default-constructor/" class="next">四、非必要不提供default constructor</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">246</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-附录A-密码学/">附录A 密码学</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十章-web安全/">第三部分 应用层安全(第十章 web安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十一章-远程访问安全/">第三部分 应用层安全(第十一章 远程访问安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第九章-电子邮件/">第三部分 应用层安全(第九章 电子邮件)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

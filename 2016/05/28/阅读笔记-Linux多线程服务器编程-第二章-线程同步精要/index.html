@@ -1,0 +1,437 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第二章 线程同步精要 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第二章 线程同步精要</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第二章 线程同步精要</h1><div class="post-meta">May 28, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、并发编程"><span class="toc-number">1.</span> <span class="toc-text">一、并发编程</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、互斥锁-mutex"><span class="toc-number">2.</span> <span class="toc-text">二、互斥锁 mutex</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、条件变量"><span class="toc-number">3.</span> <span class="toc-text">三、条件变量</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、不要使用读写锁和信号量"><span class="toc-number">4.</span> <span class="toc-text">四、不要使用读写锁和信号量</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、封装MuteLock、MutexLockGuard、Condition"><span class="toc-number">5.</span> <span class="toc-text">五、封装MuteLock、MutexLockGuard、Condition</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、线程安全的singleton实现"><span class="toc-number">6.</span> <span class="toc-text">六、线程安全的singleton实现</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、sleep三剑客不是同步原语"><span class="toc-number">7.</span> <span class="toc-text">七、sleep三剑客不是同步原语</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#八、用shared-ptr实现copy-on-write"><span class="toc-number">8.</span> <span class="toc-text">八、用shared_ptr实现copy-on-write</span></a></li></ol></div></div><div class="post-content"><h1 id="一、并发编程"><a href="#一、并发编程" class="headerlink" title="一、并发编程"></a>一、并发编程</h1><ol>
+<li>并发编程的两种基本模型<ul>
+<li>message passing（扩展性强）</li>
+<li>shared memory（只能用于单机）</li>
+</ul>
+</li>
+<li>线程同步4原则<ul>
+<li>最低限度共享对象，减少同步场合<ul>
+<li>尽量不暴露对象</li>
+<li>暴露时优先考虑immutable对象</li>
+<li>可写对象同步保护</li>
+</ul>
+</li>
+<li>使用高级并发组件<ul>
+<li>TaskQueue</li>
+<li>Producer-Consumer Queue</li>
+<li>CountDownLatch</li>
+</ul>
+</li>
+<li>使用底层同步原语时，采用非递归的mutex和condition<ul>
+<li>慎用读写锁（性能）</li>
+<li>不要用信号量（？）</li>
+</ul>
+</li>
+<li>除了使用atomic整数外，不要自己写lock-free代码，不要写内核级同步原语，不要凭空猜测性能好坏</li>
+</ul>
+</li>
+<li>先考虑正确性，再考虑性能<ul>
+<li>在复杂度和性能间取得平衡<blockquote>
+<p>让一个正确的程序变快，永远比让一个快的程序变正确容易的多</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、互斥锁-mutex"><a href="#二、互斥锁-mutex" class="headerlink" title="二、互斥锁 mutex"></a>二、互斥锁 mutex</h1><ol>
+<li><p>主要原则</p>
+<ul>
+<li>RAII封装创建、销毁、加解锁</li>
+<li>只用非递归mutex</li>
+<li>使用Guard加解锁，不手动调用、避免在不同分支语句中lock和unlock，使用scope locking</li>
+<li>构造Guard对象时注意加锁顺序，通过函数调用栈查看</li>
+</ul>
+</li>
+<li><p>次要原则</p>
+<ul>
+<li>不跨进程，进程间通信只用TCP sockets</li>
+<li>RAII保证：<ul>
+<li>加解锁在同一线程</li>
+<li>不遗漏解锁</li>
+<li>不重复解锁</li>
+</ul>
+</li>
+<li>考虑使用<code>PTHREAD_ERROR_CHECK</code>排错</li>
+</ul>
+</li>
+<li><p>只使用非递归锁</p>
+<ul>
+<li><p>造成问题的代码：</p>
+<pre><code>MutexLock mutex;
+std::vector&lt;Foo&gt; foos;
+void post(const Foo&amp; f) {
+    MutextLockGuard lock(mutex);
+    foos.push_back(f);
+}
+
+void traverse() {
+    MutexLockGuard lock(mutex);
+    for(std::vector&lt;Foo&gt;::const_iterator it = foos.begin(), it != foos.end(), it++)
+        it-&gt;doit();
+}
+</code></pre><ul>
+<li>如果doit里调用了post，则在递归锁下可能无法发现问题而造成迭代器失效</li>
+<li>非递归锁能触发死锁，方便发现问题</li>
+</ul>
+</li>
+<li>如果一个函数可能在加锁和不加锁两种情况下用，就拆分成两个，加锁版本调用不加锁版本</li>
+<li>性能：Linux的Pthread mutex采用futex实现，不是每次加解锁都陷入系统调用，性能不错</li>
+</ul>
+</li>
+<li><p>死锁</p>
+<ul>
+<li>等在mutex上的线程要小心死锁，一般线程只会等在condition variable上</li>
+<li>除死锁外，影响性能的因素<ul>
+<li>false sharing</li>
+<li>CPU cache </li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、条件变量"><a href="#三、条件变量" class="headerlink" title="三、条件变量"></a>三、条件变量</h1><ol>
+<li>与互斥量比较<ul>
+<li>互斥量是加锁原语，用来排他性访问共享数据，不是等待原语。使用时需要尽量不阻塞，尽快拿到锁并访问数据</li>
+<li>条件变量用于等待访问，学名管程(monitor)</li>
+</ul>
+</li>
+<li><p>正确的使用</p>
+<ul>
+<li><p>对wait端：</p>
+<ul>
+<li>必需与mutex一起用，保护条件判断</li>
+<li>mutex上锁后调用wait()</li>
+<li><p>条件判断和wait()放到while循环中</p>
+<pre><code>int dequeue() {
+    MutexLockGuard lock(mutex);
+    while(queue.empty) {    // 必须用循环， 判断之后再wait()
+        cond.wait()            // 会原子的unlock并等待，不会死锁，返回时自动加锁
+    }
+    int top = queue.front();
+    queue.pop_front();
+    return top;
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>对signal/broadcast端：</p>
+<ul>
+<li>不一定要在signal前上锁</li>
+<li>修改判断条件后signal</li>
+<li>修改判断条件要mutex保护（至少full memory barrier）</li>
+<li><p>注意区分signal和broadcast</p>
+<ul>
+<li>signal常表明资源可用</li>
+<li><p>broadcast常表明状态变化</p>
+<pre><code>void enqueue(int x) {
+    MutexLockGuard lock(mutex);
+    queue.push_back(x);
+    cond.notify();
+}
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>倒计时CountDownLatch    <ul>
+<li>主线程发起多个子线程，并等待子线程同步</li>
+<li>主线程发起多个子线程，子线程等待主线程同步 </li>
+</ul>
+</li>
+</ol>
+<h1 id="四、不要使用读写锁和信号量"><a href="#四、不要使用读写锁和信号量" class="headerlink" title="四、不要使用读写锁和信号量"></a>四、不要使用读写锁和信号量</h1><ol>
+<li>读写锁<ul>
+<li>正确性<ul>
+<li>容易在read lock中调用写函数，造成非法写，失去保护意义</li>
+</ul>
+</li>
+<li>性能<ul>
+<li>内部要维护reader</li>
+<li>临界区小的情况下，锁竞争不激烈，mutex性能更高        </li>
+</ul>
+</li>
+<li>提升<ul>
+<li>reader lock可能允许提升为writer lock，造成程序逻辑错误</li>
+</ul>
+</li>
+<li>可重入<ul>
+<li>通常reaker lock可重入，writer lock不可重入</li>
+<li>为防止writer lock饥饿，writer lock会block后面的reader lock</li>
+<li>reader lock重入的时候可能死锁</li>
+<li>追求低延迟读的场合不适合读写锁，因为写锁优先，会阻塞后面的读操作。并发读写应该考虑copy-on-write/copy-on-update</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>信号量<ul>
+<li>条件变量+互斥锁可以完全替代信号量，更不容易出错</li>
+<li>内部维护计数值，与数据结构长度值重复</li>
+</ul>
+</li>
+</ol>
+<h1 id="五、封装MuteLock、MutexLockGuard、Condition"><a href="#五、封装MuteLock、MutexLockGuard、Condition" class="headerlink" title="五、封装MuteLock、MutexLockGuard、Condition"></a>五、封装MuteLock、MutexLockGuard、Condition</h1><ol>
+<li><p>MuteLock封装原始mutex，实现加解锁操作，并且收集所在线程信息</p>
+<pre><code>class MutexLock : boost::noncopyable
+{
+ public:
+  MutexLock(): holder_(0) { 
+    MCHECK(pthread_mutex_init(&amp;mutex_, NULL)); 
+  }
+  ~MutexLock() {
+    assert(holder_ == 0);
+    MCHECK(pthread_mutex_destroy(&amp;mutex_));
+  }        
+
+  bool isLockedByThisThread() const { 
+    return holder_ == CurrentThread::tid(); 
+  }        
+
+  void assertLocked() const { 
+    assert(isLockedByThisThread()); 
+  }        
+
+  // internal usage        
+  void lock() {
+    MCHECK(pthread_mutex_lock(&amp;mutex_));
+    assignHolder();
+  }        
+
+  void unlock() {
+    unassignHolder();
+    MCHECK(pthread_mutex_unlock(&amp;mutex_));
+  }        
+
+  pthread_mutex_t* getPthreadMutex() /* non-const */ { 
+    return &amp;mutex_; 
+  }
+
+ private:
+  friend class Condition;
+
+  class UnassignGuard : boost::noncopyable {
+   public:
+    UnassignGuard(MutexLock&amp; owner): owner_(owner) { 
+        owner_.unassignHolder(); 
+    }        
+    ~UnassignGuard() { 
+        owner_.assignHolder(); 
+    }        
+   private:
+    MutexLock&amp; owner_;
+  };
+
+  void unassignHolder() { 
+    holder_ = 0; 
+  }        
+  void assignHolder() { 
+    holder_ = CurrentThread::tid(); 
+  }        
+  pthread_mutex_t mutex_;
+  pid_t holder_;
+};
+</code></pre><ul>
+<li>工业强度的实现：<ul>
+<li>需要判断mutex初始化的结果，在负载很重的产品中，有可能返回ENCMEM错误，资源不足</li>
+<li>mutex不能默认初始化，需要显示指定为<code>PTHREAD_MUTEX_NORMAL</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>MutexLockGuard执行临界区保护</p>
+<pre><code>class MutexLockGuard : boost::noncopyable
+{
+ public:
+  explicit MutexLockGuard(MutexLock&amp; mutex)
+    : mutex_(mutex)
+  {
+    mutex_.lock();
+  }
+
+  ~MutexLockGuard()
+  {
+    mutex_.unlock();
+  }
+
+ private:
+
+  MutexLock&amp; mutex_;
+};
+
+}
+
+// Prevent misuse like:
+// MutexLockGuard(mutex_);
+// A tempory object doesn&apos;t hold the lock for long!
+#define MutexLockGuard(x) error &quot;Missing guard object name&quot;
+</code></pre><ul>
+<li><p>注意#define避免如下的错误</p>
+<pre><code>MutexLockGuard(mutex);
+</code></pre><ul>
+<li>生成一个匿名对象，语句结束即析构，造成临界区失去保护</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>condition</p>
+<ul>
+<li><p>boost在wait时指定mutex，condition可以和不同的mutex配合使用</p>
+<pre><code>class Condition : boost::noncopyable
+{
+ public:
+  explicit Condition(MutexLock&amp; mutex) : mutex_(mutex) {
+    MCHECK(pthread_cond_init(&amp;pcond_, NULL));
+  }            
+  ~Condition() { MCHECK(pthread_cond_destroy(&amp;pcond_)); }
+
+  void wait() {
+    MutexLock::UnassignGuard ug(mutex_);
+    MCHECK(pthread_cond_wait(&amp;pcond_, mutex_.getPthreadMutex()));
+  }
+
+  // returns true if time out, false otherwise.
+  bool waitForSeconds(int seconds);            
+  void notify() { MCHECK(pthread_cond_signal(&amp;pcond_)); }            
+  void notifyAll() { MCHECK(pthread_cond_broadcast(&amp;pcond_)); }
+
+ private:
+  MutexLock&amp; mutex_;
+  pthread_cond_t pcond_;
+};
+</code></pre></li>
+</ul>
+</li>
+<li><p>在CountDownLatch中使用mutex和condition时，注意mutex要先初始化，用于构造condition</p>
+<pre><code>class CountDownLatch : boost::noncopyable {
+ public:        
+  explicit CountDownLatch(int count) : mutex_(), condition_(mutex_), count_(count) { }        
+  void wait();        
+  void countDown();        
+  int getCount() const;
+
+ private:
+  mutable MutexLock mutex_;
+  Condition condition_;
+  int count_;
+};
+</code></pre></li>
+<li><p>尽量少用mutex和condition这样的底层同步原语，应该多使用高级的并发工具</p>
+</li>
+</ol>
+<h1 id="六、线程安全的singleton实现"><a href="#六、线程安全的singleton实现" class="headerlink" title="六、线程安全的singleton实现"></a>六、线程安全的singleton实现</h1><ol>
+<li>double checked locking存在乱序执行的问题<ul>
+<li>DCL知识及风险见补充</li>
+</ul>
+</li>
+<li>C++11的内存模型保证了volatile的acquire-release语义<ul>
+<li>acquire-release语义见补充</li>
+</ul>
+</li>
+<li><p>使用<code>pthread_once</code>简化线程安全问题</p>
+<pre><code>template&lt;typename T&gt;
+class Singleton : boost::noncopyable
+{
+ public:
+  static T&amp; instance() {
+    pthread_once(&amp;ponce_, &amp;Singleton::init);
+    return *value_;
+  }
+
+ private:
+  Singleton();
+  ~Singleton();        
+  static void init() { value_ = new T(); }
+
+ private:
+  static pthread_once_t ponce_;
+  static T*             value_;
+};
+
+template&lt;typename T&gt;
+pthread_once_t Singleton&lt;T&gt;::ponce_ = PTHREAD_ONCE_INIT;
+
+template&lt;typename T&gt;
+T* Singleton&lt;T&gt;::value_ = NULL;
+</code></pre></li>
+</ol>
+<h1 id="七、sleep三剑客不是同步原语"><a href="#七、sleep三剑客不是同步原语" class="headerlink" title="七、sleep三剑客不是同步原语"></a>七、sleep三剑客不是同步原语</h1><ol>
+<li>sleep/usleep/nanosleep三姐妹只能出现在测试代码<ul>
+<li>不具备memory barrier语义</li>
+<li>不能保证内存可见性</li>
+</ul>
+</li>
+<li>工业级代码的等待，分两种情况<ul>
+<li>等待资源可用<ul>
+<li>等在<code>select/poll/epoll_wait</code>上</li>
+<li>等在condition上</li>
+</ul>
+</li>
+<li>等待进入临界区，以读写共享数据<ul>
+<li>等待mutex上的时间应该极短，否则程序的性能和伸缩性会受影响</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>等待一段已知时间的做法<ul>
+<li>线程是宝贵的共享资源，不能轻易阻塞，造成浪费</li>
+<li>在event loop里注册timer，在timer的回调函数里完成</li>
+<li>等待事件发生时，采用条件变量或事件回调，不能采用sleep轮询的业余做法</li>
+</ul>
+</li>
+</ol>
+<h1 id="八、用shared-ptr实现copy-on-write"><a href="#八、用shared-ptr实现copy-on-write" class="headerlink" title="八、用shared_ptr实现copy-on-write"></a>八、用shared_ptr实现copy-on-write</h1><ol>
+<li><p>核心思想：用shared_ptr管理共享数据</p>
+<ul>
+<li>shared_ptr具有引用计数，如果计数值为1，即unique为true，说明资源是独占的，可以随心所欲</li>
+<li>对于write，如果计数值为1，说明资源独占，是可写的，此时可以安全修改对象（不加计数值怎么阻止后来的读？）</li>
+<li>对于read，读之前把计数值加1，即共享一次数据，可以保证读期间阻止并发写</li>
+<li>对于write，如果计数值大于1，说明正在读，此时不能直接修改，要先复制原来的对象，在副本上进行修改，然后再swap回去</li>
+</ul>
+</li>
+<li><p>关键代码</p>
+<pre><code>int CustomerData::query(const string&amp; customer) const
+{
+    MapPtr data = getData();
+
+    Map::const_iterator entries = data-&gt;find(customer);
+    if(entries != data-&gt;end()) {
+        // Do something for this customer
+        const Entrylist&amp; stocks = entries-&gt;second;
+        for_each(stocks.begin(), stocks.end(), [timewait, &amp;data](const Entry&amp; entry){
+            cout &lt;&lt; &quot;stock：   &quot; &lt;&lt; entry.first &lt;&lt; &quot;, &quot; &lt;&lt; entry.second &lt;&lt; endl;
+        });
+    } else
+        return -1;    
+
+    return 0;
+}
+
+void CustomerData::update(const string&amp; customer, const Entrylist&amp; entries)
+{
+    MutexLockGuard Lock(mutex_);
+
+    if(!data_.unique()) {
+        MapPtr newData(new Map(*data_));
+        data_.swap(newData);
+    }
+    (*data_)[customer] = entries;
+}
+</code></pre><ul>
+<li><p>分析：</p>
+<ul>
+<li>当前读不受影响，下一次读到的数据才是更新后的</li>
+<li>当前的读不影响当前的写，写以copy-on-write的方式立即执行，这点比rwlock性能要好</li>
+<li>写仍然会阻止后来的读，因为mutex</li>
+</ul>
+</li>
+<li><p>思考：为什么query中的迭代器不会失效？</p>
+<ul>
+<li>swap以后，原来的data_指向了新的map，update的修改都基于这个新的map</li>
+<li>query里得到的仍然是data_原来的指向，旧的map，所以不会失效，等到下一次query，就能指向新的map了</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/28/阅读笔记-Linux多线程服务器编程-第二章-线程同步精要/" data-id="ciopzq0g800n0o363z9xyk2le" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux多线程服务器编程/">Linux多线程服务器编程</a></div><div class="post-nav"><a href="/2016/05/28/阅读笔记-Linux多线程服务器编程-第二章-补充：acquire-release语义、double-checked-lock、false-sharing/" class="pre">第二章 补充：acquire-release语义、double-checked-lock、false-sharing</a><a href="/2016/05/28/阅读笔记-Linux多线程服务器编程-第一章-补充：enable-shared-from-this/" class="next">第一章 补充：enable_shared_from_this</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">246</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十五章-Unix域套接字/">第十五章 Unix域套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-附录A-密码学/">附录A 密码学</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十章-web安全/">第三部分 应用层安全(第十章 web安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十一章-远程访问安全/">第三部分 应用层安全(第十一章 远程访问安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第九章-电子邮件/">第三部分 应用层安全(第九章 电子邮件)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
