@@ -1,0 +1,314 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">May 31, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 第三章 多线程常用编程模型<br>date: 2016-05-31 23:19:18<br>updated:<br>categories: [阅读笔记, Linux多线程服务器编程]<br>tag: Linux多线程服务器编程<br>comments: true<br>toc: true</p>
+<h1 id="一、进程与线程"><a href="#一、进程与线程" class="headerlink" title="一、进程与线程"></a>一、进程与线程</h1><ol>
+<li>多进程共享代码段，不共享数据，如果多进程程序大量共享内存，等于把多进程当多线程写，掩耳盗铃，是披着多进程外衣的多线程程序<ul>
+<li>共享内存的同步，造成进程间相互影响，性能差于多线程且可能出现死锁</li>
+</ul>
+</li>
+<li>多线程是为了发挥多核的优势，单核情况下最高效的模型是状态机</li>
+</ol>
+<h1 id="二、单线程服务器的常用编程模型"><a href="#二、单线程服务器的常用编程模型" class="headerlink" title="二、单线程服务器的常用编程模型"></a>二、单线程服务器的常用编程模型</h1><ol>
+<li><p>Reactor模式</p>
+<ul>
+<li>non-blocking IO + IO multiplexing</li>
+<li><p>基本结构是一个event loop，以事件驱动和事件回调的方式实现业务逻辑</p>
+<pre><code>while(!done) {
+    int timeout = max(max_timeout, getNextTimeoutCblk());
+    int ret = poll(fds, nfds, timout);
+    if(ret &lt; 0) {
+        // handle errors, call user errCblk
+    } else {
+        // handler timers, call user timerCblk
+        if(ret &gt; 0) {
+            // handle IO events, call user eventCblk
+        }
+    }
+}
+</code></pre></li>
+<li>优点：<ul>
+<li>效率高，并发量和吞吐量大，适合IO密集型业务<ul>
+<li>读写IO、socket</li>
+<li>建立连接(connect\accept)</li>
+<li>DNS解析等</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>缺点：<ul>
+<li>要求callbacks必需非阻塞</li>
+<li>割裂业务逻辑，不易理解和维护</li>
+</ul>
+</li>
+<li>常用libs：<ul>
+<li>lighttpd(学习fdevent)</li>
+<li>libevent</li>
+<li>ACE</li>
+<li>Netty(Java NIO)</li>
+<li>Twisted(Python)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Proactor<ul>
+<li>Boost.Asio</li>
+<li>ACE</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、多线程服务器的常用编程模型"><a href="#三、多线程服务器的常用编程模型" class="headerlink" title="三、多线程服务器的常用编程模型"></a>三、多线程服务器的常用编程模型</h1><ol>
+<li><p>常用模型</p>
+<ul>
+<li>阻塞式IO</li>
+<li>线程池 + 阻塞式IO</li>
+<li>non-blocking IO + IO multiplexing</li>
+<li>Leader/Follower</li>
+</ul>
+</li>
+<li><p>one loop per thread</p>
+<blockquote>
+<p>usually a good model, alwasy a good start, almost never wrong</p>
+</blockquote>
+<ul>
+<li><p>优点：</p>
+<ul>
+<li>便于确定线程数，容易避免线程频繁创建和销毁</li>
+<li>线程间调配负载方便</li>
+<li>IO事件发生的线程固定，同一个TCP连接不必考虑并发</li>
+</ul>
+</li>
+<li><p>将timer和IO事件注册到需要工作的线程loop就行，event loop代表主循环，每个线程最多一个</p>
+</li>
+<li>需要loop操作线程安全</li>
+</ul>
+</li>
+<li><p>thread pool</p>
+<ul>
+<li>对于cpu密集型业务，使用event loop是一种浪费，替代方案是blocking queue实现的任务队列TaskQueue</li>
+<li><p><code>BlockingQueue&lt;T&gt;</code>是多线程编程的利器，可以方便的用<code>BlockingQueue&lt;T&gt;</code>实现TaskQueue和producer-consume queue</p>
+<pre><code>typedef boost::function&lt;void()&gt; Functor;
+BlockingQueue&lt;functor&gt; taskQueue;
+void workerthread() {
+    while(running) {
+        Functor task = taskQueue.take();
+        task();
+    }
+}
+</code></pre><ul>
+<li>实际使用要考虑start、stop</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>4、推荐模式: one loop per thread + thread pool</p>
+<pre><code>* 构成：
+    + event loop：用作IO multiplexing
+    + thread pool：用做cpu consuming的taskqueue
+* 原理：阻抗匹配，使CPU和IO都高效运行
+* event loop需要配合non-blocking IO和timer实现
+* 基于Reactor模式
+</code></pre><h1 id="四、进程间通信，只用TCP"><a href="#四、进程间通信，只用TCP" class="headerlink" title="四、进程间通信，只用TCP"></a>四、进程间通信，只用TCP</h1><ol>
+<li>scalability<ul>
+<li>自然跨主机</li>
+</ul>
+</li>
+<li>进程独占端口，防止重复启动<ul>
+<li>OS清理垃圾</li>
+</ul>
+</li>
+<li>面向连接，可以快速failover<ul>
+<li>应用层实现连接重试</li>
+</ul>
+</li>
+<li>可记录，可测试<ul>
+<li>便于解耦进行单元测试</li>
+</ul>
+</li>
+<li>字节流通信，wire format，性能高<ul>
+<li>只能顺序读取，有写缓冲，可以边写边读</li>
+<li>共享内存是stop-wait方式，写完了才能读</li>
+</ul>
+</li>
+<li><p>分布式系统使用TCP长连接</p>
+<ul>
+<li><p>容易定位依赖关系</p>
+<pre><code>netstat -tpna | grep &lt;port&gt;
+</code></pre></li>
+<li><p>容易定位问题，通过Recv-Q和Send-Q</p>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="五、多线程服务器的使用"><a href="#五、多线程服务器的使用" class="headerlink" title="五、多线程服务器的使用"></a>五、多线程服务器的使用</h1><ol>
+<li><p>并发与模式</p>
+<ul>
+<li><p>现代服务器处理并发连接的两种方式：</p>
+<ul>
+<li>轻量级线程<ul>
+<li>线程廉价，线程数可以远高于CPU</li>
+<li>编程语言实现，由语言的runtime自行调度，对内核不可见</li>
+<li>一个线程只处理一个连接，通常阻塞IO</li>
+<li>如：Python gevent、Go goroutine、 Erlang actor</li>
+</ul>
+</li>
+<li>OS原生线程<ul>
+<li>线程宝贵，只有创建与CPU相当的线程才有意义</li>
+<li>由OS直接调度，受OS限制</li>
+<li>一个线程处理多个连接上的IO，通常非阻塞</li>
+<li>如： libevent、muduo、Netty</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>多核并发编程的模式</p>
+<ul>
+<li>单线程的单进程：不可伸缩，不能充分使用多核</li>
+<li>多线程的单进程：复杂度高，启动线程效率高</li>
+<li>单线程的多进程<ul>
+<li>运行多个主进程的副本</li>
+<li>主进程 + worker进程</li>
+</ul>
+</li>
+<li>多线程的多进程：复杂度高且效率低下</li>
+</ul>
+</li>
+<li><p>应根据具体场合使用模式2和3</p>
+</li>
+</ul>
+</li>
+<li><p>必须使用单线程的场合</p>
+<ul>
+<li>两种情况：<ul>
+<li>程序可能会fork</li>
+<li>限制CPU占用率</li>
+</ul>
+</li>
+<li>只有单线程能fork<ul>
+<li>多线程fork后系统复杂度不可控</li>
+<li>fork之后的两种行为：<ul>
+<li>立刻执行exec()，子进程变成一个新程序</li>
+<li>不调用exec()继续运行，通过共享文件描述符通信，或者接管主进程传递的文件描述符</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>单线程能限制CPU占有率<ul>
+<li>防止busy-wait</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>单线程的优缺点</p>
+<ul>
+<li>单线程优缺点<ul>
+<li>简单，基于IO multiplexing的event loop</li>
+<li>会发生优先级反转</li>
+</ul>
+</li>
+<li>单核多线程没有绝对性能优势<ul>
+<li>IO bound：性能瓶颈在IO，多线程不能提供吞吐量</li>
+<li>CPU bound：<ul>
+<li>单核情况下，计算量一定，并没有因为线程增加而能并行计算</li>
+<li>多核情况下，能发挥性能优势的最佳模式是单线程的多进程</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>多线程使IO和CPU计算可以交叉运行，主要是提高平均响应性能，不能提高绝对性能</li>
+</ul>
+</li>
+<li><p>适用多线程的场景</p>
+<ul>
+<li>场景要求<ul>
+<li>多个CPU可用</li>
+<li>线程间有共享数据，且可修改<ul>
+<li>如无共享数据，应该采用单线程的多进程(主进程 + worker进程)模式</li>
+<li>如果共享数据不可修改，则多进程间shared memory更好</li>
+</ul>
+</li>
+<li>提供非均质服务<ul>
+<li>事件响应有优先级差异，专用线程处理高优先级事务，防止优先级反转</li>
+</ul>
+</li>
+<li>latency和throughout同样重要<ul>
+<li>即要IO吞吐量，又要有CPU计算任务</li>
+</ul>
+</li>
+<li>采用异步操作<ul>
+<li>任何操作都不应阻塞critical path</li>
+</ul>
+</li>
+<li>能scale up，享受CPU增加带来的好处</li>
+<li>性能可预测<ul>
+<li>随负责增加，性能缓慢下降，超过临界点后迅速下降</li>
+<li>线程数目一般不随负载变化</li>
+</ul>
+</li>
+<li>多线程能有效划分责任和业务功能<ul>
+<li>单个线程逻辑简单、任务单一，易于编码</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>线程分类</p>
+<ul>
+<li>IO线程<ul>
+<li>主循环为IO multiplexing，阻塞在select/poll/epoll上</li>
+<li>同时也处理timer，主要任务不以CPU计算为主</li>
+</ul>
+</li>
+<li>计算线程<ul>
+<li>主循环为blocking queue，阻塞在condition variables</li>
+<li>通常位于thread pool中，不涉及IO，一般要避免阻塞</li>
+</ul>
+</li>
+<li><p>第三方库线程</p>
+<blockquote>
+<p>服务器程序一般不会频繁的启动和终止线程，只在启动时创建</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="六、多线程服务器使用场合释疑"><a href="#六、多线程服务器使用场合释疑" class="headerlink" title="六、多线程服务器使用场合释疑"></a>六、多线程服务器使用场合释疑</h1><ol>
+<li>one thread per connection不适合高并发，one loop per thread单个eventloop处理上万并发长连接很正常</li>
+<li>对于计算密集型服务，多线程不能提高总吞吐量，因为CPU总是满载的，但能提高响应时间<ul>
+<li>如：8核机器上压缩文件，两种方式完成的总时间一样，但后者拿到第一个文件更快<ul>
+<li>开8个单线程进程，一次压缩8个文件</li>
+<li>开单进程8个线程，一个文件用8个压缩</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>对于thread per request，当并发数超过某个临界值时，吞吐量反而会下降，因为线程调度的开销</li>
+<li>thread pool适用于CPU计算较多的task，使用时应满足阻抗匹配原则，而对于IO task，需要用并发模型Reactor或Proactor</li>
+<li>多线程能有效避免“简单任务被复杂任务压住”的情况，使“简单任务”总能快速得到响应</li>
+<li>让IO和CPU计算重叠从而降低latency的基本思路是，把IO操作通过BlockingQueue交给别的线程，不必等待(不适用于应答式)</li>
+<li><p>阻抗匹配</p>
+<pre><code>T = C/P
+C：CPU个数
+P：CPU密集计算所占时间(0 &lt; P &lt;= 1)
+</code></pre><ul>
+<li>结果根据实际上下浮动</li>
+<li>P越小，可开线程越多，P &lt; 0.2时线程可以固定</li>
+</ul>
+</li>
+<li>Proactor<ul>
+<li>适用于一次请求响应中，要和别的进程多次交互</li>
+<li>并发度更高，但代码松散，不易理解</li>
+<li>一个event的完成，导致下一个event启动，需要注册回调函数将过程串连起来</li>
+</ul>
+</li>
+<li>多线程的单进程 与 单线程的多进程<ul>
+<li>工作集work set：一次服务响应中访问内存的大小<ul>
+<li>大：多线程，避免CPU cache换入换出</li>
+<li>小：多进程，单线程编程简单</li>
+</ul>
+</li>
+<li>多线程不能减少总CPU时间，但能让单个任务得到更快的响应，降低平均响应时间</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/31/阅读笔记-Linux多线程服务器编程-第三章-多线程常用编程模型/" data-id="ciovm26id00bosl63838df3zr" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十六章-非阻塞式IO/" class="next">第十六章 非阻塞式IO</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">246</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/05/31/阅读笔记-Linux多线程服务器编程-第三章-多线程常用编程模型/">阅读笔记-Linux多线程服务器编程-第三章-多线程常用编程模型</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十六章-非阻塞式IO/">第十六章 非阻塞式IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-附录A-密码学/">附录A 密码学</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第七章-传输层协议/">第二部分 底层网络安全(第七章 传输层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第十章-web安全/">第三部分 应用层安全(第十章 web安全)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第六章-网络层协议/">第二部分 底层网络安全(第六章 网络层协议)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第二部分-底层网络安全-第五章-物理层网络概述/">第二部分 底层网络安全(第五章 物理层网络概述)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第九章-电子邮件/">第三部分 应用层安全(第九章 电子邮件)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-网络安全基础-第三部分-应用层安全-第八章-应用层概述/">第三部分 应用层安全(第八章 应用层概述)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
