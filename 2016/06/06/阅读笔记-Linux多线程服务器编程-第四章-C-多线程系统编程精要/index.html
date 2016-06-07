@@ -1,0 +1,296 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第四章 C++多线程系统编程精要 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第四章 C++多线程系统编程精要</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第四章 C++多线程系统编程精要</h1><div class="post-meta">Jun 6, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、基本线程原语"><span class="toc-number">1.</span> <span class="toc-text">一、基本线程原语</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、C-系统库的线程安全性"><span class="toc-number">2.</span> <span class="toc-text">二、C++系统库的线程安全性</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、Linux的线程标识"><span class="toc-number">3.</span> <span class="toc-text">三、Linux的线程标识</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、线程创建与销毁"><span class="toc-number">4.</span> <span class="toc-text">四、线程创建与销毁</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、善用-thread关键字"><span class="toc-number">5.</span> <span class="toc-text">五、善用__thread关键字</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、多线程与IO"><span class="toc-number">6.</span> <span class="toc-text">六、多线程与IO</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、用RAII封装文件描述符"><span class="toc-number">7.</span> <span class="toc-text">七、用RAII封装文件描述符</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#八、RAII与fork"><span class="toc-number">8.</span> <span class="toc-text">八、RAII与fork</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#九、多线程与fork"><span class="toc-number">9.</span> <span class="toc-text">九、多线程与fork</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十、多线程与signal"><span class="toc-number">10.</span> <span class="toc-text">十、多线程与signal</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十一、linux新增系统调用的启示"><span class="toc-number">11.</span> <span class="toc-text">十一、linux新增系统调用的启示</span></a></li></ol></div></div><div class="post-content"><h1 id="一、基本线程原语"><a href="#一、基本线程原语" class="headerlink" title="一、基本线程原语"></a>一、基本线程原语</h1><ol>
+<li>底层原语(POSIX thread)<ul>
+<li>一般只使用高级封装</li>
+<li>基础封装：thread/mutex/condition</li>
+<li>高级封装：thread pool、CountDownLatch</li>
+</ul>
+</li>
+<li>可酌情使用：<ul>
+<li><code>pthread_once</code></li>
+<li><code>pthread_key</code></li>
+</ul>
+</li>
+<li>不建议使用<ul>
+<li><code>pthread_rwlock</code>：读写锁通常应慎用，高性能是错觉，读被写延迟，不如mutex高效</li>
+<li><code>sem_*</code>：信号量的功能与condition重复，并且容易出错</li>
+<li><code>pthread_{kill，cancel}</code>：程序中出现，说明设计出问题，没有好的退出机制</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、C-系统库的线程安全性"><a href="#二、C-系统库的线程安全性" class="headerlink" title="二、C++系统库的线程安全性"></a>二、C++系统库的线程安全性</h1><ol>
+<li>对于标准而言，关键在于定义内存模型，特别是归档一个线程对共享变量的修改，何时能被其它线程看到，即内存一致性(memory order)</li>
+<li><p>线程出现，对系统库的影响：</p>
+<ul>
+<li><p>errno不再是全局变量，而是线程相关。glibc把errno定义为一个宏，注意errno是lvalue，所以不能定义为函数返回值，是函数返回指针的dereference</p>
+<pre><code>extern int* __errno_location(void);
+#define errno (*__errno_location())
+</code></pre></li>
+<li><p>对于纯函数不受影响，如memset、strcpy</p>
+</li>
+<li>影响全局状态的函数，可以通过加锁来实现线程安全：malloc/free、printf、fread/fseek</li>
+<li>返回或使用静态空间的函数，不可能线程安全，需要提供安全版本：<code>asctime_r/ctime_r/gmtime_r、stderror_r、strtok_</code>r等</li>
+<li>传统fork并发模型不再适用于多线程环境</li>
+</ul>
+</li>
+<li>不用担心系统调用的线程安全性，因为系统调用对用户态程序是原子操作，但其对内核状态的改变，可能影响到其它线程</li>
+<li>编写线程安全程序的一个难点在于，线程安全是不可组合的<ul>
+<li><code>FILE*</code>系列函数都是线程安全的，但多个线程安全的函数一起使用就不一定安全了，如fseek()和fread()都是线程安全的，但先seek再read就存在race condition，所以要<code>flockfile(FILE*)/funlockfile(FILE*)</code>显示加锁，由于<code>FILE</code>*的锁是可重入的，再调用fread/fseek不会死锁</li>
+</ul>
+</li>
+<li>线程安全的基本原则：对共享对象的Read-Only操作是安全的，所以设置class的基本思路是，尽量设计成immutable的</li>
+<li>STL标准库大多数泛型算法是线程安全的，只要输入区间线程安全，因为都是纯函数。iostream不是线程安全，日志需要注意，如果改用prinrf，虽然线程安全，但因为内部操作是全局锁，不能多线程并发调用，效率不高</li>
+</ol>
+<h1 id="三、Linux的线程标识"><a href="#三、Linux的线程标识" class="headerlink" title="三、Linux的线程标识"></a>三、Linux的线程标识</h1><ol>
+<li>POSIX threads<ul>
+<li><code>pthread_self()</code>返回线程标识，类型为<code>pthread_t</code>，这个类型不一定是数值，可能是结构体，因此定义了<code>pthread_equal</code>用于比较是否相等，带来了一系列问题：<ul>
+<li>因为不同的库实现类型不定，因此无法打印<code>pthread_t</code>，无法用于日志中</li>
+<li>无法比较大小，因此无法用于容器</li>
+<li>无法定义一个非法值来表示线程不存在</li>
+<li>只在进程内有意义，对OS不可见，因此文件系统中看不到这个值</li>
+</ul>
+</li>
+<li>glibc的实现为结构体指针,指向动态分配的内存，但这块内存是反复使用的，所以只能保证同一时刻的线程tid是不同的，而后创建的线程可能复用之前已经结束的线程tid</li>
+</ul>
+</li>
+<li>在linux下，推荐使用gettid(2)系统调用返回线程id<ul>
+<li>类型为<code>pid_t</code>，通常为一个小的整数，可以正常输出</li>
+<li>直接被内核用作任务调度，在proc里可见，在系统工具中使用广泛，如top</li>
+<li>任意时刻全局问题，内核分配采用递增轮回，段时间内不会出现相同id</li>
+<li>0是非法值，1被init占用</li>
+</ul>
+</li>
+<li>避免多次执行系统调用<ul>
+<li>muduo采用__thread缓存成thread local，可以参考<code>boost::this_thread::get_id()</code></li>
+<li>执行fork时，需要调用<code>pthread_afterfork</code>注册回调，用于清空缓存的线程id</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、线程创建与销毁"><a href="#四、线程创建与销毁" class="headerlink" title="四、线程创建与销毁"></a>四、线程创建与销毁</h1><ol>
+<li>线程创建<ul>
+<li>原则：<ul>
+<li>程序内部不应在未提前告知的情况下创建自己的“背景线程”</li>
+<li>尽量用相同的方式创建线程，统一操作</li>
+<li>进入main()之前不应启动线程</li>
+<li>线程创建最好在初始化阶段全部完成</li>
+</ul>
+</li>
+<li>线程是稀缺资源，需要精心规划<ul>
+<li>可以创建的线程数受制于内核参数和内存大小</li>
+<li>可以并发运行先线程受制于CPU数量</li>
+</ul>
+</li>
+<li>多线程情况下，很难安全fork()</li>
+<li>统一的方式创建，便于bookkeeping<ul>
+<li>除线程自身信息外，还需要记录执行异步回调过程，及时发现阻塞和异常情况</li>
+</ul>
+</li>
+<li>main函数之前启动线程，会影响全局对象的安全构造<ul>
+<li>C++保证进入main之前完成全局对象的构造，同时各编译单元之间对象的构造顺序不确定</li>
+<li>当全局对象都在主线程构造完成时，不须考虑并发与线程安全</li>
+<li>多线程并行初始化，容易造成全局对象构造与访问的竞争条件，且不易排查</li>
+</ul>
+</li>
+<li>服务器程序线程数应该与当前负载无关，与CPU数相关<ul>
+<li>load average过大会出现性能抖动，最好小于CPU数量</li>
+<li>如果有实时性要求，线程数量不要超过CPU数量，保证新任务能及时执行</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>线程销毁<ul>
+<li>线程退出的几种方式：<ul>
+<li>自然死亡：从主函数返回，正常退出</li>
+<li>非正常死亡：抛出异常或触发信号被终止</li>
+<li>自杀：线程调用<code>pthread_exit()</code></li>
+<li>他杀：其它线程调用<code>pthread_kill()</code></li>
+</ul>
+</li>
+<li>线程唯一正常退出的方式就是自然死亡，其它作法都是错误<ul>
+<li>Java thread class取消了stop/suspend/destroy等</li>
+<li>Boost.Threads不提供cancel等操作</li>
+<li>强行终止的线程，资源得不到清理，如果被别的线程用的会出问题，如mutex，程序不值得带伤运行</li>
+</ul>
+</li>
+<li>强行终止一个耗时很长的计算任务，可以考虑将代码fork为新进程，杀进程比杀线程安全的多<ul>
+<li>多进程内部通讯用文件描述符，不用共享内存，以免死锁和影响并发</li>
+</ul>
+</li>
+<li>如果线程创建能在初始化阶段全部完成，则线程不必销毁，也没有安全退出的任何问题</li>
+</ul>
+</li>
+<li><code>pthread_cancel</code>与C++<ul>
+<li>C++的cancellation point实现与C不同，线程不是执行到函数立刻终止，而是抛出异常，从而有机会stack unwind，可以析构栈上对象，特别是锁等</li>
+</ul>
+</li>
+<li>exit(3)在C++中不是线程安全的<ul>
+<li>exit(3)在C++中除了终止进程，还会析构全局对象和已构造完成的函数静态对象</li>
+<li>有潜在死锁的可能<ul>
+<li>如析构时需要上锁，而此刻正在运行的函数已经处于上锁状态，就会死锁</li>
+</ul>
+</li>
+<li>容易引起程序崩溃<ul>
+<li>如一个线程创建的对象正在被另一个线程使用，可能引起该线程崩溃</li>
+</ul>
+</li>
+<li>如果确实需要exit，应调用exit(2)，不执行清理直接退出，以保证能正常退出</li>
+<li>安全退出需要精心设计共享对象的析构顺序，防止线程间出现退出时访问已失效对象</li>
+<li>长期运行的多线程服务程序可以不考虑安全退出，直接让程序进入拒绝服务状态，然后直接杀掉</li>
+</ul>
+</li>
+</ol>
+<h1 id="五、善用-thread关键字"><a href="#五、善用-thread关键字" class="headerlink" title="五、善用__thread关键字"></a>五、善用<code>__thread</code>关键字</h1><ol>
+<li><code>__thread</code>是GCC内置的thread local storage，实现非常高效，比pthread_key_t快很多，其存取效率相当于全局变量</li>
+<li><p><code>__thread</code>的使用</p>
+<ul>
+<li>只能修饰POD类型，不能修饰class，无法调用构造和析构</li>
+<li>可用于修饰全局变量、函数内的静态变量，不能修饰函数的局部变量或者class的普通成员变量</li>
+<li><p><code>__thread</code>变量的初始化只能用于编译器常量</p>
+<pre><code>__thread string t_obj(&quot;hi&quot;);            // 不能是类对象
+__thread string* = new string(&quot;hi&quot;);    // 初始化不是常量
+__thread string* = NULL；                // Bingo!
+</code></pre></li>
+<li><p>即用<code>__thread</code>修饰全局变量，初始化采用全局初始化的方式，然后在使用过程中进行赋值</p>
+</li>
+</ul>
+</li>
+<li>对于thread local的class，需要用pthread的实现，参考muduo的ThreadLocal类</li>
+</ol>
+<h1 id="六、多线程与IO"><a href="#六、多线程与IO" class="headerlink" title="六、多线程与IO"></a>六、多线程与IO</h1><ol>
+<li>操作文件描述符的系统调用本身是线程安全的，不会造成多线程同时操作一个描述符时出现进程或内核崩溃</li>
+<li>主要问题在于，多个线程采取了不同的操作：<ul>
+<li>一个线程关闭了其它线程正在操作的描述符</li>
+<li>多个线程同时读写，读出或写入的数据顺序</li>
+</ul>
+</li>
+<li>如果强行采用锁来同步所有线程的读写，效率比不上描述符被一个线程操作</li>
+<li>多线程与磁盘IO<ul>
+<li>应用层的读写请求，到内核是排队执行的，只有内核缓存了大部分数据的情况下，多线程读取才会更快</li>
+<li>多线程磁盘IO的基本思路是，一个磁盘一个线程，把所有对磁盘的IO都在在同一个线程中操作，以减少内核中的锁争用</li>
+<li>“显然正确”的方式，一个文件只由一个线程来操作</li>
+</ul>
+</li>
+<li>多线程IO的原则<ul>
+<li>一个fd只被一个线程操作(注意不是一个线程只操作一个fd)<ul>
+<li>避免消息收发的顺序性问题，已经关闭fd的race condition</li>
+</ul>
+</li>
+<li>把对同一个epoll fd的操作(添加、删除、修改)到放到一个线程执行</li>
+</ul>
+</li>
+<li>例外<ul>
+<li>对磁盘文件，必要的时候多线程可以同时调用pread(2)/pwrite(2)来读写同一个文件</li>
+<li>对于UDP，协议本身保证消息的原子性，可以多线程同时读写同一个UDP的文件描述符</li>
+</ul>
+</li>
+</ol>
+<h1 id="七、用RAII封装文件描述符"><a href="#七、用RAII封装文件描述符" class="headerlink" title="七、用RAII封装文件描述符"></a>七、用RAII封装文件描述符</h1><ol>
+<li>linux文件描述符<ul>
+<li>linxu文件描述符是小整数，0为stdin，1为stdout，2为stderr，进程fd从3开始</li>
+<li>POSIX标准要求每次打开新文件时，fd要取当前可用的最小整数，即fd是立即回收并重用的</li>
+</ul>
+</li>
+<li>POSIX的分配方式在多线程下容易造成串话<ul>
+<li>前一个线程关闭描述符的同时，系统创建下一个线程，很有可能fd是一样的</li>
+<li>此时如果有其它线程正在操作之前的fd，则很可能收发到现在线程的数据，出现系统混乱</li>
+</ul>
+</li>
+<li>C++的解决方式：RAII<ul>
+<li>用对象来封装文件描述符，对象生命期结束，fd失效，不会有还能继续操作对象的可能性</li>
+</ul>
+</li>
+<li>服务器不应该关闭fd1、2，应该重定向到磁盘文件<ul>
+<li>某些第三方库紧急情况下会在stdout、stderr打印出错信息，如果关闭了，会被别的进程占用，造成数据混乱</li>
+<li>正确的做法是通过看门狗，把这个信息重定向到磁盘文件</li>
+</ul>
+</li>
+<li>现代C++特点：对象生命期管理不需要手工操作<ul>
+<li>短期对象需要确保没有被持有时，才能销毁(close)，以防止对象使用期产生相同的fd造成串话，这自然会用到引用计数</li>
+<li>应该封装fd对象，使用者持有对象或者对象的弱引用，避免持有期间被销毁</li>
+</ul>
+</li>
+</ol>
+<h1 id="八、RAII与fork"><a href="#八、RAII与fork" class="headerlink" title="八、RAII与fork"></a>八、RAII与fork</h1><ol>
+<li>编写C++程序时，需要保证对象的构造和析构过程成对出现，通过现代C++的RAII手法不难做到这一点，将资源与对象的生命周期统一管理</li>
+<li><p>如果程序调用fork，则破坏了RAII对资源管理的封装效果</p>
+<pre><code>int main() {
+    Foo foo;        // Foo对象被构造一次
+    fork();
+    foo.doit();        // 但析构了两次
+}
+</code></pre></li>
+<li><p>fork与子进程</p>
+<ul>
+<li>fork以后，子进程能继承：<ul>
+<li>地址空间</li>
+<li>文件描述符</li>
+</ul>
+</li>
+<li>不能继承：<ul>
+<li>内存锁：mlock(2) mlockall(2)</li>
+<li>文件锁：fcntl(2)</li>
+<li>定时器：settimer(2)、alarm(2)、timer_create(2)等</li>
+<li>其它，见 man 2 fork</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>对于使用RAII管理的资源，fork以后如果存在多次释放，就会出错，因此是否允许fork需要仔细思考</p>
+</li>
+</ol>
+<h1 id="九、多线程与fork"><a href="#九、多线程与fork" class="headerlink" title="九、多线程与fork"></a>九、多线程与fork</h1><ol>
+<li>fork一般不能再多线程程序中调用，因为linux的fork只clone当前线程的thread of control，没有forkall这样的调用</li>
+<li>fork之后子进程只有一个线程，其它线程都消失，此时如果存在同步关系，如果等待锁，就会非常危险</li>
+<li>fork之后，子进程就相当于处在signal handler中，不能调用不可重入的线程安全函数，只能调用异步信号安全async-signal-safe的函数，如子进程不能调用：<ul>
+<li>malloc，访问全局状态时会加锁，如果父进程malloc获得了锁，马上fork出子进程，子进程就会拥有锁，这时再调用malloc就会 造成死锁</li>
+<li>任何可能分配和释放内存的函数，new、map::insert、snprintf..</li>
+<li>任何pthread函数，不能用condition去通知父进程，只能通过pipe</li>
+<li>printf系列函数，因为stdou/stderr的访问需要锁</li>
+<li>除 man 7 signal 中明确列出的async-signal-safe外的任何函数</li>
+</ul>
+</li>
+<li>fork后唯一安全的做法是立刻调用exec执行另一个程序，彻底切断与父进程的联系</li>
+<li>线程安全：通过锁可以保证，不一定可重入，信号安全：一定要可重入</li>
+</ol>
+<h1 id="十、多线程与signal"><a href="#十、多线程与signal" class="headerlink" title="十、多线程与signal"></a>十、多线程与signal</h1><ol>
+<li>linux多线程与signal水火不容<ul>
+<li>只能在signal handler里调用async-signal-safe的函数，因为不是每个线程安全的函数都是可重入的</li>
+<li>signal hander中要修改的全局数据，必需是sig_atomic_t类型的，否则被打断的函数在恢复执行后很可能不能立即看到改动后的数据，因为编译器有可能假定这个变量不会在其它地方被修改，从而优化内存访问</li>
+<li>signal handler中不能调用任何pthread函数，不能通过condition来通知其它线程</li>
+</ul>
+</li>
+<li>多线程程序，使用signal的第一原则是<strong>不要使用signal</strong><ul>
+<li>不要使用signal作为IPC的手段，使用socket</li>
+<li>不要使用基于signal的定时器函数，包括alarm/ualarm/setitimer/timer_create、sleep/usleep等</li>
+<li>不要主动处理异常信号(SIGTERM、SIGINT等)，只采用默认语义：结束进程，除SIGPIPE外</li>
+<li>没有替代的情况下，把异步信号转为同步处理，如在handler中通知主程序处理，从而纳入统一的IO事件处理框架<ul>
+<li>现代linux的做法是采用signalfd(2)把信号直接转为文件描述符事件，从而根本上避免signal handler的使用</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="十一、linux新增系统调用的启示"><a href="#十一、linux新增系统调用的启示" class="headerlink" title="十一、linux新增系统调用的启示"></a>十一、linux新增系统调用的启示</h1><ol>
+<li><p>从2.6.27起，凡是会创建文件描述符的syscall，一般都增加了额外的flags参数，可以直接指定<code>O_NONBLOCK</code>和<code>FD_CLOEXEC</code></p>
+<pre><code>accept4
+eventfd2
+inotify_init1
+pipe2
+signalfd4
+timerfd_create
+</code></pre><ul>
+<li><code>O_NONBLOCK</code>用于非阻塞IO，默认文件描述符是阻塞的</li>
+<li>反映linux开发的一个趋势，是non-blocking IO with multiplexion，non-blocking IO已经主流到让内核增加syscall以节省一次fcntl(2)调用的程度了</li>
+</ul>
+</li>
+<li><p>新增系统调用，用于创建文件描述符时开启<code>FD_CLOEXEC</code></p>
+<pre><code>dup3
+epoll_create1
+socket
+</code></pre><ul>
+<li><code>FD_CLOEXEC</code>用于调用exec时，子进程自动关闭继承的文件描述符</li>
+<li>这个修改，说明fork的主要目的已经不是创建worker process，并通过共享文件描述符进行IPC，而是fork之后立即exec，创建干净的进程，避免fork和exec之间文件描述符泄露的race condition</li>
+</ul>
+</li>
+<li>从这两个flags的变化来看，linux服务器开发的主流模型正在由fork + worker process的模型，转变为多线程模型，一般的网络服务器程序不会再fork子进程，避免资源管理的问题</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/06/06/阅读笔记-Linux多线程服务器编程-第四章-C-多线程系统编程精要/" data-id="cip5opfu400c5ca63171eyoj2" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux多线程服务器编程/">Linux多线程服务器编程</a></div><div class="post-nav"><a href="/2016/06/08/阅读笔记-Linux多线程服务器编程-第四章-补充：POD类型/" class="pre">第四章 补充：POD类型</a><a href="/2016/06/01/阅读笔记-Linux多线程服务器编程-第三章-补充：reactor与proactor/" class="next">第三章 补充：reactor与proactor</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">250</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/06/08/阅读笔记-Linux多线程服务器编程-第四章-补充：POD类型/">第四章 补充：POD类型</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/06/阅读笔记-Linux多线程服务器编程-第四章-C-多线程系统编程精要/">第四章 C++多线程系统编程精要</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/01/阅读笔记-Linux多线程服务器编程-第三章-补充：reactor与proactor/">第三章 补充：reactor与proactor</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/31/阅读笔记-Linux多线程服务器编程-第三章-多线程常用编程模型/">第三章 多线程常用编程模型</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记2-工具使用/">《高级C、C++编译技术》阅读笔记2(工具使用)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十二章-IPv4与IPv6的互操作性/">第十二章 IPv4与IPv6的互操作性</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十九章-秘钥管理套接字/">第十九章 秘钥管理套接字</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第六章-IO复用-select和poll/">第六章 IO复用 select和poll</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十七章-ioctl操作/">第十七章 ioctl操作</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-unix网络编程Ed3-第十三章-守护进程和inetd超级服务器/">第十三章 守护进程和inetd超级服务器</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
