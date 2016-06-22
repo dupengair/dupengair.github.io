@@ -1,0 +1,350 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第十章 C++编译链接模型精要 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第十章 C++编译链接模型精要</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第十章 C++编译链接模型精要</h1><div class="post-meta">Jun 21, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、古老的编译模型"><span class="toc-number">1.</span> <span class="toc-text">一、古老的编译模型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、C的编译模型"><span class="toc-number">2.</span> <span class="toc-text">二、C的编译模型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、C-的编译模型"><span class="toc-number">3.</span> <span class="toc-text">三、C++的编译模型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、C-链接"><span class="toc-number">4.</span> <span class="toc-text">四、C++链接</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、工程项目中头文件的使用规则"><span class="toc-number">5.</span> <span class="toc-text">五、工程项目中头文件的使用规则</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、工程项目中库文件的组织原则"><span class="toc-number">6.</span> <span class="toc-text">六、工程项目中库文件的组织原则</span></a></li></ol></div></div><div class="post-content"><h1 id="一、古老的编译模型"><a href="#一、古老的编译模型" class="headerlink" title="一、古老的编译模型"></a>一、古老的编译模型</h1><ol>
+<li>C++的编译模型从C继承，引发了很多编译问题<ul>
+<li>C++语言的三大约束：<ul>
+<li>与C兼容<ul>
+<li>兼容C的编译模型与运行模型</li>
+<li>能直接使用C的头文件和库</li>
+<li>基本类型的长度和表示(representation)必须与C一样</li>
+<li>重载决议规则复杂</li>
+<li>class定义的；为了与struct兼容</li>
+</ul>
+</li>
+<li>零开销原则(zero overhead)</li>
+<li>值语义</li>
+</ul>
+</li>
+<li>C++没有模块机制<ul>
+<li>不能引入模块，必须include头文件，机械地将接口声明以文本替换的方式载入再重新parse源码，编译效率低下<ul>
+<li>头文件具有传递性，引入多重依赖和不必要的源码</li>
+<li>头文件在编译时使用，动态库在运行时使用，可能带来不匹配的二进制兼容性问题</li>
+</ul>
+</li>
+<li>原始的头文件机制，造成声明和定义分开，产生不一致性</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、C的编译模型"><a href="#二、C的编译模型" class="headerlink" title="二、C的编译模型"></a>二、C的编译模型</h1><ol>
+<li>单遍编译<ul>
+<li>从头到尾扫描一遍源码，边解析边生成目标代码<ul>
+<li>编译器只能看到已解析过的代码<ul>
+<li>结构体要先定义，否则不知道类型和偏移，无法生成代码</li>
+<li>局部变量先定义，且使能放到语句块开始，以方便分别stack</li>
+<li>外部符号的决议由链接器实现</li>
+<li></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>C的命名空间平坦<ul>
+<li>函数和struct都处于全局命名空间</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、C-的编译模型"><a href="#三、C-的编译模型" class="headerlink" title="三、C++的编译模型"></a>三、C++的编译模型</h1><ol>
+<li><p>单遍编译</p>
+<ul>
+<li><p>对名字查找的影响</p>
+<ul>
+<li>C++只能通过解析源码来了解名称的含义</li>
+<li>头文件的顺序、修改都可能破坏代码语义</li>
+<li><p>建议的编译选项：</p>
+<pre><code>-Wall -Wextra -Werror -Wconversion -Wshadow
+
+extra：当分号没有可以终结的语句时警告，禁止空语句
+error：所有警告转化为错误消息
+conversion： 发生隐式类型转换
+shadow：局部变量屏蔽参数、全局变量或者其它局部变量时警告，内建函数屏蔽时警告
+</code></pre></li>
+</ul>
+</li>
+<li>对函数重载决议的影响<ul>
+<li>编译器对函数调用，只能从目前已看到的同名函数中匹配，不论后面是否有更合适的(类成员函数除外)<ul>
+<li>函数定义顺序对决议造成影响</li>
+</ul>
+</li>
+<li>编译器必需保持函数级的语法树，才能实施RVO，要判断返回对象是否是named object</li>
+<li></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>向前声明forward reference<ul>
+<li>C++支持forward reference，内部只能是multiple pass的，但要装作单遍编译以兼容C语义</li>
+<li>头文件将定义和声明分开，由于C++支持重载，编译不会报错，但可能出现函数未定义，说明声明和定义可能产生不一致性</li>
+<li>可以通过向前引用来避免暴露class定义(只需要声明，不需要完整定义)：<ul>
+<li>定义或声明中用到指针或引用，因为C++内存是flat的，Foo的定义无法改变指针或引用的含义<ul>
+<li>Foo*或Foo&amp;</li>
+</ul>
+</li>
+<li>函数声明用到类对象(参数或返回值)，代码中没有调用相关函数<ul>
+<li>Foo bar()</li>
+<li>void bar(Foo f)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>注意不能重载operator &amp;，否则class就不能向前声明了</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、C-链接"><a href="#四、C-链接" class="headerlink" title="四、C++链接"></a>四、C++链接</h1><ol>
+<li><p>传统的链接方式</p>
+<ul>
+<li>传统的C链接器<ul>
+<li>链接时对于有依赖关系的库，越基础的库放到越后面，链接顺序是依赖顺序，保证前面的未决符号可以在后出现的库中找到</li>
+<li>前面遇到未决议的符号进行标记，在后面链接的库里寻找</li>
+<li>一个符号只允许一处定义，不允许重复定义</li>
+</ul>
+</li>
+<li>C++链接器<ul>
+<li>函数重载</li>
+<li>通过name mangling保证类型安全的链接</li>
+<li>vague linkage</li>
+<li>为每个目标文件生成一份弱定义，依赖链接器选择</li>
+<li>C++要求代码满足ODR原则</li>
+</ul>
+</li>
+<li>ODR原则(One Definition Rule)，见补充</li>
+</ul>
+</li>
+<li><p>函数重载</p>
+<ul>
+<li>函数返回值不参与重载，所以普通non-template函数的mangled name不包含返回类型</li>
+<li>当决议重载函数时，链接器无法发现声明中返回类型不一致的情况(违犯ODR原则)</li>
+</ul>
+</li>
+<li><p>inline函数</p>
+<ul>
+<li>现代编译器使用重复消除的方法，当无法对inline展开时，从多分实现中选择一份，其余的丢弃</li>
+<li>当有函数指针时，无法展开inline函数</li>
+<li><p>判断debug build或release build</p>
+<ul>
+<li><p>可以看class temple的短成员函数有没有被inline</p>
+<pre><code>//1.cpp
+std::vector&lt;int&gt; v;
+printf(&quot;%d\n&quot;, v.size());
+
+$g++ 1.cpp
+$nm a.out|grep size|c++filt
+// 有输出说明没有展开，目标文件有函数定义
+</code></pre></li>
+</ul>
+</li>
+<li><p>注意编译器自动生成的析构函数是inline，有时候需要故意out-line，防止代码膨胀和编译错误</p>
+</li>
+</ul>
+</li>
+<li><p>模板</p>
+<ul>
+<li>具有external linkage的对象，通常会在多个编译单元定义，链接器必需要重复代码消除</li>
+<li><p>template和inline是否会造成代码膨胀    </p>
+<ul>
+<li><p>非类型模板参数</p>
+<pre><code>template&lt;int size&gt; 
+class Buffer;
+
+Buffer&lt;512&gt; a;
+Buffer&lt;1024&gt; b;
+</code></pre><ul>
+<li>使用-O2编译时，短小的成员函数被尽可能inline</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>声明模板输出的接口，隐藏实现到源文件<ul>
+<li>显式实例化模板</li>
+<li>可以防止模板被任意实例化</li>
+<li>可以加快编译速度</li>
+</ul>
+</li>
+<li>C++11增加external template特性，阻止隐式模板实例化，避免代码膨胀</li>
+</ul>
+</li>
+<li><p>虚函数</p>
+<ul>
+<li>class通过vptr访问vtable，以调用virtue function</li>
+<li>链接时如果报错找不到vtable，一般是某个virtue function没有定义</li>
+<li>编译器无法判断是否应该在当前编译单元生成vtable，所以会为每个目标文件生成一个，交给链接器消除重复<ul>
+<li>可以在头文件out-line虚函数，避免目标文件膨胀</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="五、工程项目中头文件的使用规则"><a href="#五、工程项目中头文件的使用规则" class="headerlink" title="五、工程项目中头文件的使用规则"></a>五、工程项目中头文件的使用规则</h1><ol>
+<li><p>头文件的害处</p>
+<ul>
+<li>传递性</li>
+<li>顺序性<ul>
+<li>通常先分类以后，按字母顺序include，代码整洁且多人修改时利于避免冲突</li>
+<li>避免在末尾添加新的头文件，否则依赖关系很难管理</li>
+</ul>
+</li>
+<li>差异性<ul>
+<li>内容差异造成不同源文件看到的头文件不一致</li>
+<li>时间差异造成头文件与库不一致</li>
+<li>不同编译选择可能造成头文件编译结果不一样<ul>
+<li>头文件 + 库文件 + 编译选项 = 完整的库</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>现代编程语言的模块化作法</p>
+<ul>
+<li>对解释型语言，import库的时候直接parse对应模块的源文件</li>
+<li>对编译型语言，编译出的目标文件包含足够的元数据，import的时候读取模板文件的内容，不需要源文件</li>
+<li>这两种作法都避免了不一致的问题，因为声明和定义是一体的，同时不会引入其它名字，减轻了名字查找的负担，也不会因为import模块的顺序而造成问题</li>
+</ul>
+</li>
+<li><p>头文件的使用规则</p>
+<ul>
+<li>将文件间、定义式间依赖降至最小，避免循环依赖</li>
+<li>让class名、头文件名、源文件名直接相关</li>
+<li>让头文件自给自足</li>
+<li>总在头文件写#include guard，不要在源文件写<ul>
+<li>gcc会做优化，在遇到相同的头文件时直接跳过，不会读取</li>
+</ul>
+</li>
+<li>#include guard应该包含文件的路径全名、项目名称<ul>
+<li>分别从版本管理和项目代码独立管理的角度</li>
+</ul>
+</li>
+<li>对于库，公开头文件表达模块接口，必要时实现细节可以放到内部头文件</li>
+</ul>
+</li>
+<li><p>一个查找头文件包含的小技巧</p>
+<ul>
+<li><p>例如，查找<code>&lt;iostream&gt;</code>中是如何引入的string：</p>
+<pre><code>// 1.cpp
+#include &lt;iostream&gt;
+
+int main() {
+    std::string s = &quot;hello world&quot;;
+}
+
+// 当前目录项创建一个string文件
+$cat &gt; string
+#error error
+^D
+
+// 制造编译错误，编译器打印出头文件的引用链
+$ g++ -M -I. 1.cpp 
+In file included from /usr/local/include/c++/4.8.2/bits/locale_classes.h:40:0,
+     from /usr/local/include/c++/4.8.2/bits/ios_base.h:41,
+     from /usr/local/include/c++/4.8.2/ios:42,
+     from /usr/local/include/c++/4.8.2/ostream:38,
+     from /usr/local/include/c++/4.8.2/iostream:39,
+     from 1.cpp:1:
+./string:1:2: error: #error error
+ #error error
+  ^
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="六、工程项目中库文件的组织原则"><a href="#六、工程项目中库文件的组织原则" class="headerlink" title="六、工程项目中库文件的组织原则"></a>六、工程项目中库文件的组织原则</h1><ol>
+<li><p>依赖管理</p>
+<ul>
+<li>应用程序和其依赖的库</li>
+<li>对脚本语言，解释器版本</li>
+<li>运行环境中对外部进程的依赖</li>
+</ul>
+</li>
+<li><p>C++</p>
+<ul>
+<li>编译器版本的ABI不兼容<ul>
+<li>&lt; gcc3.0</li>
+<li>gcc3.0/3.1</li>
+<li>gcc3.2/3.3</li>
+<li><blockquote>
+<p>gcc3.4</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>C++标准库(libstdc++)和C标准库(glibc)<ul>
+<li>libstdc++取决于编译器版本</li>
+<li>glibc取决于Linxu操作系统版本(自带)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Linux共享库</p>
+<ul>
+<li>优点：<ul>
+<li>一致的内存管理<ul>
+<li>动态库与应用程序共享同一个heap，库分配的内存可以由应用程序释放</li>
+</ul>
+</li>
+<li>一致的初始化<ul>
+<li>动态库的静态对象(全局对象、namespace级对象等)的初始化与应用程序中一致，不区分对象位置</li>
+</ul>
+</li>
+<li>动态库接口中可以放心使用class、STL、boost，只要版本相同</li>
+<li>没有dllimport/dllexport的累赘，直接include头文件</li>
+<li>dll hell问题不严重，因为Linux允许多个版本的动态库并存，而且每个符号都可以有多个版本<ul>
+<li>dll hell指某个dll的更新，破坏对其依赖的已有应用程序的功能</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>挑战：<ul>
+<li>动态库的部署与更新</li>
+<li>应用程序间的独立性，与库的多版本并存</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>动态库是有害的</p>
+<ul>
+<li>使用面窄，则不如静态库；使用面宽，则测试和更新成本高</li>
+<li>没有完美的解决办法</li>
+</ul>
+</li>
+<li><p>静态库好不到哪儿去</p>
+<ul>
+<li>相比动态库的优点：<ul>
+<li>依赖在编译期决定，不会出现运行时debug符号失效</li>
+<li>速读更快，函数调用开销更小，没有PLT(过程查找表)</li>
+<li>发布方便</li>
+</ul>
+</li>
+<li>缺点：<ul>
+<li>链接慢</li>
+<li>库文件与可执行文件存在编译时间差，可能出现头文件不一致</li>
+</ul>
+</li>
+<li>应用程序使用静态库必需要采用完全相同的开发环境</li>
+<li>可能出现的情况：<ul>
+<li>强迫升级高版本<ul>
+<li>多个模块依赖同一个库时，一个要求高版本</li>
+</ul>
+</li>
+<li>重复链接<ul>
+<li>多个模块依赖同一个库，但链接到了不同版本</li>
+<li>造成同一个变量多个实体，违反ODR</li>
+</ul>
+</li>
+<li>版本冲突<ul>
+<li>多个模块依赖同一个库的不同版本</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>源码编译是王道</p>
+<ul>
+<li>应用程序选择库版本，直接编译源码</li>
+<li>编译耗时</li>
+<li>需要版本管理，指定库版本</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/06/21/阅读笔记-Linux多线程服务器编程-第十章-C-编译链接模型精要/" data-id="cipr63s1n00ddj263b0w2x46f" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux多线程服务器编程/">Linux多线程服务器编程</a></div><div class="post-nav"><a href="/2016/06/23/阅读笔记-Linux多线程服务器编程-第十章-补充：ODR原则/" class="pre">第十章 补充：ODR原则</a><a href="/2016/06/17/阅读笔记-Linux多线程服务器编程-第九章-分布式工程实践/" class="next">第九章 分布式工程实践</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">254</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/06/23/阅读笔记-Linux多线程服务器编程-第十章-补充：ODR原则/">第十章 补充：ODR原则</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/21/阅读笔记-Linux多线程服务器编程-第十章-C-编译链接模型精要/">第十章 C++编译链接模型精要</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/17/阅读笔记-Linux多线程服务器编程-第九章-分布式工程实践/">第九章 分布式工程实践</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/16/开发环境搭建-kali-linux-VM版设置/">kali linux VM版设置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/16/阅读笔记-Linux多线程服务器编程-第五章-高效的多线程日志/">第五章 高效的多线程日志</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/08/阅读笔记-Linux多线程服务器编程-第四章-补充：POD类型/">第四章 补充：POD类型</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/06/阅读笔记-Linux多线程服务器编程-第四章-C-多线程系统编程精要/">第四章 C++多线程系统编程精要</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/01/阅读笔记-Linux多线程服务器编程-第三章-补充：reactor与proactor/">第三章 补充：reactor与proactor</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/31/阅读笔记-Linux多线程服务器编程-第三章-多线程常用编程模型/">第三章 多线程常用编程模型</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/28/阅读笔记-高级C-C-编译技术-《高级C、C-编译技术》阅读笔记1-基础知识/">《高级C、C++编译技术》阅读笔记1(基础知识)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
