@@ -1,0 +1,609 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第十一章 反思C++对象与虚函数 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第十一章 反思C++对象与虚函数</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第十一章 反思C++对象与虚函数</h1><div class="post-meta">Jul 3, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、朴实的C-设计"><span class="toc-number">1.</span> <span class="toc-text">一、朴实的C++设计</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、二进制兼容性"><span class="toc-number">2.</span> <span class="toc-text">二、二进制兼容性</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、避免使用虚函数作为库接口"><span class="toc-number">3.</span> <span class="toc-text">三、避免使用虚函数作为库接口</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、动态库接口的推荐作法"><span class="toc-number">4.</span> <span class="toc-text">四、动态库接口的推荐作法</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、以boost-function和boost-bind取代虚函数"><span class="toc-number">5.</span> <span class="toc-text">五、以boost::function和boost::bind取代虚函数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、iostream的用途与局限"><span class="toc-number">6.</span> <span class="toc-text">六、iostream的用途与局限</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、值语义与数据抽象"><span class="toc-number">7.</span> <span class="toc-text">七、值语义与数据抽象</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#八、小结"><span class="toc-number">8.</span> <span class="toc-text">八、小结</span></a></li></ol></div></div><div class="post-content"><h1 id="一、朴实的C-设计"><a href="#一、朴实的C-设计" class="headerlink" title="一、朴实的C++设计"></a>一、朴实的C++设计</h1><ol>
+<li><p>一个进程内部解耦，意义不大，函数调用是最直接有效的通信方式</p>
+<ul>
+<li><p>接口类(抽象基类)隔断类定义与实现间的联系</p>
+<blockquote>
+<p>但凡你在某个地方切断联系，必然会在另外一个地方重新产生联系</p>
+</blockquote>
+</li>
+<li><p>采用接口类/实现类的一个可能好处是依赖注入，便于单元测试</p>
+</li>
+<li>通过继承、stratege、type traits简化代码</li>
+<li>唯一仰赖的C++特性是确定性析构，离开作用域时自动正确的析构，简化代码并确保资源和内存回收，是区别于其它主流开发语言的主要特性</li>
+<li>写应用而不是写框架，每个类有明确的职责范围，设计基于类而不是继承体系</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、二进制兼容性"><a href="#二、二进制兼容性" class="headerlink" title="二、二进制兼容性"></a>二、二进制兼容性</h1><ol>
+<li><p>二进制兼容性</p>
+<ul>
+<li>如果以shared library方式提供函数库，头文件和库文件不能轻易修改，否则容易破坏已有的二进制可执行文件</li>
+<li>system call可以看做kernel与user space的interface，kernel可以当做shared library</li>
+</ul>
+</li>
+<li><p>会破坏库ABI的情形</p>
+<ul>
+<li>C++编译器ABI的主要内容：<ul>
+<li>函数的传参(比如对cpu寄存器的使用)</li>
+<li>虚函数的调用方式，vptr/vtbl机制</li>
+<li>struct和class的内存布局，通过offset访问数据成员的方式</li>
+<li>name mangling</li>
+<li>RTTI和异常处理的实现</li>
+</ul>
+</li>
+<li>C++通过头文件暴露动态库接口(主要是函数调用和对象布局)，编译器依此生成库的二进制代码，运行时通过装载器loader把可执行文件和动态库绑定<ul>
+<li>二进制是否兼容，指头文件与动态库的实际使用方法的兼容性</li>
+</ul>
+</li>
+<li>修改non-virtual函数的参数会导致链接失败无法启动，因为函数的mangled name不同，但修改virtual函数的参数不会，因为virtual函数决议是靠偏移量，而不是符号名</li>
+<li>修改库导致源码兼容，但二进制不兼容(语义发生变化)：<ul>
+<li>增加函数默认参数，造成无法传这个新增参数</li>
+<li>增加虚函数，造成vtbl排列变化<ul>
+<li>即使加在末尾，当被继承时也一样</li>
+</ul>
+</li>
+<li>增加模板默认类型参数，造成name mangling结果变化</li>
+<li>改变enum的值,或添加enum项，因为enum自动排列取值</li>
+</ul>
+</li>
+<li>增加类的数据成员时：<ul>
+<li>如果以指针或引用的形式使用库中的对象，是安全的</li>
+<li>如果直接在代码中new、或者访问类数据成员，这种直接访问class member的offsets是不安全的，因为排列顺序可能变化，如果只通过非inline的成员函数访问就没问题</li>
+<li>如果成员函数inline，则offsets已经被inline到应用客户端程序的二进制代码，也是不安全的</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>多半安全的做法</p>
+<ul>
+<li>增加新的class</li>
+<li>增加non-virtual成员函数或static成员函数</li>
+<li>修改数据成员名称<ul>
+<li>类的二进制代码是按偏移量访问的，不过会造成源码级的不兼容</li>
+</ul>
+</li>
+<li>等等</li>
+</ul>
+</li>
+<li><p>反面教材：COM</p>
+<ul>
+<li>C++中以虚函数做接口，或者以只包含虚函数的class作为库接口基本就不可能二进制兼容了</li>
+<li>windows下，VC++编译时release和debug模式二进制不兼容</li>
+</ul>
+</li>
+<li><p>解决办法</p>
+<ul>
+<li>静态链接，完全从源代码编译</li>
+<li>对动态库进行版本管理</li>
+<li>用pimpl惯用法，头文件只暴露non-virtual接口，class大小固定为<code>sizeof(Imp*)</code></li>
+</ul>
+</li>
+</ol>
+<h1 id="三、避免使用虚函数作为库接口"><a href="#三、避免使用虚函数作为库接口" class="headerlink" title="三、避免使用虚函数作为库接口"></a>三、避免使用虚函数作为库接口</h1><ol>
+<li><p>C++程序库的作者的生存环境</p>
+<ul>
+<li>创建库考虑的决策<ul>
+<li>发布方式<ul>
+<li>动态库</li>
+<li>静态库或者源代码</li>
+</ul>
+</li>
+<li>接口的暴露方式<ul>
+<li>全局函数(namespace级别)</li>
+<li>class的non-virtual成员函数</li>
+<li>virtual函数</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>基本假设与对策<ul>
+<li>代码一定会有bug<ul>
+<li>如果需要hot fix则必需动态库，否则静态库更容易部署</li>
+<li>动态库比静态库节约内存已经不重要</li>
+</ul>
+</li>
+<li>一定会有新的需求<ul>
+<li>选择可扩展的接口风格，便于升级</li>
+<li>对bug fix only的升级，库文件替换应做到二进制兼容</li>
+<li>对新增功能的升级，对客户端友好，只需要客户端包含新的头文件进行编码，不要在客户端代码中留下垃圾</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>虚函数作为库接口的两大用途</p>
+<ul>
+<li>虚函数作为库接口的用法：<ul>
+<li>调用<ul>
+<li>库提供功能，以虚函数的方式暴露，客户端一般不用继承，直接调用接口，利于库内部接口与实现分离，多此一举，自欺欺人</li>
+</ul>
+</li>
+<li>回调<ul>
+<li>客户端继承，把自己注册到库里等待回调，一般不主动调用接口</li>
+</ul>
+</li>
+<li>混合</li>
+</ul>
+</li>
+<li>对回调的方式，现代C++更好的做法是<code>boost::function+boost::bind</code></li>
+</ul>
+</li>
+<li><p>虚函数做接口的弊端</p>
+<ul>
+<li>在二进制兼容性方面有本质困难：一旦发布，不能修改</li>
+<li>C++虚函数以vtable[offset]的方式实现虚函数调用，offset由虚函数声明的位置决定</li>
+<li>新的虚函数放到接口的末尾是一种危险而丑陋的做法，当类被继承时，面临同样的情况</li>
+<li>COM采用的办法：<ul>
+<li>通过链式继承来扩展interface<ul>
+<li>每修改一次接口，就派生出新的子类</li>
+<li>接口散布在继承链中，造成割裂</li>
+</ul>
+</li>
+<li>通过多重继承来扩展interface<ul>
+<li>定义一个同样成员的类，然后进行多重继承</li>
+<li>interface带版本，代码难以管理维护</li>
+<li>客户端同时依赖多个版本的类提供的接口</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>假如Linux以COM实现</p>
+<ul>
+<li>Linux保持兼容性的办法，就是给每个syscall以不变的数字代号，作为编译期常数固定下来</li>
+<li>Java的interface可以添加新函数，因为linking被推迟到了class loading</li>
+<li>C可以添加新的全局函数</li>
+<li>C++ class也可以添加新的non－virtual成员函数和namespace级别的non－member函数</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、动态库接口的推荐作法"><a href="#四、动态库接口的推荐作法" class="headerlink" title="四、动态库接口的推荐作法"></a>四、动态库接口的推荐作法</h1><ol>
+<li>取决于库的使用范围，有两类作法</li>
+<li>如果动态库使用范围比较窄，用户受控，如团队内部<ul>
+<li>做好发布的版本管理</li>
+<li>在可执行文件中用rpath把完整路径确定下来</li>
+<li>为便于检查二进制兼容性，暴露代码时仔细区分，如头文件有意识分为用户可见和不可见部分(boost::detail)</li>
+<li>升级时注意二进制兼容性，合理选用版本号</li>
+</ul>
+</li>
+<li>使用范围广，用户多且release周期不相同，推荐pimp技法<ul>
+<li>暴露的接口里不要有虚函数，要显式声明构造、析构函数，并且不能inline</li>
+<li><code>sizeof(Graphics) == sizeof(Graphics::pImpl*)</code></li>
+<li>在库的实现中把调用forward给Graphics::pImpl，pImpl代码位于库中，跟随库一起升级</li>
+<li>加入新的接口时，可以直接原地扩展，然后forward给pImpl，增加non-virtual函数不影响现有的可执行文件<ul>
+<li>pImpl扮演了编译防火墙的作用</li>
+<li>non-virtual比virtual更健壮，因为non-virtual是bind-by-vtable-offset，virtual是bind-by-name</li>
+</ul>
+</li>
+<li>如果要跨语言，暴露C接口</li>
+</ul>
+</li>
+</ol>
+<h1 id="五、以boost-function和boost-bind取代虚函数"><a href="#五、以boost-function和boost-bind取代虚函数" class="headerlink" title="五、以boost::function和boost::bind取代虚函数"></a>五、以boost::function和boost::bind取代虚函数</h1><ol>
+<li>继承和虚函数是万恶之源<ul>
+<li>很难从一开始就考虑好各个class在继承树上的位置</li>
+<li>时间长久以后，原来正确的可能变成错误的</li>
+<li>修改错误的代价更高，牵一发而动全身</li>
+<li>最好只好重构，但C++缺乏好的重构工具</li>
+</ul>
+</li>
+<li>实现层面的问题<ul>
+<li>传统C++以(纯)虚函数声明接口，进行事件回调，使用者继承并覆写实现</li>
+<li>由于是非GC语言，对象常动态创建，生命周期手动管理</li>
+<li>现代C++通过boost::function和boost::bind进行事件回调，可以不用手动管理对象生命期</li>
+</ul>
+</li>
+<li>基本用途<ul>
+<li>function可以通过bind接受任何普通函数，成员函数，以及函数对象</li>
+</ul>
+</li>
+<li>对程序库的影响<ul>
+<li>程序设计应该避免不必要的耦合<ul>
+<li>继承的耦合性第二强</li>
+<li>友元第一</li>
+</ul>
+</li>
+<li>从继承基类改写虚函数的方式，改为往具体类传入回调函数的方式</li>
+</ul>
+</li>
+<li>对面向对象程序设计的影响<ul>
+<li>面向对象三要素：封装、继承和多态<ul>
+<li>封装是根本</li>
+<li>继承和多态可有可无，不但限制了函数名称、参数、返回值，还规定了类的继承关系 </li>
+</ul>
+</li>
+<li>对设计模式的影响<ul>
+<li>行为模式和创建模式，都可以被替代</li>
+<li>23个设计模式，更多的是弥补C++这种静态语言动态性的不足</li>
+</ul>
+</li>
+<li>依赖注入与单元测试<ul>
+<li>传统测试需继承并改写虚函数进行测试，改为传入回调函数</li>
+</ul>
+</li>
+<li>什么时候使用继承<ul>
+<li>派生类的数目和功能完全确定，不考虑扩展</li>
+<li>功能继承，考虑<code>boost::noncopyable</code>和<code>boost::enable_shared_from_this</code></li>
+</ul>
+</li>
+<li>基于接口的设计<ul>
+<li>不会飞的企鹅是否该继承bird——把具体的行为提出来作为interface，如flyable、runable…</li>
+<li>interface粒度应足够小，包含一个method就够，这样interface实际退化成了类型的tag，完全可以使用<code>boost::function</code>来代替</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="六、iostream的用途与局限"><a href="#六、iostream的用途与局限" class="headerlink" title="六、iostream的用途与局限"></a>六、iostream的用途与局限</h1><ol>
+<li><p>stdio格式化输入输出的缺点</p>
+<ul>
+<li>对初学者不友好<ul>
+<li>输入输出格式字符不统一，输入short、double要用%hd、%lf，输出用%d、%f</li>
+<li>输入参数不统一，输入普通变量时取地址&amp;，对数组不用</li>
+<li>容易缓冲区溢出，读入时需指定大小</li>
+</ul>
+</li>
+<li>安全性<ul>
+<li>C99增加指定输出缓冲区大小的函数snprintf，解决输出安全性问题</li>
+<li>对输入函数，虽然也可以指定缓冲区，但遇到转义字符就无法处理<br>  gets(字符个数)-&gt;fgets(转义字符)-&gt;getline(自己free)</li>
+</ul>
+</li>
+<li><p>类型安全</p>
+<ul>
+<li>对各种typedef类型的打印</li>
+<li><p>打印<code>int64_t</code>，在32bit和64bit是不同类型，需要包含<code>&lt;inttypes.h&gt;</code>，使用<code>PRId64</code>宏:</p>
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;inttypes.h&gt;
+
+int64_t x = 100;
+printf(&quot;%&quot; PRId64 &quot;\n&quot;, x);
+</code></pre></li>
+<li><p>格式化字符串与参数类型不匹配时，bug难以发现</p>
+<ul>
+<li>编译器使用<code>-Wall</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>不可扩展<ul>
+<li>不支持自定义类型<ul>
+<li>glibc允许用户调用 <code>register_printf_function</code>注册自己的类型，但不能与现在的格式字符冲突，所以没有人用</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>性能<ul>
+<li>使用little language/DSL 配置格式<ul>
+<li>有利于紧凑性和灵活性，损失一点点效率</li>
+<li>每打印一个整数都要先解析格式字符串</li>
+</ul>
+</li>
+<li>C locale的负担<ul>
+<li>函数和locale相关，可以在运行时动态更改locale</li>
+<li>默认的C locale也要为灵活性付出代价</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>iostream的设计初衷</p>
+<ul>
+<li>设计初衷为克服C stdio的缺点，提供一个高效可扩展的类型安全IO机制<ul>
+<li>可扩展：<ul>
+<li>可以扩展到用户自定义类型</li>
+<li>通过继承iostream来定义自己的stream</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>类型可扩展与类型安全<ul>
+<li>通过函数重载实现，基本克服C stdio的问题</li>
+</ul>
+</li>
+<li>iostream发展的三个阶段<ul>
+<li>用位移操作符作IO<ul>
+<li>类型安全、可扩展、高效</li>
+<li>istream和ostream是具体类，没有操作符(manipulator，如std::cout)</li>
+</ul>
+</li>
+<li>经典的iostream，ios菱形继承体系</li>
+<li>C++标准化，设计Locale/Facet体系，iostream被模板化以适应宽窄字符</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>iostream与标准库其它组件的交互</p>
+<ul>
+<li>值语义与对象语义<ul>
+<li>iostream是对象语义<ul>
+<li>non-copyable</li>
+<li>RAII</li>
+</ul>
+</li>
+<li>C++同时支持数据抽象和面向对象，就是值语义与对象语义的区别</li>
+</ul>
+</li>
+<li>std::string<ul>
+<li>string类定义了iostream的&lt;&lt;和&gt;&gt;操作</li>
+<li>如果要包含iostream头文件，编译会非常慢，因为iostream实现是template，代码全在头文件中</li>
+<li>标准库通过<iosfwd>，包含istream和ostream等的向前声明，在不引入不必要依赖的前提下，支持可选的功能</iosfwd></li>
+<li><code>istream::getline()</code>的参数是<code>char*</code>，因为<code>&lt;istream&gt;</code>没有包含<code>&lt;string&gt;</code>，这个函数是non-member</li>
+</ul>
+</li>
+<li>std::complex<ul>
+<li><code>&lt;complex&gt;</code>-(包含)-&gt;<code>&lt;sstream&gt;</code>-(包含)-&gt;<code>&lt;istream/ostream&gt;</code></li>
+<li><code>operator &gt;&gt;</code>非常复杂，格式、健壮性等考虑</li>
+<li><code>operator &lt;&lt;</code>会动态分配内存，性能不佳</li>
+<li>对complex的IO，建议不用iostream</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>iostream在使用上的缺点</p>
+<ul>
+<li>格式化输出繁琐</li>
+<li>外部可配置性差<ul>
+<li>C stdio的格式化字符串体现了重要的“数据即代码”的思想，“数据”与“代码”之间的相互转化是程序灵活性的根源</li>
+</ul>
+</li>
+<li>stream的状态<ul>
+<li>使用操作符控制格式时，会影响后续代码</li>
+<li>C stdio则是上下文无关的</li>
+</ul>
+</li>
+<li>知识的通用性<ul>
+<li>多个编程语言支持printf风格</li>
+<li>不用深究iostream的格式化方法，需要格式化的场合，可以用snprintf()打印到栈上，再用ostream输出</li>
+</ul>
+</li>
+<li>线程安全与原子性<ul>
+<li>iostream在线程安全方面没有保证</li>
+<li>单个<code>operator &lt;&lt;</code>线程安全，也不能保证语句的原子性</li>
+<li>iostream不适合在多线程程序中做logging</li>
+</ul>
+</li>
+<li>iostream的局限<ul>
+<li>输入方面，不适合输入带格式数据<ul>
+<li>使用istream的情况下，推荐用std::getline()读入一行数据到string，用正则表达式判断内容并分组，最后用strtod()/strtol()之类的函数作转换</li>
+</ul>
+</li>
+<li>输出方面，格式化输出非常繁琐，只适合用在简单的无格式输出</li>
+<li>log方便，多线程情况下不能保证单行输出的完整性，只适合简单的单线程程序</li>
+<li>in-memory格式化方面，ostringstream会动态分配内存，不适合性能要求高的场合</li>
+<li>文件IO方面，ifstream只适合简单的文本文件</li>
+<li>性能方面，某些场合比stdio快，某些场合慢<ul>
+<li>性能要求高的场合，应该自己实现字符串转换</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>iostream在设计上的缺点</p>
+<ul>
+<li>面向对象设计的缺陷，违反OO准则<ul>
+<li>Liskov原则：继承关系中，子类要能替换父类，功能不受影响</li>
+</ul>
+</li>
+<li>locale/facet实现增加iostream复杂度</li>
+<li>臆造抽象<ul>
+<li>基类太瘦，包含的interface用处不大</li>
+<li>基类太肥，包含各种特性，interface很多，但不是每个都能用</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>300行的memory buffer output stream</p>
+<ul>
+<li><code>operator &lt;&lt;</code>适合logging</li>
+<li>Logstream类型安全且类型可扩展</li>
+<li>整数到字符串采用Matthew Wilson算法，比stdio和iostream快</li>
+<li>浮点数到字符串采用snprintf(浮点数转换来自David M.Gay 1990)，性能与stdio持平，比iosream快，未来可能采用最新的Grisu3(2010)实现浮点数转换</li>
+<li>性能好于ostringstream和stdio</li>
+<li>其它程序库使用LogStream作为输出</li>
+<li>本身不支持格式化，可以定义一个Fmt class进行格式化</li>
+</ul>
+</li>
+<li><p>C++的文件IO</p>
+<ul>
+<li>Google Protobuf Compiler<ul>
+<li>用协议语言定义消息格式(读入协议文件.proto)</li>
+<li>自动生成序列化代码(编译生成C++、Java、Python代码)</li>
+<li><strong>没有使用ifstream读文件，使用自己实现的FileInputStream</strong></li>
+<li>代码流程：<ul>
+<li>ZeroCopyInputStream定义抽象基类</li>
+<li>FileInputStream继承ZeroCopyInputStream并实现文件读取</li>
+<li>Tokenizer实现词法分析器，将proto文件分解为一个个字元(token)</li>
+<li>Parser实现词法分析器，将proto文件解析为语法树，构造函数以Tokenizer为参数，读入字元</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Google leveldb<ul>
+<li>高效的持久化key-value db，定义了三个精简的interface(class)用于文件输入输出：<ul>
+<li>SequentialFile</li>
+<li>RandomAccessFile</li>
+<li>WritableFile</li>
+</ul>
+</li>
+<li><strong>明确区分input和output，进一步把input分为sequential和random access，然后提炼出三个简单接口(类)，每个接口(类)只有区区几个函数，简单明了</strong></li>
+<li>接口类使用虚函数，因为一次IO往往伴随系统调用和contexswitch，与此相比虚函数的开销可以忽略不计，而iostream每次<code>operate &lt;&lt;</code>都调用虚函数，是不明智的(Logstream 换成带namespace的全局函数)</li>
+</ul>
+</li>
+<li>Kyoto Cabinet<ul>
+<li>也是一个key-value db，定义了一个File class作为fat interface，似乎不太明智</li>
+<li><strong>没有采用虚函数，采用#ifdef区分不同平台</strong></li>
+</ul>
+</li>
+<li>小结：<ul>
+<li>项目中自己写File class，简单封装IO，通常能满足需求</li>
+<li>注意拷贝和赋值操作符禁用，析构时释放资源，使用RAII，避免泄漏内部handle，可以自动避免很多C文件操作的常见错误</li>
+<li>如果用stream的方式做loggin，可以自己重载<code>operator &lt;&lt;</code>实现简单的Logstream，可以用stack buffer，轻松做到线程安全和高效</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="七、值语义与数据抽象"><a href="#七、值语义与数据抽象" class="headerlink" title="七、值语义与数据抽象"></a>七、值语义与数据抽象</h1><ol>
+<li><p>值语义</p>
+<ul>
+<li>值语义指对象的拷贝与原对象无关，C++内置类型都是值语义，标准库的<code>pair&lt;&gt;、vector&lt;&gt;、map&lt;&gt;、complex&lt;&gt;、string</code>等都是值语义<ul>
+<li>与immutable无关，可以使mutable</li>
+<li>不一定是POD，可以是复杂对象</li>
+<li>对象不一定小，但通常比较小</li>
+</ul>
+</li>
+<li>对象/引用语义：对象是有实际意义的，禁止对象拷贝，因为简单的拷贝操作没有实际意义<ul>
+<li>Java、Python</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>值语义与生命期</p>
+<ul>
+<li>一个巨大好处是生命期简单<ul>
+<li>要么是stack object，要是直接作为其它object的成员 </li>
+</ul>
+</li>
+<li>对象语义不能拷贝，只能通过指针或引用访问<ul>
+<li>生命期管理问题</li>
+<li>C++只能通过指针或引用获得多态特性，导致生命期管理问题</li>
+<li>可以借助smart_pointer把对象语义转为值语义<ul>
+<li>根据对象资源的归属情况，区分使用<code>shard_ptr/weak_ptr</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>值语义与标准库</p>
+<ul>
+<li>C++要求，凡事能放到标准容器的类型，必需具有值语义<ul>
+<li>C++编译器会为class提供default copy constructor和assignment operator，除非明确禁止，class总是可以作为标准容器的元素</li>
+<li>能随意copy和赋值，隐藏了资源管理方面的bug</li>
+</ul>
+</li>
+<li>让自己的class默认继承boost::noncopyable几乎总是正确的</li>
+<li>现代C++一般不需要自己编写copy constructor和assignment operator，因为只要每个成员都具有值语义，编译器自动生成的member-wise copying&amp;assigning就能正常工作</li>
+</ul>
+</li>
+<li><p>值语义与C++</p>
+<ul>
+<li>C++本质上是值语义的，所以存在object slicing的问题</li>
+<li>值语义是C++三大约束之一，C++设计的初衷是让用户定义的类型能像内置类型一样工作:<ul>
+<li>class的layout与C struct一样，没有额外开销</li>
+<li>class data member 默认uninitiated，与函数的local variables一致</li>
+<li>class可以在stach或heap上创建，如果内置类型</li>
+<li>class数组是一个个相邻的对象，没有额外的indirection，如同内置类型的数组，所以派生类数组的指针不能安全转换为基类指针</li>
+<li>class默认生成copy constructor和assignment operator，对象默认copyable，比较尴尬</li>
+<li>class type传入函数时，默认动作是make a copy，如同C<ul>
+<li>C++函数调用比其它语言复杂在于传参和返回值</li>
+<li>由于C++对象是值语义，默认传参会触发对象构造，因此对临时对象的优化是C++的关键</li>
+</ul>
+</li>
+<li>函数返回class type时，只能是make a copy，如同内置类型，所以才有RVO优化</li>
+<li>以class type为数据成员时，数据成员时嵌入并相邻的<ul>
+<li>menmory locality带来性能上的好处</li>
+<li>Java里layout完全不同，每个object都有head</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>什么是数据抽象</p>
+<ul>
+<li>C++的强大之处，在于抽象不以性能损失为代价，支持数据抽象一直是C++的设计目标<ul>
+<li>C++的四个子语言(Bjarne)<ul>
+<li>a better C</li>
+<li>data abstraction</li>
+<li>object-orented programming</li>
+<li>generic programming</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>数据抽象(data abstraction)是与面向对象(object-oriented)并列的编程范式(programming paradigm)</li>
+<li>数据抽象ADT<ul>
+<li>主要表现为支持的操作<ul>
+<li>应具有明确的时间和空间复杂度</li>
+<li>可以隐藏实现细节</li>
+<li>定义数据的行为表现*</li>
+</ul>
+</li>
+<li>与object-based区别<ul>
+<li>ADT通常是值语义，class是可以拷贝的，拷贝之后与原来的instance脱离关系</li>
+<li>O-B通常是对象语义</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>C++标准库中的数据抽象<ul>
+<li><code>complex&lt;&gt;、pair&lt;&gt;、vector&lt;&gt;、map&lt;&gt;、complex&lt;&gt;、string</code>都是数据抽象</li>
+<li>含义清晰<ul>
+<li>list是链表、map是有序关联数组、set是有序集合、stack是FILO栈、queue是FIFO队列</li>
+<li>链表、有序关联数组、有序集合、栈、队列都是定义明确(操作、复杂度)的抽象数据类型</li>
+</ul>
+</li>
+<li>计算复杂度都是常数</li>
+</ul>
+</li>
+<li>数据抽象与面向对象的区别<ul>
+<li>data abstraction、object-based、object-oriented是三个编程范式</li>
+<li>面向对象三大特征：封装、继承、多态，这是表象，核心思想是消息传递，是对象语义</li>
+<li>基于对象只有封装，没有继承和多态，即只有具体类，没有抽象接口，是对象语义</li>
+<li>数据抽象是值语义，是针对数据的，可以拷贝，只要复制数据就行</li>
+<li>如果一个class代表了某种含义，不能简单复制，就是object-based或object-oriented</li>
+<li>ADT class可以作为object-based、object-oriented的成员，但不能反过来，因为拷贝就失去意义了</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>数据抽象所需的语言设施</p>
+<ul>
+<li>支持数据聚合data aggregation<ul>
+<li>即C style struct</li>
+</ul>
+</li>
+<li>全局函数与重载<ul>
+<li>对不同类型实现统一操作</li>
+<li>C有全局函数没有重载，Java没有全局函数且class封闭</li>
+</ul>
+</li>
+<li>成员函数与private数据<ul>
+<li>能在struct里定义操作，而不是用全局函数来操作struct</li>
+<li>就是定义class，现代语言都支持，C除外</li>
+</ul>
+</li>
+<li>拷贝控制copy control<ul>
+<li>copy control 是拷贝和赋值的合称<ul>
+<li>拷贝：<code>stack a; stack b = a;</code></li>
+<li>赋值：<code>stack b; b = a;</code></li>
+</ul>
+</li>
+<li>ADT用到的资源只涉及动态分配内存，深拷贝是可行的，object-based的class往往代表真实事物，深拷贝无意义</li>
+<li>C没有copy control，只能程序员自己控制</li>
+</ul>
+</li>
+<li>操作符重载<ul>
+<li>使行为表现趋于一致</li>
+</ul>
+</li>
+<li>效率无损<ul>
+<li>C++的优势</li>
+</ul>
+</li>
+<li>模板与泛型</li>
+<li>不是每个面向对象语言都原生支持数据抽象，说明数据抽象不是面向对象的子集</li>
+</ul>
+</li>
+</ol>
+<h1 id="八、小结"><a href="#八、小结" class="headerlink" title="八、小结"></a>八、小结</h1><ol>
+<li>数据抽象是C++最重要的抽象手段，语义简单，不易出错，容易使用</li>
+<li>新写class时，先想清楚是值语义还是对象语义，一般来说一个项目只有少量class是值语言(抽象层面)，大多数class是对象语义(具体事物)</li>
+<li>对象语义的class，应立刻继承<code>boost::noncopyable</code>，防止编译器自动生成的拷贝构造函数的复制操作符无意中破坏程序行为，如有人误放入标准容器中</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/07/03/阅读笔记-Linux多线程服务器编程-第十一章-反思C-对象与虚函数/" data-id="ciq61mwg700cpzc63uho6mmhu" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux多线程服务器编程/">Linux多线程服务器编程</a></div><div class="post-nav"><a href="/2016/06/23/阅读笔记-Linux多线程服务器编程-第十章-补充：ODR原则/" class="next">第十章 补充：ODR原则</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">255</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">13</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/阅读笔记-Linux多线程服务器编程-第十一章-反思C-对象与虚函数/">第十一章 反思C++对象与虚函数</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/23/阅读笔记-Linux多线程服务器编程-第十章-补充：ODR原则/">第十章 补充：ODR原则</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/21/阅读笔记-Linux多线程服务器编程-第十章-C-编译链接模型精要/">第十章 C++编译链接模型精要</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/17/阅读笔记-Linux多线程服务器编程-第九章-分布式工程实践/">第九章 分布式工程实践</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/16/开发环境搭建-kali-linux-VM版设置/">kali linux VM版设置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/16/阅读笔记-Linux多线程服务器编程-第五章-高效的多线程日志/">第五章 高效的多线程日志</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/08/阅读笔记-Linux多线程服务器编程-第四章-补充：POD类型/">第四章 补充：POD类型</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/06/阅读笔记-Linux多线程服务器编程-第四章-C-多线程系统编程精要/">第四章 C++多线程系统编程精要</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/01/阅读笔记-Linux多线程服务器编程-第三章-补充：reactor与proactor/">第三章 补充：reactor与proactor</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/31/阅读笔记-Linux多线程服务器编程-第三章-多线程常用编程模型/">第三章 多线程常用编程模型</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
