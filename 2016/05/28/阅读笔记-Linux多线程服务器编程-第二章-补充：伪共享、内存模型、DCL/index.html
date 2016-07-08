@@ -1,0 +1,288 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第二章 补充：第二章 补充：false-sharing、内存模型、DCL | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第二章 补充：第二章 补充：false-sharing、内存模型、DCL</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第二章 补充：第二章 补充：false-sharing、内存模型、DCL</h1><div class="post-meta">May 28, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、伪共享问题false-sharing"><span class="toc-number">1.</span> <span class="toc-text">一、伪共享问题false-sharing</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、acquire-release语义"><span class="toc-number">2.</span> <span class="toc-text">二、acquire-release语义</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、线程安全的double-checked-lock"><span class="toc-number">3.</span> <span class="toc-text">三、线程安全的double-checked-lock</span></a></li></ol></div></div><div class="post-content"><h1 id="一、伪共享问题false-sharing"><a href="#一、伪共享问题false-sharing" class="headerlink" title="一、伪共享问题false-sharing"></a>一、伪共享问题false-sharing</h1><ol>
+<li><p>多核情况下的CPU cache</p>
+<ul>
+<li>CPU读取cache是以行为单位</li>
+<li>如果两个硬件线程访问位于同一cache行的两块内存，当它们同时进行写操作的时候，会引起竞争，造成效率下降</li>
+<li>主要发生在多线程对两块相邻内存的并发访问，如同一个数组或结构体的相邻部分</li>
+<li>可以采取一定的内存分配方法，保证可能被多线程并发访问的相邻内存是跨cache行的，如数组或结构体定义时，元素之间预留cache行空间</li>
+</ul>
+</li>
+<li><p>单核情况下不存在此问题，因为任意时刻只有一个线程被CPU执行</p>
+</li>
+</ol>
+<h1 id="二、acquire-release语义"><a href="#二、acquire-release语义" class="headerlink" title="二、acquire-release语义"></a>二、acquire-release语义</h1><ol>
+<li><p>顺序一致性问题：不相关的两条语句，运行乱序执行</p>
+<pre><code>atomic&lt;int&gt; a {0};
+atomic&lt;int&gt; b {0};
+
+a = 1;
+b = 2;
+
+// in thread，a == 1?
+if(b == 2)
+    cout &lt;&lt; a &lt;&lt; endl;            
+</code></pre></li>
+<li><p>C++11默认的内存模型保证顺序一致，会破坏处理执行性能并阻止编译器优化，往往意味着最低效的同步方式</p>
+<ul>
+<li>硬件平台的内存模型：<ul>
+<li>强顺序：指令执行顺序与代码编写顺序一致（X86 Sparc）</li>
+<li>弱顺序：顺序无关的代码可以被乱序执行（PowerPC ArmV7 Itanlium），以同时发射多条指令到流水线。需保证顺序时要加memory barrier指令，这会对高度流水化的cpu指令有较大影响，大幅降低流水线吞吐率（throughput）和运行时性能。</li>
+</ul>
+</li>
+<li>硬件平台内存模型与C++11内存模型（软件上）的顺序一致性<ul>
+<li>保证编译器产生的指令与代码编写一致（保证原子类型的执行是顺序一致的）</li>
+<li>保证处理器执行顺序与编译器产生的汇编指令一致（弱顺序的平台需要编译器加入barrier指令）</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<ol>
+<li>acquire-release语义<ul>
+<li>C++11支持如下内存模型：    <ul>
+<li><code>memory_order_relaxed</code>    松散模型，不保证执行顺序    </li>
+<li><code>memory_order_acquire</code>    线程中的后续读操作要在本原子操作完成后执行</li>
+<li><code>memory_order_release</code>    线程中的之前的写操作要在本原子操作之前执行</li>
+<li><code>memory_order_acq_rel</code>    同时包含acquire和release标记</li>
+<li><code>memory_order_consume</code>    线程中后续本类型原子操作必须在本条原子操作完成后执行</li>
+<li><code>memory_order_seq_cst</code>    顺序执行，默认的内存模型</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>* 适用性
+
+    + 适用于所有操作：`relaxed、seq_cst`
+    + 仅适用于写操作（`store`）：`release`
+    + 仅适用于读操作（`load`）：`consume、acquire`
+    + 适用于RMW操作（`read-modify-write，如test_and_set、+ atomic_compare_exchange`等操作）：所有
+
+* 应用1： release-acquire顺序——release、acquire常常结合使用
+
+        还是上面的例子：
+        atomic&lt;int&gt; a {0};
+        atomic&lt;int&gt; b {0};
+
+        int Set(void) {
+            a.store(1, memory_order_relaxed);            
+            b.store(2, memory_order_release);    // 所有的原子写操作执行完成后执行本操作，即a.store执行完后执行本操作
+        }
+
+        int Print(void) {
+            while(b.load(memory_order_acquire) != 2);   // 本原子操作执行完后才能执行原子读操作，即a.load要在while后执行
+            cout &lt;&lt; &quot;a = &quot; &lt;&lt; a.load(memory_order_relaxed) &lt;&lt; endl;        // 输出一定为a = 1    
+        } 
+
+        int main() {
+            std::thread t1(Set, NULL);
+            std::thread t2(Print, NULL);        // 输出结果得到内存模型上的保障，一定为a = 1;
+
+            t1.join();
+            t2.join();
+        }        
+
+
+* 通常情况下，“先于发生”关系总是传递的，如原子操作A先于B，B又先于C，那么A总是先于C的，所以合理使用内存模块可以使编译器重排序指令是在不破坏依赖规则的情况下，仅在适当位置插入memory barrier，以保证最佳性能
+
+* 应用二：release-consume顺序——与acquire相比，进一步放松依赖关系（只和本类型相关）
+
+        还是上面的例子：
+        atomic&lt;int&gt; a {0};
+        atomic&lt;int&gt; b {0};
+
+        int Set(void) {
+            a.store(1, memory_order_relaxed);            
+            b.store(2, memory_order_release);            // 所有的原子写操作执行完成后执行本操作
+        }
+
+        int Print(void) {
+            while(b.load(memory_order_consume) != 2);   // 本原子操作执行完后才能执行b类型的原子读操作，即b.load要在while后执行，但不约定a的执行顺序
+            cout &lt;&lt; &quot;b = &quot; &lt;&lt; b.load(memory_order_relaxed) &lt;&lt; endl;
+            cout &lt;&lt; &quot;a = &quot; &lt;&lt; a.load(memory_order_relaxed) &lt;&lt; endl;        //可能在while前执行
+        } 
+
+        int main() {
+            std::thread t1(Set, NULL);
+            std::thread t2(Print, NULL);                // 输出结果一定是b = 2，但不一定a = 1 ：）
+
+            t1.join();
+            t2.join();
+        }
+
+* C++内存模型最典型的4种执行顺序：
+    + 顺序一致（memory_order_seq_cst，默认顺序，效率最低）
+    + 松散（memory_order_relaxed）
+    + release-acquire顺序 (约束所有类型的原子操作)    
+    + release-consume顺序（只约束本类型的原子操作）
+
+* 通过内存模型，可在弱顺序平台上带来极大的并发性能提升
+</code></pre><h1 id="三、线程安全的double-checked-lock"><a href="#三、线程安全的double-checked-lock" class="headerlink" title="三、线程安全的double-checked-lock"></a>三、线程安全的double-checked-lock</h1><ol>
+<li><p>基本知识</p>
+<ul>
+<li><p>eager initialization(饿汉式)</p>
+<ul>
+<li><p>先初始化再使用，集中初始化耗时，且容易造成资源浪费</p>
+<pre><code>class Singleton {
+public:
+    static Singleton* instance;
+    static Singleton* getInstance(void) {
+        return instance;
+    }
+};
+static Singleton* Singleton::instance = new Singletion();        
+</code></pre></li>
+</ul>
+</li>
+<li><p>lazy initialization(懒汉式)</p>
+<ul>
+<li><p>第一次使用时创建</p>
+<pre><code>class Singleton {
+public:
+    static Singleton* instance;
+    static Singleton* getInstance(void) {
+        if(!instance) 
+            instance = new Singletion()
+        return instance;
+    }
+};    
+static Singleton* Singleton::instance = NULL;            
+</code></pre></li>
+</ul>
+</li>
+<li><p>懒汉式 + 锁</p>
+<ul>
+<li>多线程下使用，实例创建过程必须加锁，避免同时创建</li>
+<li><p>如果频繁访问，锁影响性能</p>
+<pre><code>class Singleton {
+public:
+    static Singleton* instance;
+    static Singleton* getInstance(void) {
+        MutexLockGuard lock(mutex);
+        if(!instance) 
+            instance = new Singletion()
+        return instance;
+    }
+};    
+static Singleton* Singleton::instance = NULL;    
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>double-checked-lock</p>
+<ul>
+<li><p>DCL</p>
+<ul>
+<li>其实只需要对实例化过程加锁，实例化以后就不需要锁了</li>
+<li>只有在第一次检查没有实例化的时候，才加锁并再次检查和实例化</li>
+<li><p>实例化以后就不需要锁了，只有第一次实例化才用到锁，效率提高</p>
+<pre><code>class Singleton {
+public:
+    static volatile Singleton* instance;
+    static Singleton* getInstance(void) {
+        if(!instance) {
+            MutexLockGuard lock(mutex);
+            if(!instance)
+                instance = new Singletion()
+        }
+        return instance;
+    }
+};    
+static volatile Singleton* Singleton::instance = NULL;    
+</code></pre></li>
+</ul>
+</li>
+<li><p>volatile —— 缓存一致性</p>
+<ul>
+<li>在产生汇编代码时，写变量时强制写回内存，避免在多处理器情况下，变量存在CPU缓存中，造成缓存不一致的情况</li>
+<li>CPU缓存一致性会阻止同时修改被两个以上处理器缓存的内存数据</li>
+</ul>
+</li>
+<li><p>DCL的风险 —— C++内存模型</p>
+<ul>
+<li>很不幸，上面的代码在C++内存模型下，有一定的风险</li>
+<li><p>某些情况下，C++编译器为了优化，可能对new语句产生如下代码：</p>
+<pre><code>instance = operator new(sizeof(Singletion));    // 1
+new (instance) Singleton;    // 2
+</code></pre><ul>
+<li>编译器这么做的目的是这两条语句在一定程度上可以并行，以发挥多核并发的优势<ul>
+<li>operator new分配内存后，地址返回给instance与调用Singleton的构造函数这两个动作可以并发执行</li>
+</ul>
+</li>
+<li>当语句1执行完，2还没有执行时，如果另一个线程调用了这个getInstance()方法，判断instance实例的结果就不为空，而此时instance并没有构造！</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>防止instance在构造前被初始化</p>
+<ul>
+<li>其指导思想：先构造完成，再初始化instance</li>
+<li><p>同时还可以防止Singleton的构造函数抛出异常，导致instance内存存在但没有构造对象</p>
+<pre><code>class Singleton {
+public:
+    static volatile Singleton* instance;
+    static Singleton* getInstance(void) {
+        if(!instance) {
+            MutexLockGuard lock(mutex);
+            if(!instance) {
+                Singleton* temp = new Singletion();                    
+                instance = temp;
+            }
+        }
+        return instance;
+    }
+};    
+static volatile Singleton* Singleton::instance = NULL;    
+</code></pre><ul>
+<li>很不幸，对于编译器来说temp这个局部变量有可能被直接优化掉，需要一种办法强制编译器生成代码指令</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>再论volatile —— 顺序一致性</p>
+<ul>
+<li>C++标准规定，volatile数据对象能保证正确的指令执行顺序</li>
+<li><p>因此，需要将合适的数据声明成volatile，即所有的Singleton相关变量都是volatile的，不仅仅是指针instance，还包括Singleton对象本身，以及局部变量temp：</p>
+<pre><code>class Singleton {
+public:
+    static volatile Singleton* volatile instance;
+    static volatile Singleton* volatile getInstance(void) {
+        if(!instance) {
+            MutexLockGuard lock(mutex);
+            if(!instance) {
+                volatile Singleton* volatile temp = new Singletion();                    
+                instance = temp;
+            }
+        }
+        return instance;
+    }
+};    
+static volatile Singleton* Singleton::instance = NULL;    
+</code></pre><ul>
+<li>lock由pthread库保证顺序一致性，不用声明为volatile</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>再论 eager initialization 与 lazy initialization</p>
+<ul>
+<li>最大限度提供线程安全性的方式，就是最大程度的减少并发</li>
+<li>因此，eager initialization 虽然初始化性能不佳，但能更好的避免并发的情况，是最简单的线程安全的Singleton实现</li>
+<li><p>使用时应注意最小化调用Singleton::instance，利用缓存的局部性原理进行代码优化:</p>
+<pre><code>Singleton::instance()-&gt;funcA();
+Singleton::instance()-&gt;funcB();
+Singleton::instance()-&gt;funcC();
+
+应改为：
+const Singleton* ist = Singleton::instance();
+ist-&gt;funcA();
+ist-&gt;funcB();
+ist-&gt;funcC();
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/28/阅读笔记-Linux多线程服务器编程-第二章-补充：伪共享、内存模型、DCL/" data-id="ciqdtuohz00cl1a63sx6v3oy8" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux多线程服务器编程/">Linux多线程服务器编程</a></div><div class="post-nav"><a href="/2016/05/28/阅读笔记-Linux多线程服务器编程-第二章-线程同步精要/" class="pre">第二章 线程同步精要</a><a href="/2016/05/28/阅读笔记-Linux多线程服务器编程-第一章-线程安全的对象生命期管理/" class="next">第一章 线程安全的对象生命期管理</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">257</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-C-经验谈/">第十二章 C++经验谈</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-补充：链接顺序与优先级/">第十二章 补充：链接顺序与优先级</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/04/开发环境搭建-ubuntu-server15-10安装systemtap/">ubuntu_server15.10安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/开发环境搭建-扩展虚拟机硬盘容量/">扩展虚拟机硬盘容量</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/阅读笔记-Linux多线程服务器编程-第十一章-反思C-对象与虚函数/">第十一章 反思C++对象与虚函数</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/23/阅读笔记-Linux多线程服务器编程-第十章-补充：ODR原则/">第十章 补充：ODR原则</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/21/阅读笔记-Linux多线程服务器编程-第十章-C-编译链接模型精要/">第十章 C++编译链接模型精要</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/17/阅读笔记-Linux多线程服务器编程-第九章-分布式工程实践/">第九章 分布式工程实践</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/16/开发环境搭建-kali-linux-VM版设置/">kali linux VM版设置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/16/阅读笔记-Linux多线程服务器编程-第五章-高效的多线程日志/">第五章 高效的多线程日志</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

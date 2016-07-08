@@ -1,0 +1,588 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第十二章 C++经验谈 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第十二章 C++经验谈</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第十二章 C++经验谈</h1><div class="post-meta">Jul 8, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、用异或来交换变量是错误的"><span class="toc-number">1.</span> <span class="toc-text">一、用异或来交换变量是错误的</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、不要重载全局-operator-new"><span class="toc-number">2.</span> <span class="toc-text">二、不要重载全局::operator new()</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、带符号整数的除法与余数"><span class="toc-number">3.</span> <span class="toc-text">三、带符号整数的除法与余数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、在单元测试中mock系统调用"><span class="toc-number">4.</span> <span class="toc-text">四、在单元测试中mock系统调用</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、慎用匿名namespace"><span class="toc-number">5.</span> <span class="toc-text">五、慎用匿名namespace</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、采用有利于版本管理的代码格式"><span class="toc-number">6.</span> <span class="toc-text">六、采用有利于版本管理的代码格式</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、再探std-string"><span class="toc-number">7.</span> <span class="toc-text">七、再探std::string</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#八、用STL-algorithm轻松解决几道算法面试题"><span class="toc-number">8.</span> <span class="toc-text">八、用STL algorithm轻松解决几道算法面试题</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#九、小结"><span class="toc-number">9.</span> <span class="toc-text">九、小结</span></a></li></ol></div></div><div class="post-content"><blockquote>
+<p>练从难处练，用从易处用</p>
+</blockquote>
+<h1 id="一、用异或来交换变量是错误的"><a href="#一、用异或来交换变量是错误的" class="headerlink" title="一、用异或来交换变量是错误的"></a>一、用异或来交换变量是错误的</h1><ol>
+<li><p>好代码和烂代码</p>
+<ul>
+<li><p>用中间变量交换，好代码</p>
+<pre><code>void swap(char* str, int n) {
+    char* begin = str;
+    char* end = str + n - 1;
+
+    while(begin &lt; end) {
+        char tmp = *begin;
+        *begin = *end;
+        *end = tmp; 
+        ++begin;
+        --end;
+    }
+}
+</code></pre></li>
+<li><p>用异或交换变量，烂代码</p>
+<pre><code>void swap(char* str, int n) {
+    char* begin = str;
+    char* end = str + n - 1;
+
+    while(begin &lt; end) {
+        *begin ^= *end;
+        *end ^= begin; 
+        *begin ^= *end;
+        ++begin;
+        --end;
+    }
+}
+</code></pre></li>
+<li><p>实际的结果，短的代码不一定快，第一种方式更快，更节省内存</p>
+<ul>
+<li>中间变量只有两次内存读写，异或六读三写加三次异或，会更慢</li>
+<li>中间变量tmp通常会用到寄存器，即使是在函数栈上，由于栈已经建立，不会节约内存</li>
+<li>异或由于计算步骤多，生成指令更多，编译后体积大。</li>
+</ul>
+</li>
+<li><p>C/C++一条语句中，一个变量的值只允许改变一次，否则结果未定义</p>
+<pre><code>*begin ^= *end ^= *begin ^= *end;    
+x = x++;
+</code></pre><ul>
+<li>一条语句出现多个序列点，其结果未定义</li>
+</ul>
+</li>
+<li><p>C++中翻转字符串的简单方法——STL的<code>std::reverse()</code></p>
+<pre><code>void swap(char* str, int n) {
+    std::reverse(str, str + n);
+}
+</code></pre><ul>
+<li>现代编译器会将<code>std::reverse()</code>这种简单函数自动内联展开</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>编译器生成的代码</p>
+<ul>
+<li>重要的不是为什么异或比中间变量快，而是如何发现这个事实</li>
+<li>不要猜guess，要测benchmark</li>
+<li>不要想当然的优化，也不要低估编译器的优化能力</li>
+</ul>
+</li>
+<li><p>短的代码不一定快</p>
+<ul>
+<li><p>一条计算商和余数的代码，生成了10几条指令</p>
+<pre><code>// in a loop by i
+int a = i % 10;
+i /= 10;
+</code></pre><ul>
+<li>现代处理器的乘法运算和加减一样快，比除法快一个数量级左右</li>
+</ul>
+</li>
+<li>用清晰的代码表达意图，让编译器容易实施优化</li>
+<li>C++模板会使代码膨胀，但有时是好事情，因为编译器能针对不同的类型生成快速算法，所以模板不要滥用，应合理使用</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、不要重载全局-operator-new"><a href="#二、不要重载全局-operator-new" class="headerlink" title="二、不要重载全局::operator new()"></a>二、不要重载全局<code>::operator new()</code></h1><ol>
+<li><p>内存管理的基本要求</p>
+<ul>
+<li>分配释放要配对</li>
+</ul>
+</li>
+<li><p>重载重载全局<code>::operator new()</code>的目的</p>
+<ul>
+<li>检测代码的内存错误</li>
+<li>优化性能</li>
+<li>获得内存使用的统计数据</li>
+</ul>
+</li>
+<li><p>全局<code>::operator new()</code>的两种重载方式</p>
+<ul>
+<li><p>不改变签名，无缝替换原有版本</p>
+<pre><code>#include &lt;new&gt;
+
+void* operator new(size_t size)
+void operator delete(void *p)
+</code></pre><ul>
+<li>使用上没有任何变化，通常用作性能优化</li>
+</ul>
+</li>
+<li><p>新增参数，调用时也需要提供</p>
+<pre><code>// 必需能被普通operator delete释放
+void* operator new(size_t size, const char* file, int line);
+
+// 在构造函数抛出异常的情况下才会被调用
+void operator delete(void* p, const char* file, int line);
+
+// 使用，可跟踪分配点
+Foo* p = new(__FILE__, __LINE__) Foo;
+</code></pre><ul>
+<li>通常用作跟踪分配，检查错误和统计数据</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>现实的开发环境</p>
+<ul>
+<li>现实的库来源：<ul>
+<li>C标准库</li>
+<li>第三方C库，如OpenSSL</li>
+<li>C++标准库，如STL</li>
+<li>第三方C++通用库，如Boost</li>
+<li>公司内部基础设施库</li>
+<li>项目模块</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>重载全局<code>::operator new()</code>的困境</p>
+<ul>
+<li>绝对不能在library里重载<ul>
+<li>对于重载方式一，非常具有侵略性，任何使用到library的地方都会被迫使用</li>
+<li>对于重载方式二，会引发是否暴露接口给库的使用者，是否兼容默认operate delete等一系列问题</li>
+</ul>
+</li>
+<li>在主程序里重载全局<code>::operator new()</code>意义不大<ul>
+<li>对重载方式一，有更好的方式来完成(直接替换malloc)</li>
+<li>对重载方式二，无法很好的用到其它库中</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>直接替换malloc</p>
+<ul>
+<li>直接替换malloc()，通过<code>LD_PRELOAD</code>来加载.so，其中有malloc/free的替代实现(drop-in replacement)，代码能同时为C和C++服务</li>
+<li>内存检测直接用工具，如valgrind</li>
+<li>统计内存数据，通过backtrace()获得函数调用栈，找到真正的调用链</li>
+<li>对于性能优化，直接使用现有对多核多线程优化的非侵入式malloc实现<ul>
+<li>Google的tcmalloc</li>
+<li>Intel的TBB里的内存分配器</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>重载class的operator new</p>
+<ul>
+<li>影响不大，仅限于class对象本身</li>
+<li>主要原因是用到了显式的内存分配策略，如内存池或对象池</li>
+<li>显式的定义分配接口，而不是通过重载来改变operator new的默认行为，能让代码更清晰可读</li>
+</ul>
+</li>
+<li><p>是否有必要自行定制内存分配器</p>
+<ul>
+<li>只分配固定大小的allocator容易做到比系统快</li>
+<li>实现通用的内存分配器很难<ul>
+<li>libc有专人维护，适合硬件体系的分配算法和策略</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、带符号整数的除法与余数"><a href="#三、带符号整数的除法与余数" class="headerlink" title="三、带符号整数的除法与余数"></a>三、带符号整数的除法与余数</h1><pre><code>// Efficient Integer to String Conversions, by Matthew Wilson.
+template&lt;typename T&gt;
+size_t convert(char buf[], T value)
+{
+  T i = value;
+  char* p = buf;
+
+  do
+  {
+    // least significant digit
+    int lsd = static_cast&lt;int&gt;(i % 10); // 可能小于0
+    i /= 10;    // 对于负数，商向0取整才能正常工作
+    *p++ = zero[lsd];    // 下标可能为负
+  } while (i != 0);
+
+  if (value &lt; 0)
+  {
+    *p++ = &apos;-&apos;;
+  }
+  *p = &apos;\0&apos;;
+  std::reverse(buf, p);
+
+  return p - buf;    // 整数长度
+}
+</code></pre><ol>
+<li>用对称digits数组搞定负数转换的边界条件</li>
+<li>C99和C++11明确规定负数除法向0取整</li>
+</ol>
+<h1 id="四、在单元测试中mock系统调用"><a href="#四、在单元测试中mock系统调用" class="headerlink" title="四、在单元测试中mock系统调用"></a>四、在单元测试中mock系统调用</h1><ol>
+<li><p>单元测试在failure场景中很重要</p>
+<ul>
+<li>开发存储系统时，模拟read(2)/write(2)返回EIO错误</li>
+<li>开发网络库时：<ul>
+<li>模拟write返回EPIPE错误</li>
+<li>模拟自连接<ul>
+<li>网络库应该用getsockname和getpeername判断是否是自连接并断开</li>
+<li>模拟本地ephemeral port耗尽，connect返回EAGAIN临时错误</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>系统函数的依赖注入</p>
+<ul>
+<li>传统面向对象的方法<ul>
+<li>将系统调用封装成虚函数，供代码使用如System::instance().open()</li>
+<li>测试时替换instance为mock对象</li>
+<li>运行期多态的开销被浪费，因为instance是Singleton</li>
+</ul>
+</li>
+<li>采用编译期或链接期的推迟绑定<ul>
+<li>在单独namespace中封装系统调用，做成lib</li>
+<li>编译时链接到mock系统调用的lib，可进行测试</li>
+<li>namespace的好处在于不封闭，随时可以添加新内容，这也是以non-member、non-friend函数为接口的优点</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>link seam——代码没有考虑单元测试时，如何mock系统调用</p>
+<ul>
+<li>可以在单元测试中实现自己的系统调用，动态链接到程序<ul>
+<li>对于动态库，会优先链接，静态库则报错</li>
+<li>链接顺序与优先级处理见本章补充材料</li>
+</ul>
+</li>
+<li><p>对于要测试mock，同时也要被调用执行的系统调用</p>
+<ul>
+<li><p>通过dlsym获取系统函数的真实地址，然后通过函数指针来调用</p>
+<pre><code>connect_func = dlsym(RTDL_NEXT, &quot;connect&quot;);
+</code></pre></li>
+</ul>
+</li>
+<li><p>可以通过ld的–wrap参数，对动态库的函数进行替换</p>
+</li>
+<li>对于C++动态库，也可以直接mock class成员函数进行单元测试</li>
+</ul>
+</li>
+</ol>
+<h1 id="五、慎用匿名namespace"><a href="#五、慎用匿名namespace" class="headerlink" title="五、慎用匿名namespace"></a>五、慎用匿名namespace</h1><ol>
+<li><p>C的static，两种用法</p>
+<ul>
+<li>用法一：函数内部修饰local static变量，使函数具有状态<ul>
+<li>一般使用static变量的函数都是不可重入和非线程安全的</li>
+</ul>
+</li>
+<li>用法二：文件级别，修饰具有internal linkage的函数和变量，不暴露给其它编译单元</li>
+</ul>
+</li>
+<li><p>C++的static，多两种新用法</p>
+<ul>
+<li>用法三：修饰class的静态数据成员，使其在一个类中公用</li>
+<li>用法四：修饰class的静态成员函数，只能访问class variable和其它静态函数</li>
+</ul>
+</li>
+<li><p>匿名namespace</p>
+<ul>
+<li>C++的匿名namespace引入是为了减轻static的负担，替换了static的第二种用法</li>
+<li>不利之处：<ul>
+<li>其中的函数或变量是匿名的，需要分辨是哪个文件中的同名符号比较困难<ul>
+<li>匿名namespace的函数时weak text，链接时发生重名不会报错</li>
+</ul>
+</li>
+<li>某些版本的编译器，同一个文件每次编译出来的二进制文件会变化，比如给匿名namespace随机生成一个唯一名字<ul>
+<li>这时可以用gcc 的-frandom-seed参数解决</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>建议用具名替代匿名namespace</p>
+</li>
+</ol>
+<h1 id="六、采用有利于版本管理的代码格式"><a href="#六、采用有利于版本管理的代码格式" class="headerlink" title="六、采用有利于版本管理的代码格式"></a>六、采用有利于版本管理的代码格式</h1><ol>
+<li><p>有利于版本管理</p>
+<ul>
+<li>版本管理是程序员的基本技能，版本管理的基本功能之一是追踪代码变化，俗称“做一下diff”</li>
+<li>diff的输出是个peephole，上下文有限，<code>diff -u</code>默认显示前后3行，常用的方式是逐行比较</li>
+<li>C/C++是自由格式的语言，代码中的换行符被当做white space对待</li>
+<li>有利于版本管理，指代码里合理使用换行符，让diff结果清晰明了的表达代码改动</li>
+</ul>
+</li>
+<li><p>对diff友好的代码风格</p>
+<ul>
+<li>多行注释也用<code>//</code>，不用<code>/**/</code><ul>
+<li><code>/**/</code>无法在命令行下的diff清晰表达代码改动，以及当前行是否在注释中(?)</li>
+<li>《EC++(ed2)》中有专文指出，ed3中去掉</li>
+</ul>
+</li>
+<li>局部变量与成员变量定义<ul>
+<li>基本原则是，一行代码只定义一个变量<ul>
+<li>定位改动方便、清晰</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>函数声明中的参数<ul>
+<li>如果参数大于3个，在逗号后面换行，每个参数各占一行</li>
+</ul>
+</li>
+<li>class初始化列表<ul>
+<li>一行一个，同上</li>
+</ul>
+</li>
+<li>与namespace有关的缩进<ul>
+<li>Google的C++编程规范明确指出，namespace不增加缩进，这是为了方便diff -p显示chunk name</li>
+<li>chunk name对函数是函数名，对class是类名，对namespace是其空间名</li>
+<li>diff原本是为C设计，将顶格写的名称作为chunk name，所以最好namespace、class定义和(全局、成员)函数定义都顶格写</li>
+</ul>
+</li>
+<li>public与private<ul>
+<li>这是C++设计的缺陷，无法通过diff看出区别</li>
+<li>Java和C#在每个符号前标识出来，没有这个问题</li>
+</ul>
+</li>
+<li>不要使用版本控制软件的keyword substitution功能<ul>
+<li>这是为了避免diff噪声</li>
+<li>这是CVS时代的过时作法，在源码中嵌入文件Id，导致未经改动的文件内容出现不一致</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>对grep友好的代码风格</p>
+<ul>
+<li>操作符重载<ul>
+<li>C++工具匮乏，很难找到函数的调用点(比如重载与模板特化)，对于operator就更难查找了</li>
+<li>operator overloading应仅限于STL algrithm/container配合时使用</li>
+</ul>
+</li>
+<li>static_cast与C-sytle cast<ul>
+<li>C++引入<code>*_cast</code>的原因之一，是类似<code>(int *)a</code>这样的表达式，无法grep判断出是强制类型转换</li>
+<li>可以打开编译选项<code>-Wold-style-cast</code>来查找C-style casting</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>一切为了效率</p>
+<ul>
+<li>diff命令行比较工具，避免了side-by-side比较，使得修改可以一眼看出，效率完胜图形界面 <ul>
+<li>如 git blame</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="七、再探std-string"><a href="#七、再探std-string" class="headerlink" title="七、再探std::string"></a>七、再探<code>std::string</code></h1><ol>
+<li><p><code>std::string</code>的实现</p>
+<ul>
+<li><p>实现有三类：</p>
+<ul>
+<li>eager copy，无特殊处理，与vector类似的处理，最简单</li>
+<li>COW，写时复制，g++的实现，最复杂</li>
+<li>SSO，短字符串优化</li>
+</ul>
+</li>
+<li><p>不同库的实现：</p>
+<pre><code>lib                        32bit    64bit    实现方式
+g++                            4        8    COW
+__gnu_cxx::__sso_string       24       32    SSO
+__gnu_cxx::__rc_string        4        8    SSO    
+clang libc++               12       24    SSO
+SGI STL                       12       24    eager copy
+STL Port                   24       48    SSO
+Apache libstdcxx            4        8    COW
+Visual C++2010            28/32    40/48    SSO
+</code></pre></li>
+<li><p>无论任何实现，都必须保存：</p>
+<ul>
+<li>字符串本身char[]</li>
+<li>字符串长度size</li>
+<li>字符串容量capacity</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>eager copy直接拷贝</p>
+<ul>
+<li><p>类似vector的三指针结构，大小12/24</p>
+<pre><code>char* start;
+char* finish;
+char* end_of_stroage;
+</code></pre></li>
+<li><p>双整数u64，大小一样</p>
+<pre><code>char* start;
+size_t size;
+size_t capacity;
+</code></pre></li>
+<li><p>改变size和capacity为u32，64bit下大小为16 </p>
+<pre><code>char* start;
+u32int_t size;
+u32int_t capacity;
+</code></pre></li>
+</ul>
+</li>
+<li><p>COW</p>
+<ul>
+<li>COW对多线程不友好</li>
+<li>拷贝快(O(1))，拷贝后第一次操作慢(O(n))</li>
+<li><p>优化空间不大</p>
+<pre><code>class cow_string {
+    struct Rep {
+        size_t size;
+        size_t capacity;
+        size_t refcount;
+        char* data[1];
+    };
+    char* start;
+};
+</code></pre></li>
+</ul>
+</li>
+<li><p>SSO</p>
+<ul>
+<li>对象比较大，因为有本地缓冲区</li>
+<li>短字符串直接放到对象buffer中，通常阀值是15Byte</li>
+<li>主要做法是将三个指针/整型中的一个，和本地缓冲区重合</li>
+<li><p>llvm/clang/libc++将三个指针与buffer几乎完全重合，空间利用率最高，buffer可达22Byte</p>
+<pre><code>class sso_string {
+    char* start;
+    uint32_t size;
+    static const int kLocalSize = sizeof(void*) == 8 ？ 19 ： 15
+
+    union {
+        char buffer[kLocalSize + 1];
+        uint32_t capacity;                
+    } data;                
+};
+</code></pre></li>
+</ul>
+</li>
+<li><p>对不同的负载选择不同的string</p>
+<ul>
+<li>短字符串：SSO</li>
+<li>中等长度：eager copy</li>
+<li>长字符串：COW</li>
+</ul>
+</li>
+</ol>
+<h1 id="八、用STL-algorithm轻松解决几道算法面试题"><a href="#八、用STL-algorithm轻松解决几道算法面试题" class="headerlink" title="八、用STL algorithm轻松解决几道算法面试题"></a>八、用STL algorithm轻松解决几道算法面试题</h1><ol>
+<li><p>用<code>next_permutation()</code>生成排列与组合</p>
+<ul>
+<li><p>生成N个不同元素的全排列</p>
+<ul>
+<li><p>next_permutation的基本用法</p>
+<pre><code>do {
+    ...
+} while(nex_permutation(vec.begin(), vec.end()));
+</code></pre></li>
+</ul>
+</li>
+<li>生成从N个元素中取出M个元素的所有组合<ul>
+<li>对序列N做{M个1, N-M个0}的全排列，输出1对应位置上的数字</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>用<code>unque()</code>除去连续重复空白</p>
+<blockquote>
+<p>C++最强的地方在于，它的模板技术提供了足够负责的程序库开发机制，可以把复杂度高度集中在库里，做得好在应用程序可以避免for循环，效率不会降低</p>
+</blockquote>
+<ul>
+<li>题目，将字符串中的原地连续空白去除，如”A<strong><em>B</em></strong>C”输出”A_B_C”</li>
+</ul>
+<ul>
+<li><p>思路：用unique()去除“相邻元素为两个空格的重复元素”</p>
+<pre><code>struct CharToDel(char x, char y) {
+    return ((x == &apos; &apos;)&amp;&amp;(y == &apos; &apos;));
+}
+
+void removeit {
+    std::string::iterator last =std::unique(str.begin(), str.end(). CharToDel());
+    str.erase(last, str.end());
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>用<code>{make, push, pop}_heap()</code> 实现多路归并</p>
+<ul>
+<li>题目：用一台4G内存的机器对磁盘上单个100G文件排序</li>
+<li>思路：标准方法是多路归并，很容易用heap排序实现<ul>
+<li>比如要归并从小到大排序好的32个文件，可以构造一个32个元素的min heap，依次取出每个文件的顶部元素</li>
+<li>比传统的二路归并节省很多磁盘读写</li>
+</ul>
+</li>
+<li>假设普通机械硬盘读写速度100MB/s，根据可用内存4G，设定分块大小(chunk)为1G，此时读写一个分块各耗时10s，假设排序时间10s，如果100G，分100个chunk</li>
+<li><p>采用单线程顺序操作完100个chunk，耗时30*100=50min</p>
+<ul>
+<li>CPU只在排序时使用，资源没得到充分利用</li>
+<li><p>消耗内存1G        </p>
+<pre><code>chunk 1:        r s w |
+chunk 2:                r s w |
+chunk 3:                        r s w |
+chunk ...:                                ...
+</code></pre></li>
+</ul>
+</li>
+<li><p>采用多线程以充分利用CPU</p>
+<ul>
+<li>不能简单根据chunk起线程，磁盘随机访问速度比顺序访问慢很多，一个chunk操作完才能操作下一个chunk</li>
+<li><p>把IO放入单独线程，排序内存中的块另外起线程(池)进行排序，大概快33%        </p>
+<pre><code>chunk 1:        r s w |
+chunk 2:          r s a w |
+chunk 3:              r s a w |
+chunk 4:                  r s a w |
+chunk ...:                        ...
+</code></pre><ul>
+<li>sort完以后需要wait一个周期，以等待下一个chunk的read完成再write，以保证读写的顺序性</li>
+<li>实测发现CPU吞吐量大于单块磁盘，仍然出现sort操作完成等待IO</li>
+<li>内存消耗2G</li>
+</ul>
+</li>
+<li><p>优化流水线，采用一个chunk的缓存用来写排序的中间结果，需要两个IO线程，一读一写，确保每个磁盘都是顺序访问，以保证吞吐量</p>
+<pre><code>chunk 1:        r s w&apos; |
+chunk 2:          r s w&apos; |
+chunk 3:            r s w&apos; |
+chunk 4:              r s w&apos; |
+chunk ...:                    ...        
+</code></pre><ul>
+<li>内存消耗3G</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>用<code>partition()</code>实现重排数组，让奇数位于偶数前面</p>
+<ul>
+<li><p><code>std::partition()</code>将符合条件的元素放到区间首部，不符合的放到后部，只需要把条件定义为“元素是奇数”</p>
+<pre><code>std::partition(array, array+sizeof(array), [](int x){ return x%2!=0; });
+</code></pre><ul>
+<li>时间复杂度O(N)，空间复杂度O(1)</li>
+</ul>
+</li>
+<li><p>如果需要保证调整后元素的相对顺序不变，只要用<code>std::stable_partition()</code></p>
+<ul>
+<li>内存充足时，时间和空间复杂度都是O(N)</li>
+<li>内存不足时要做in-place调换，时间O(NlogN)空间O(1)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>用<code>lower_bound()</code>查找IP地址所属的城市</p>
+<ul>
+<li>题目：已知Ｎ个IP地址区间与对应的城市名称，从IP地址查找城市名，IP地址区间不重复</li>
+<li>思路：如果查找频繁，可以先排序，再用<code>lower_bound()</code>进行查找，基本思路是按IP地址区间的首地址先排好序，然后二分查找</li>
+<li>如果IP区间有重复，通常需要用到线段树实现高效的查询</li>
+</ul>
+</li>
+</ol>
+<h1 id="九、小结"><a href="#九、小结" class="headerlink" title="九、小结"></a>九、小结</h1><ol>
+<li>思路正确是一回事，代码正确，经得起推敲是另一回事<ul>
+<li>判断奇数，<code>(x%2 != 0)</code>正确，而<code>(x%2 == 1)</code>错误，因为x有可能为负数</li>
+<li>统计文件中每个字符出现的次数时，以char做数组下标，但没考虑到char可能为负数，造成越界<ul>
+<li>如果强制转换为unsigned int再做下标，仍然是错的，因为会有整型提升</li>
+<li>正确做法是强制转换为unsigned char</li>
+</ul>
+</li>
+<li>面试可能手动实现一些STL算法，如求两个有序集的交集(<code>set_intersection()</code>)、洗牌(<code>random_shuffle()</code>)等</li>
+<li>STL algorithm可分为三类，面试往往要求实现第二类：<ul>
+<li>容易，基本遍历一遍输入区间，对元素值进行判断和操作就行<ul>
+<li>一个for循环搞定</li>
+<li>一半左右STL算法属于这类</li>
+<li><code>for_each()、transform()、accumulate()</code></li>
+</ul>
+</li>
+<li>较难，知道思路，要写出正确的实现要考虑清楚各种边界条件</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-C-经验谈/" data-id="ciqdtuoi700cu1a6393qw7pu7" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux多线程服务器编程/">Linux多线程服务器编程</a></div><div class="post-nav"><a href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-补充：链接顺序与优先级/" class="next">第十二章 补充：链接顺序与优先级</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">257</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-C-经验谈/">第十二章 C++经验谈</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-补充：链接顺序与优先级/">第十二章 补充：链接顺序与优先级</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/04/开发环境搭建-ubuntu-server15-10安装systemtap/">ubuntu_server15.10安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/开发环境搭建-扩展虚拟机硬盘容量/">扩展虚拟机硬盘容量</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/阅读笔记-Linux多线程服务器编程-第十一章-反思C-对象与虚函数/">第十一章 反思C++对象与虚函数</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/23/阅读笔记-Linux多线程服务器编程-第十章-补充：ODR原则/">第十章 补充：ODR原则</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/21/阅读笔记-Linux多线程服务器编程-第十章-C-编译链接模型精要/">第十章 C++编译链接模型精要</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/17/阅读笔记-Linux多线程服务器编程-第九章-分布式工程实践/">第九章 分布式工程实践</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/16/开发环境搭建-kali-linux-VM版设置/">kali linux VM版设置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/16/阅读笔记-Linux多线程服务器编程-第五章-高效的多线程日志/">第五章 高效的多线程日志</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
