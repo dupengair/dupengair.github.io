@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第二章，监控工具 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第二章，监控工具</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第二章，监控工具</h1><div class="post-meta">May 28, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、top"><span class="toc-number">1.</span> <span class="toc-text">一、top</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、uptime"><span class="toc-number">2.</span> <span class="toc-text">二、uptime</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、ps"><span class="toc-number">3.</span> <span class="toc-text">三、ps</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、free"><span class="toc-number">4.</span> <span class="toc-text">四、free</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、vmstat"><span class="toc-number">5.</span> <span class="toc-text">五、vmstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、iostat"><span class="toc-number">6.</span> <span class="toc-text">六、iostat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、netstat"><span class="toc-number">7.</span> <span class="toc-text">七、netstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#八、ss（超有用）"><span class="toc-number">8.</span> <span class="toc-text">八、ss（超有用）</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#九、pmap"><span class="toc-number">9.</span> <span class="toc-text">九、pmap</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、tcpdump"><span class="toc-number">10.</span> <span class="toc-text">七、tcpdump</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#八、strace"><span class="toc-number">11.</span> <span class="toc-text">八、strace</span></a></li></ol></div></div><div class="post-content"><h1 id="一、top"><a href="#一、top" class="headerlink" title="一、top"></a>一、top</h1><pre><code>top - 19:50:37 up  1:19,  1 user,  load average: 0.24, 0.15, 0.19
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第二章，监控工具 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第二章，监控工具</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第二章，监控工具</h1><div class="post-meta">May 28, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一、top"><span class="toc-number">1.</span> <span class="toc-text">一、top</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、uptime"><span class="toc-number">2.</span> <span class="toc-text">二、uptime</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、ps"><span class="toc-number">3.</span> <span class="toc-text">三、ps</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、free"><span class="toc-number">4.</span> <span class="toc-text">四、free</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、vmstat"><span class="toc-number">5.</span> <span class="toc-text">五、vmstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、iostat"><span class="toc-number">6.</span> <span class="toc-text">六、iostat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、netstat"><span class="toc-number">7.</span> <span class="toc-text">七、netstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#八、ss（超有用）"><span class="toc-number">8.</span> <span class="toc-text">八、ss（超有用）</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#九、pmap"><span class="toc-number">9.</span> <span class="toc-text">九、pmap</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十、tcpdump"><span class="toc-number">10.</span> <span class="toc-text">十、tcpdump</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十一、strace"><span class="toc-number">11.</span> <span class="toc-text">十一、strace</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十二、mpstat"><span class="toc-number">12.</span> <span class="toc-text">十二、mpstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十三、numastat"><span class="toc-number">13.</span> <span class="toc-text">十三、numastat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十四、iptraf"><span class="toc-number">14.</span> <span class="toc-text">十四、iptraf</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#十五、ltrace-用法与strace一致"><span class="toc-number">15.</span> <span class="toc-text">十五、ltrace (用法与strace一致)</span></a></li></ol></div></div><div class="post-content"><h1 id="一、top"><a href="#一、top" class="headerlink" title="一、top"></a>一、top</h1><pre><code>top - 19:50:37 up  1:19,  1 user,  load average: 0.24, 0.15, 0.19
 Tasks:  66 total,   1 running,  65 sleeping,   0 stopped,   0 zombie
 Cpu(s):  7.8%us, 11.5%sy,  0.0%ni, 80.6%id,  0.0%wa,  0.0%hi,  0.1%si,  0.0%st
 Mem:    601524k total,   180740k used,   420784k free,        0k buffers
@@ -591,7 +591,7 @@ Mode   : 映射权限
 Mapping: 支持映射的文件
 Offset : 文件偏移
 Device : 设备名
-</code></pre><h1 id="七、tcpdump"><a href="#七、tcpdump" class="headerlink" title="七、tcpdump"></a>七、tcpdump</h1><ol>
+</code></pre><h1 id="十、tcpdump"><a href="#十、tcpdump" class="headerlink" title="十、tcpdump"></a>十、tcpdump</h1><ol>
 <li>基本用法<blockquote>
 <p># tcpdump -i eth0 -nn icmp and host 10.82.16.74</p>
 <p># tcpdump -i eth0 -nn host 10.82.16.74 and host 10.82.16.73</p>
@@ -675,8 +675,8 @@ listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
 20:07:25.233150 IP (tos 0x0, ttl 128, id 28531, offset 2960, flags [none], proto ICMP (1), length 568)
 </code></pre></li>
 </ol>
-<h1 id="八、strace"><a href="#八、strace" class="headerlink" title="八、strace"></a>八、strace</h1><ol>
-<li><p>基础用法</p>
+<h1 id="十一、strace"><a href="#十一、strace" class="headerlink" title="十一、strace"></a>十一、strace</h1><ol>
+<li><p>基础用法：跟踪系统调用</p>
 <pre><code># strace -p $(pidof wdDaemon)
 Process 617 attached
 futex(0x1e59c, FUTEX_WAIT_PRIVATE, 1, NULL) = ? ERESTARTSYS (To be restarted if SA_RESTART is set)
@@ -704,4 +704,286 @@ Process 617 attached
 100.00    0.060000                    14        14 total
 </code></pre></li>
 </ol>
-</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/28/阅读笔记-Linux性能优化大师-第二章，监控工具/" data-id="ciqqs89ur00nbsk63qy1rbybd" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux性能优化大师/">Linux性能优化大师</a></div><div class="post-nav"><a href="/2016/05/28/阅读笔记-Linux性能优化大师-补充：进程优先级/" class="pre">补充：进程优先级</a><a href="/2016/05/28/阅读笔记-Linux性能优化大师-第一章-深入理解Linux操作系统/" class="next">第一章 深入理解Linux操作系统</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">257</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/07/17/开发环境搭建-systemtap磨难记-ubuntu1404/">systemtap磨难记(ubuntu1404)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/11/开发环境搭建-ubuntu-server-14-04LTS-64-bit-安装systemtap/">ubuntu_server_14.04LTS(64 bit)安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-C-经验谈/">第十二章 C++经验谈</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-补充：链接顺序与优先级/">第十二章 补充：链接顺序与优先级</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/04/开发环境搭建-ubuntu-server15-10安装systemtap/">ubuntu_server15.10安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/开发环境搭建-扩展虚拟机硬盘容量/">扩展虚拟机硬盘容量</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/阅读笔记-Linux多线程服务器编程-第十一章-反思C-对象与虚函数/">第十一章 反思C++对象与虚函数</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/23/阅读笔记-Linux多线程服务器编程-第十章-补充：ODR原则/">第十章 补充：ODR原则</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/21/阅读笔记-Linux多线程服务器编程-第十章-C-编译链接模型精要/">第十章 C++编译链接模型精要</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/17/阅读笔记-Linux多线程服务器编程-第九章-分布式工程实践/">第九章 分布式工程实践</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
+<h1 id="十二、mpstat"><a href="#十二、mpstat" class="headerlink" title="十二、mpstat"></a>十二、mpstat</h1><ol>
+<li><p>用于查看每个CPU相关统计数据</p>
+<pre><code>$ mpstat 1 10
+Linux 4.2.0-27-generic (ubuntu)         07/21/2016      _x86_64_        (2 CPU)
+
+08:06:55 PM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+08:06:56 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:06:57 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:06:58 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:06:59 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:07:00 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:07:01 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:07:02 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+^C
+Average:     all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+</code></pre></li>
+<li><p>参数</p>
+<pre><code>-P 处理器编号
+-I {SUM|CPU|SCPU|ALL}
+    SUM：中断数据
+    CPU：cpu每秒接收的每个中断信息
+    SCPU：cpu每秒接收的每个软件中断信息
+    ALL：上面全部
+
+$ mpstat -I CPU
+Linux 4.2.0-27-generic (ubuntu)         07/21/2016      _x86_64_        (2 CPU)
+
+08:15:20 PM  CPU        0/s        1/s        6/s        7/s        8/s        9/s       12/s       14/s       15/s       16/s       17/s       18/s       19/s       24/s       25/s       26/s       27/s       28/s       29/s       30/s       31/s       32/s       33/s       34/s       35/s       36/s       37/s       38/s       39/s       40/s       41/s       42/s       43/s       44/s       45/s       46/s       47/s       48/s       49/s       50/s       51/s       52/s       53/s       54/s       55/s       56/s       57/s       58/s      NMI/s      LOC/s      SPU/s      PMI/s      IWI/s      RTR/s      RES/s      CAL/s      TLB/s      TRM/s      THR/s      DFR/s      MCE/s      MCP/s      HYP/s      ERR/s      MIS/s      PIN/s      PIW/s
+08:15:20 PM    0       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.15       0.00      17.84       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00      21.79       0.00       0.00       0.00       0.00       1.97       0.00       0.01       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+08:15:20 PM    1       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      17.12       0.00       0.00       0.00       0.00       2.41       0.00       0.04       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+
+$ mpstat -I SCPU
+Linux 4.2.0-27-generic (ubuntu)         07/21/2016      _x86_64_        (2 CPU)
+
+08:15:35 PM  CPU       HI/s    TIMER/s   NET_TX/s   NET_RX/s    BLOCK/s BLOCK_IOPOLL/s  TASKLET/s    SCHED/s  HRTIMER/s      RCU/s
+08:15:35 PM    0       0.00       8.15       0.20      17.86       1.15       0.00       0.00       8.08       0.00       1.17
+08:15:35 PM    1       0.00       3.22       0.00       0.00       0.00       0.00       0.00       3.18       0.00       0.88
+
+$ mpstat -I SUM
+Linux 4.2.0-27-generic (ubuntu)         07/21/2016      _x86_64_        (2 CPU)
+
+08:15:46 PM  CPU    intr/s
+08:15:46 PM  all     62.33
+</code></pre></li>
+<li><p>输出项</p>
+<pre><code>CPU：cpu编号
+%usr：用户态下cpu使用率
+%nice：使用nice优先级执行的cpu使用率
+%sys：内核态下cpu使用率，不含硬软中断的时间
+%iowait：等待磁盘IO造成的cpu空闲率
+%irq：硬中断的cpu时间
+%soft：软中断的cpu时间
+%steal：hypervisor为虚拟cpu服务所占用的cpu
+%guest：cpu运行虚处理器所占用的cpu
+%gnice：cpu运行nice的虚拟机占用的cpu
+%idle：cpu空闲率
+</code></pre></li>
+</ol>
+<h1 id="十三、numastat"><a href="#十三、numastat" class="headerlink" title="十三、numastat"></a>十三、numastat</h1><ol>
+<li><p>显示每个NUMA(Non-Uniform Memory Architecture)节点的内存统计信息</p>
+<pre><code>$ numastat
+                           node0
+numa_hit                 2419687
+numa_miss                      0
+numa_foreign                   0
+interleave_hit             17197
+local_node               2419687
+other_node                     0
+</code></pre></li>
+<li><p>输出项</p>
+<pre><code>numa_hit:    预期的内存在这个节点上成功分配
+numa_miss:    在这个节点上分配内存，但进程使用了不同的节点。每个numa_miss在另一个节点上有一个numa_foreign
+numa_foreign: 为改节点准备的内存实际被分配到了别的节点上，每个numa_foreign在另一个节点上有一个numa_miss
+interleave_hit: 预期的这个节点上成功交错分配的内存
+local_node: 当一个进程在节点上运行的时候，在这个节点上分配的内存
+other_node: 当一个进程运行在其它节点上，在这个节点分配的内存
+</code></pre></li>
+<li><p>参数项</p>
+<ul>
+<li><p>-c： 基于数据内容当台收缩列的宽度，内存被四舍五入为MB，对更密集显示多个NUMA节点的系统有帮助</p>
+<pre><code>$ numastat -c
+Per-node numastat info (in MBs):
+                Node 0 Total
+                ------ -----
+Numa_Hit          1462  1462
+Numa_Miss            0     0
+Numa_Foreign         0     0
+Interleave_Hit      67    67
+Local_Node        1462  1462
+Other_Node           0     0
+</code></pre></li>
+<li><p>-m： 生成每个节点的内存使用信息</p>
+<pre><code>$ numastat -m
+Per-node system memory usage (in MBs):
+                          Node 0           Total
+                 --------------- ---------------
+MemTotal                 1992.20         1992.20
+MemFree                  1503.52         1503.52
+MemUsed                   488.67          488.67
+Active                    201.73          201.73
+Inactive                  193.01          193.01
+Active(anon)              111.65          111.65
+Inactive(anon)              5.83            5.83
+Active(file)               90.08           90.08
+Inactive(file)            187.18          187.18
+Unevictable                 0.00            0.00
+...
+</code></pre></li>
+<li><p>-n：显示原始数据统计信息</p>
+<pre><code>$ numastat -n
+Per-node numastat info (in MBs):
+                          Node 0           Total
+                 --------------- ---------------
+Numa_Hit                 1492.13         1492.13
+Numa_Miss                   0.00            0.00
+Numa_Foreign                0.00            0.00
+Interleave_Hit             67.20           67.20
+Local_Node               1492.13         1492.13
+Other_Node                  0.00            0.00
+</code></pre></li>
+<li><p>-p：为指定进程显示每个节点的内存分配信息</p>
+<pre><code>$ sudo numastat -p 1264
+Per-node process memory usage (in MBs) for PID 1264 (docker-containe)
+                           Node 0           Total
+                  --------------- ---------------
+Huge                         0.00            0.00
+Heap                         0.00            0.00
+Stack                        2.14            2.14
+Private                      9.62            9.62
+----------------  --------------- ---------------
+Total                       11.77           11.77
+</code></pre></li>
+<li><p>-s：以降序排序，列出最大内存消费者</p>
+<pre><code>$ numastat -s
+Per-node numastat info (in MBs):
+                          Node 0           Total
+                 --------------- ---------------
+Numa_Hit                 1514.71         1514.71
+Local_Node               1514.71         1514.71
+Interleave_Hit             67.20           67.20
+Numa_Foreign                0.00            0.00
+Numa_Miss                   0.00            0.00
+Other_Node                  0.00            0.00
+</code></pre></li>
+<li><p>-v：显示详细信息</p>
+</li>
+<li><p>-s：忽略值为0的项</p>
+<pre><code>$ numastat -z            
+Per-node numastat info (in MBs):
+                          Node 0           Total
+                 --------------- ---------------
+Numa_Hit                 1535.98         1535.98
+Interleave_Hit             67.20           67.20
+Local_Node               1535.98         1535.98
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="十四、iptraf"><a href="#十四、iptraf" class="headerlink" title="十四、iptraf"></a>十四、iptraf</h1><ol>
+<li>功能项<ul>
+<li>IP traffic monitor<ul>
+<li>统计TCP/UDP连接流量</li>
+</ul>
+</li>
+<li>General interface statistics<ul>
+<li>统计IP包流量</li>
+</ul>
+</li>
+<li>Detailed interface statistics<ul>
+<li>根据协议统计流量</li>
+</ul>
+</li>
+<li>Statistaical breakdowns<ul>
+<li>根据包大小分布或TCP/UDP端口统计流量</li>
+</ul>
+</li>
+<li>LAN station monitor<ul>
+<li>根据MAC地址统计流量</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="十五、ltrace-用法与strace一致"><a href="#十五、ltrace-用法与strace一致" class="headerlink" title="十五、ltrace (用法与strace一致)"></a>十五、ltrace (用法与strace一致)</h1><ol>
+<li><p>基础用法：跟踪库的调用</p>
+<pre><code>$ ltrace cat /proc/cpuinfo
+__libc_start_main(0x401a40, 2, 0x7fffcba08338, 0x4088f0 &lt;unfinished ...&gt;
+getpagesize()                                    = 4096
+strrchr(&quot;cat&quot;, &apos;/&apos;)                              = nil
+setlocale(LC_ALL, &quot;&quot;)                            = &quot;en_US.UTF-8&quot;
+bindtextdomain(&quot;coreutils&quot;, &quot;/usr/share/locale&quot;) = &quot;/usr/share/locale&quot;
+textdomain(&quot;coreutils&quot;)                          = &quot;coreutils&quot;
+__cxa_atexit(0x4029f0, 0, 0, 0x736c6974756572)   = 0
+getopt_long(2, 0x7fffcba08338, &quot;benstuvAET&quot;, 0x409000, nil) = -1
+__fxstat(1, 1, 0x7fffcba08190)                   = 0
+open(&quot;/proc/cpuinfo&quot;, 0, 037777600000)           = 3
+__fxstat(1, 3, 0x7fffcba08190)                   = 0
+posix_fadvise(3, 0, 0, 2)                        = 0
+malloc(69631)                                    = 0xf30030
+</code></pre></li>
+<li><p>生成每个库调用在内核中消耗时间的统计</p>
+<pre><code>$ ltrace -c cat /proc/cpuinfo
+processor       : 0
+vendor_id       : GenuineIntel
+cpu family      : 6
+model           : 26
+model name      : Intel(R) Xeon(R) CPU           W3530  @ 2.80GHz
+stepping        : 5
+microcode       : 0x11
+cpu MHz         : 2800.160
+cache size      : 8192 KB
+physical id     : 0
+siblings        : 2
+core id         : 0
+cpu cores       : 2
+apicid          : 0
+initial apicid  : 0
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 11
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts mmx fxsr sse sse2 ss ht syscall nx rdtscp lm constant_tsc arch_perfmon pebs bts nopl xtopology tsc_reliable nonstop_tsc aperfmperf pni ssse3 cx16 sse4_1 sse4_2 x2apic popcnt hypervisor lahf_lm ida dtherm
+bugs            :
+bogomips        : 5600.32
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 40 bits physical, 48 bits virtual
+power management:
+
+processor       : 1
+vendor_id       : GenuineIntel
+cpu family      : 6
+model           : 26
+model name      : Intel(R) Xeon(R) CPU           W3530  @ 2.80GHz
+stepping        : 5
+microcode       : 0x11
+cpu MHz         : 2800.160
+cache size      : 8192 KB
+physical id     : 0
+siblings        : 2
+core id         : 1
+cpu cores       : 2
+apicid          : 1
+initial apicid  : 1
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 11
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts mmx fxsr sse sse2 ss ht syscall nx rdtscp lm constant_tsc arch_perfmon pebs bts nopl xtopology tsc_reliable nonstop_tsc aperfmperf pni ssse3 cx16 sse4_1 sse4_2 x2apic popcnt hypervisor lahf_lm ida dtherm
+bugs            :
+bogomips        : 5600.32
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 40 bits physical, 48 bits virtual
+power management:
+
+% time     seconds  usecs/call     calls      function
+------ ----------- ----------- --------- --------------------
+ 11.81    0.000906         906         1 setlocale
+  9.66    0.000741         185         4 __freading
+  8.19    0.000628         628         1 write
+  7.56    0.000580         290         2 __fxstat
+  7.48    0.000574         287         2 fclose
+  6.81    0.000522         261         2 read
+  5.66    0.000434         217         2 fflush
+  5.05    0.000387         193         2 fileno
+  4.84    0.000371         185         2 __fpending
+  4.02    0.000308         308         1 posix_fadvise
+  3.96    0.000304         304         1 open
+  3.86    0.000296         296         1 close
+  3.69    0.000283         283         1 free
+  3.27    0.000251         251         1 __cxa_atexit
+  2.43    0.000186         186         1 malloc
+  2.41    0.000185         185         1 bindtextdomain
+  2.33    0.000179         179         1 getpagesize
+  2.33    0.000179         179         1 textdomain
+  2.33    0.000179         179         1 getopt_long
+  2.31    0.000177         177         1 strrchr
+------ ----------- ----------- --------- --------------------
+100.00    0.007670                    29 total
+</code></pre></li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/05/28/阅读笔记-Linux性能优化大师-第二章，监控工具/" data-id="ciqzav4f000fdzp632wv3bx86" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux性能优化大师/">Linux性能优化大师</a></div><div class="post-nav"><a href="/2016/05/28/阅读笔记-MoreEffectiveC-九、利用destructors避免泄露资源/" class="pre">九、利用destructors避免泄露资源</a><a href="/2016/05/28/阅读笔记-InsideC-ObjectModel-第二章-构造函数语意学/" class="next">第二章 构造函数语意学</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">257</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/07/23/linux内核驱动与文件系统-内核学习之no-stack-function/">内核学习之no-stack-function</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/17/开发环境搭建-systemtap磨难记-ubuntu1404/">systemtap磨难记(ubuntu1404)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/11/开发环境搭建-ubuntu-server-14-04LTS-64-bit-安装systemtap/">ubuntu_server_14.04LTS(64 bit)安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-C-经验谈/">第十二章 C++经验谈</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-补充：链接顺序与优先级/">第十二章 补充：链接顺序与优先级</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/04/开发环境搭建-ubuntu-server15-10安装systemtap/">ubuntu_server15.10安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/开发环境搭建-扩展虚拟机硬盘容量/">扩展虚拟机硬盘容量</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/阅读笔记-Linux多线程服务器编程-第十一章-反思C-对象与虚函数/">第十一章 反思C++对象与虚函数</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/23/阅读笔记-Linux多线程服务器编程-第十章-补充：ODR原则/">第十章 补充：ODR原则</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/21/阅读笔记-Linux多线程服务器编程-第十章-C-编译链接模型精要/">第十章 C++编译链接模型精要</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
