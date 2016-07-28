@@ -1,0 +1,513 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>第二章，监控工具——sar | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">第二章，监控工具——sar</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">第二章，监控工具——sar</h1><div class="post-meta">Jul 28, 2016<span> | </span><span class="category"><a href="/categories/阅读笔记/">阅读笔记</a><a href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-介绍"><span class="toc-number">1.</span> <span class="toc-text">1. 介绍</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-默认监控：系统资源"><span class="toc-number">2.</span> <span class="toc-text">2. 默认监控：系统资源</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-报告分页统计数据"><span class="toc-number">3.</span> <span class="toc-text">3. 报告分页统计数据</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-报告IO和传输速率"><span class="toc-number">4.</span> <span class="toc-text">4. 报告IO和传输速率</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-每个块设备的活动"><span class="toc-number">5.</span> <span class="toc-text">5. 每个块设备的活动</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#6-中断"><span class="toc-number">6.</span> <span class="toc-text">6. 中断</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#7-电源管理"><span class="toc-number">7.</span> <span class="toc-text">7. 电源管理</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#8-队列长度和平均负载"><span class="toc-number">8.</span> <span class="toc-text">8. 队列长度和平均负载</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#9-内存统计数据"><span class="toc-number">9.</span> <span class="toc-text">9. 内存统计数据</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#10-内存使用率"><span class="toc-number">10.</span> <span class="toc-text">10. 内存使用率</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#11-swap空间使用率"><span class="toc-number">11.</span> <span class="toc-text">11. swap空间使用率</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#12-所有CPU使用率"><span class="toc-number">12.</span> <span class="toc-text">12. 所有CPU使用率</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#13-inode状态、文件和其它内核表"><span class="toc-number">13.</span> <span class="toc-text">13. inode状态、文件和其它内核表</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#14-系统交换的统计数据"><span class="toc-number">14.</span> <span class="toc-text">14. 系统交换的统计数据</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#15-任务创建和系统切换活动"><span class="toc-number">15.</span> <span class="toc-text">15. 任务创建和系统切换活动</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#16-网络"><span class="toc-number">16.</span> <span class="toc-text">16. 网络</span></a></li></ol></div></div><div class="post-content"><h1 id="1-介绍"><a href="#1-介绍" class="headerlink" title="1. 介绍"></a>1. 介绍</h1><ul>
+<li>太多内容，只能分开写了</li>
+<li>是sysstat软件包的一部分</li>
+<li><p>自动运行：/etc/crontab/sysstat</p>
+<pre><code>$ cat /etc/cron.d/sysstat
+# The first element of the path is a directory where the debian-sa1
+# script is located
+PATH=/usr/lib/sysstat:/usr/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Activity reports every 10 minutes everyday
+5-55/10 * * * * root command -v debian-sa1 &gt; /dev/null &amp;&amp; debian-sa1 1 1
+
+# Additional run at 23:59 to rotate the statistics file
+59 23 * * * root command -v debian-sa1 &gt; /dev/null &amp;&amp; debian-sa1 60 2
+</code></pre></li>
+</ul>
+<h1 id="2-默认监控：系统资源"><a href="#2-默认监控：系统资源" class="headerlink" title="2. 默认监控：系统资源"></a>2. 默认监控：系统资源</h1><pre><code>$ sar 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/25/2016      _x86_64_        (2 CPU)
+
+08:02:28 PM     CPU     %user     %nice   %system   %iowait    %steal     %idle
+08:02:29 PM     all      0.00      0.00      0.50      0.00      0.00     99.50
+08:02:30 PM     all      0.00      0.00      0.00      0.00      0.00    100.00
+Average:        all      0.00      0.00      0.25      0.00      0.00     99.75
+</code></pre><h1 id="3-报告分页统计数据"><a href="#3-报告分页统计数据" class="headerlink" title="3. 报告分页统计数据"></a>3. 报告分页统计数据</h1><pre><code>$ sar -B 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/25/2016      _x86_64_        (2 CPU)
+
+08:03:43 PM  pgpgin/s pgpgout/s   fault/s  majflt/s  pgfree/s pgscank/s pgscand/s pgsteal/s    %vmeff
+08:03:44 PM      0.00      0.00    169.00      0.00    241.00      0.00      0.00      0.00      0.00
+08:03:45 PM      0.00      0.00     20.00      0.00     61.00      0.00      0.00      0.00      0.00
+Average:         0.00      0.00     94.50      0.00    151.00      0.00      0.00      0.00      0.00
+
+pgpgin/s:  每秒系统从磁盘置入分页的总量(KB)
+pgpgout/s: 移出分页到磁盘
+fault/s:   系统每秒产生分页错误(major + minor)
+majflg/s:  系统每秒产生主要错误数量，需要从磁盘加载一个内存分页
+pgfree/s:  系统每秒放置在空闲列表的分页数量 
+pgscank/s: 每秒kswapd守护进程扫描的分页数量
+pgscand/s: 每秒直接扫描的分页数量
+pgsteal/s: 每秒系统从缓存回收的分页数量
+%vmeff:       pgsteal/pgscan 度量分页回收效率，太低说明虚拟内存有问题
+</code></pre><h1 id="4-报告IO和传输速率"><a href="#4-报告IO和传输速率" class="headerlink" title="4. 报告IO和传输速率"></a>4. 报告IO和传输速率</h1><pre><code>$ sar -b 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/25/2016      _x86_64_        (2 CPU)
+
+08:10:03 PM       tps      rtps      wtps   bread/s   bwrtn/s
+08:10:04 PM      0.00      0.00      0.00      0.00      0.00
+08:10:05 PM      0.00      0.00      0.00      0.00      0.00
+Average:         0.00      0.00      0.00      0.00      0.00
+
+tps:  每秒物理传输总数，一个传输就是一次物理IO，发送到设备的多个逻辑IO可以合并为单个物理IO    
+rtps: 每秒读请求总数
+wtps: 每秒写请求总数
+bread/s: 每秒写入的设备的数据总量（块）
+</code></pre><h1 id="5-每个块设备的活动"><a href="#5-每个块设备的活动" class="headerlink" title="5. 每个块设备的活动"></a>5. 每个块设备的活动</h1><pre><code>$ sar -dp 1 1
+Linux 4.2.0-27-generic (ubuntu)         07/25/2016      _x86_64_        (2 CPU)
+
+08:14:30 PM       DEV       tps  rd_sec/s  wr_sec/s  avgrq-sz  avgqu-sz     await     svctm     %util
+08:14:31 PM       sda      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:14:31 PM       sr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:14:31 PM ubuntu--vg-root      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:14:31 PM ubuntu--vg-swap_1      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+Average:          DEV       tps  rd_sec/s  wr_sec/s  avgrq-sz  avgqu-sz     await     svctm     %util
+Average:          sda      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:          sr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:    ubuntu--vg-root      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:    ubuntu--vg-swap_1      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+p显示可读的设备名，否则以dev主-次的方式显示
+tps：同上
+rd_sec/s：每秒读取的扇区数，扇区大小512  
+wr_sec/s：每秒写入的扇区数  
+avgrq-sz：请求的平均大小，扇区
+avgqu-sz：请求队列的平均长度
+await：请求到被服务的平均时间，毫秒，包括请求在队列和服务花费的时间
+svctm：请求的平均服务时间，毫秒     
+%util：请求发出到设备期间CPU时间的百分比，即设备带宽使用率，接近100%时设备饱和
+</code></pre><h1 id="6-中断"><a href="#6-中断" class="headerlink" title="6. 中断"></a>6. 中断</h1><pre><code>$ sar -I SUM 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/25/2016      _x86_64_        (2 CPU)
+
+08:23:04 PM      INTR    intr/s
+08:23:05 PM       sum     74.00
+08:23:06 PM       sum     59.00
+Average:          sum     66.50
+
+INTR：中断号
+关键字：SUM|ALL|XALL
+SUM：每秒的中断总数
+ALL：前16个中断的统计数据
+XALL：所有中断的统计数据
+</code></pre><h1 id="7-电源管理"><a href="#7-电源管理" class="headerlink" title="7. 电源管理"></a>7. 电源管理</h1><pre><code>~$ sar -m ALL 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/25/2016      _x86_64_        (2 CPU)
+
+08:25:34 PM     CPU       MHz
+08:25:35 PM     all   2800.15
+
+08:25:34 PM    TEMP      degC     %temp               DEVICE
+08:25:35 PM       1    100.00    100.00    coretemp-isa-0000
+08:25:35 PM       2    100.00    100.00    coretemp-isa-0000
+
+08:25:34 PM     BUS  idvendor    idprod  maxpower                manufact                                         product
+08:25:35 PM       2       e0f         3         0                  VMware                        VMware Virtual USB Mouse
+08:25:35 PM       2       e0f         2         0                                                  VMware Virtual USB Hub
+
+08:25:35 PM     CPU       MHz
+08:25:36 PM     all   2800.15
+
+08:25:35 PM    TEMP      degC     %temp               DEVICE
+08:25:36 PM       1    100.00    100.00    coretemp-isa-0000
+08:25:36 PM       2    100.00    100.00    coretemp-isa-0000
+
+08:25:35 PM     BUS  idvendor    idprod  maxpower                manufact                                         product
+08:25:36 PM       2       e0f         3         0                  VMware                        VMware Virtual USB Mouse
+08:25:36 PM       2       e0f         2         0                                                  VMware Virtual USB Hub
+
+Average:        CPU       MHz
+Average:        all   2800.15
+
+Average:       TEMP      degC     %temp               DEVICE
+Average:          1    100.00    100.00    coretemp-isa-0000
+Average:          2    100.00    100.00    coretemp-isa-0000
+
+Summary         BUS  idvendor    idprod  maxpower                manufact                                         product
+Summary           2       e0f         3         0                  VMware                        VMware Virtual USB Mouse
+Summary           2       e0f         2         0                                                  VMware Virtual USB Hub
+
+
+CPU
+    MHz：瞬时时钟频率
+FAN
+    rpm：每分钟转速
+    drpm：当前转速与下限的差异
+    DEVICE：传感器名称
+FREQ
+    wghMHz:CPU时钟频率加权值，MHz，需要编译cpufreq-stats驱动
+IN
+    inV：电压输入伏特
+    %in：相对输入，100%为输入到达上限，0为下限
+    DEVICE：传感器名称
+TEMP
+    degC：摄氏度
+    %temp：相对温度，同上
+    DEVICE：传感器名称
+USB
+    BUS：根集线器数量
+    Idvendor：供应商ID
+    Idprod：产品ID
+    Maxpower：最大功耗mA
+    Manufact：制造商名称
+    Product：产品名称
+</code></pre><h1 id="8-队列长度和平均负载"><a href="#8-队列长度和平均负载" class="headerlink" title="8. 队列长度和平均负载"></a>8. 队列长度和平均负载</h1><pre><code>$ sar -q 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/26/2016      _x86_64_        (2 CPU)
+
+07:56:41 PM   runq-sz  plist-sz   ldavg-1   ldavg-5  ldavg-15   blocked
+07:56:42 PM         0       229      0.07      0.05      0.05         0
+07:56:43 PM         0       229      0.07      0.05      0.05         0
+Average:            0       229      0.07      0.05      0.05         0
+
+runq-sz： 运行队列长度（等待运行时间的任务数）  
+plist-sz：在任务列表中的任务数量
+ldavg-1：最后1分钟的系统平均负载
+ldavg-5：5分钟
+ldavg-15：15分钟
+blocked：
+*平均负载：在指定时间间隔。运行态(R)任务的平均数量和不可中的睡眠态(D)任务数量
+</code></pre><h1 id="9-内存统计数据"><a href="#9-内存统计数据" class="headerlink" title="9. 内存统计数据"></a>9. 内存统计数据</h1><pre><code>$ sar -R 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/26/2016      _x86_64_        (2 CPU)
+
+08:01:26 PM   frmpg/s   bufpg/s   campg/s
+08:01:27 PM     -1.98      0.00      0.00
+08:01:28 PM      0.00      0.00      0.00
+Average:        -1.00      0.00      0.00
+
+frmpg/s：系统每秒释放内存分页数量，-表示分配的数量   
+bufpg/s：系统每秒使用额外内存作为缓冲区的数量，-表示系统使用较少的分页作为缓冲区
+campg/s：系统每秒似乎呀额外内存作为缓存的数量，-表示缓存中有较少的分页
+</code></pre><h1 id="10-内存使用率"><a href="#10-内存使用率" class="headerlink" title="10. 内存使用率"></a>10. 内存使用率</h1><pre><code>$ sar -r 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/26/2016      _x86_64_        (2 CPU)
+
+08:04:42 PM kbmemfree kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
+08:04:43 PM    362856   1677152     82.21     47896   1321820    877840     21.22    952452    537044         0
+08:04:44 PM    362856   1677152     82.21     47896   1321820    877840     21.22    952452    537044         0
+Average:       362856   1677152     82.21     47896   1321820    877840     21.22    952452    537044         0
+
+kbmemfree：可用空闲内存数量，KB
+kbmemused：已使用内存数量，KB
+%memused：使用率
+kbbuffers：内核用作缓冲区的内存数量，KB
+kbcached：内核用作缓存的内存数量，KB
+kbcommit：当前工作负载需要的内存数量，KB，是对RAM/swap的估计，以保证永远不会内存不足   
+%commit：相对于总内存，当前工作负载需要的内存百分比，当内核过量使用内存时会大于100% 
+kbactive：活跃内存数量，KB，最近使用的内存通常不会回收
+kbinact：非活跃内存数量，KB，最近很少使用，更可能被回收
+kbdirty：等待回写到磁盘的内存数量，KB
+</code></pre><h1 id="11-swap空间使用率"><a href="#11-swap空间使用率" class="headerlink" title="11. swap空间使用率"></a>11. swap空间使用率</h1><pre><code>$ sar -S 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/26/2016      _x86_64_        (2 CPU)
+
+08:11:24 PM kbswpfree kbswpused  %swpused  kbswpcad   %swpcad
+08:11:25 PM   2094020      3128      0.15       588     18.80
+08:11:26 PM   2094020      3128      0.15       588     18.80
+Average:      2094020      3128      0.15       588     18.80
+
+kbswpfree：空闲swap空间数量，KB
+kbswpused：已使用swap空间数量，KB
+%swpused：已使用swap空间百分比
+kbswpcad：缓存的swap内存数量，KB，已在swap区域的缓存不用换入换出，节省IO
+%swpcad：已缓存的sawap内存百分比
+</code></pre><h1 id="12-所有CPU使用率"><a href="#12-所有CPU使用率" class="headerlink" title="12. 所有CPU使用率"></a>12. 所有CPU使用率</h1><pre><code>$ sar -u ALL 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/26/2016      _x86_64_        (2 CPU)
+
+08:16:15 PM     CPU      %usr     %nice      %sys   %iowait    %steal      %irq     %soft    %guest    %gnice     %idle
+08:16:16 PM     all      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00    100.00
+08:16:17 PM     all      0.00      0.00      0.50      0.00      0.00      0.00      0.00      0.00      0.00     99.50
+Average:        all      0.00      0.00      0.25      0.00      0.00      0.00      0.00      0.00      0.00     99.75
+
+%usr  ：用户态cpu，包含虚拟处理器时间    
+%nice ：用户态nice优先级执行时cpu
+%sys  ：内核态cpu，不包括软硬中断时间
+%iowait：磁盘io时的cpu空闲时间
+%steal：hypervisor为另一个虚拟处理器服务时，一个或多个虚拟cpu非主动等待的cpu时间      
+%irq  ：硬中断cpu 
+%soft ：软中断cpu 
+%guest：cpu运行虚拟处理器的时间
+%gnice：cpu运行nice虚拟机花费的时间
+%idle ：空闲cpu
+</code></pre><h1 id="13-inode状态、文件和其它内核表"><a href="#13-inode状态、文件和其它内核表" class="headerlink" title="13. inode状态、文件和其它内核表"></a>13. inode状态、文件和其它内核表</h1><pre><code>$ sar -v 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/26/2016      _x86_64_        (2 CPU)
+
+08:23:13 PM dentunusd   file-nr  inode-nr    pty-nr
+08:23:14 PM     37269      1856     29503         5
+08:23:15 PM     37269      1856     29503         5
+Average:        37269      1856     29503         5
+
+dentunusd：在目录缓存中未使用的缓存条目数量   
+file-nr：系统使用的文件数量
+inode-nr: 系统使用的inode数量
+pty-nr: 系统使用的伪终端数量
+</code></pre><h1 id="14-系统交换的统计数据"><a href="#14-系统交换的统计数据" class="headerlink" title="14. 系统交换的统计数据"></a>14. 系统交换的统计数据</h1><pre><code>$ sar -W 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/26/2016      _x86_64_        (2 CPU)
+
+08:26:21 PM  pswpin/s pswpout/s
+08:26:22 PM      0.00      0.00
+08:26:23 PM      0.00      0.00
+
+pswpin/s ：每秒换入的swap分页数量
+pswpout/s：换出
+</code></pre><h1 id="15-任务创建和系统切换活动"><a href="#15-任务创建和系统切换活动" class="headerlink" title="15. 任务创建和系统切换活动"></a>15. 任务创建和系统切换活动</h1><pre><code>$ sar -w 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/26/2016      _x86_64_        (2 CPU)
+
+08:27:51 PM    proc/s   cswch/s
+08:27:52 PM      0.00     82.00
+08:27:53 PM      1.00    128.00
+Average:         0.50    105.00
+
+proc/s ：每秒创建任务总数   
+cswch/s：每秒上下文切换总数
+</code></pre><h1 id="16-网络"><a href="#16-网络" class="headerlink" title="16. 网络"></a>16. 网络</h1><ul>
+<li><p>DEV - 网络设备</p>
+<pre><code>$ sar -n DEV 1
+Linux 4.2.0-27-generic (ubuntu)         07/27/2016      _x86_64_        (2 CPU)
+
+08:00:25 PM     IFACE   rxpck/s   txpck/s    rxkB/s    txkB/s   rxcmp/s   txcmp/s  rxmcst/s   %ifutil
+08:00:26 PM      eth0     22.00      0.00      1.35      0.00      0.00      0.00      0.00      0.00
+08:00:26 PM   docker0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:00:26 PM    virbr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:00:26 PM        lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+^C
+
+08:00:26 PM     IFACE   rxpck/s   txpck/s    rxkB/s    txkB/s   rxcmp/s   txcmp/s  rxmcst/s   %ifutil
+08:00:26 PM      eth0     16.25      6.25      1.01      1.25      0.00      0.00      0.00      0.00
+08:00:26 PM   docker0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:00:26 PM    virbr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:00:26 PM        lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+Average:        IFACE   rxpck/s   txpck/s    rxkB/s    txkB/s   rxcmp/s   txcmp/s  rxmcst/s   %ifutil
+Average:         eth0     19.44      2.78      1.20      0.56      0.00      0.00      0.00      0.00
+Average:      docker0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:       virbr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:           lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+rxpck/s ：接收包数  
+txpck/s ：发送包数  
+rxkB/s  ：接收数据量，KB  
+txkB/s  ：发送数据量，KB 
+rxcmp/s ：接收压缩数据包数量  
+txcmp/s ：发送压缩数据包数量
+rxmcst/s：接收多播数据包数量
+%ifutil ：
+</code></pre></li>
+<li><p>EDEV - 网络设备故障</p>
+<pre><code>$ sar -n EDEV 1
+Linux 4.2.0-27-generic (ubuntu)         07/27/2016      _x86_64_        (2 CPU)
+
+08:04:17 PM     IFACE   rxerr/s   txerr/s    coll/s  rxdrop/s  txdrop/s  txcarr/s  rxfram/s  rxfifo/s  txfifo/s
+08:04:18 PM      eth0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:04:18 PM   docker0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:04:18 PM    virbr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:04:18 PM        lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+^C
+
+08:04:18 PM     IFACE   rxerr/s   txerr/s    coll/s  rxdrop/s  txdrop/s  txcarr/s  rxfram/s  rxfifo/s  txfifo/s
+08:04:18 PM      eth0      0.00      0.00      0.00      1.72      0.00      0.00      0.00      0.00      0.00
+08:04:18 PM   docker0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:04:18 PM    virbr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:04:18 PM        lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+Average:        IFACE   rxerr/s   txerr/s    coll/s  rxdrop/s  txdrop/s  txcarr/s  rxfram/s  rxfifo/s  txfifo/s
+Average:         eth0      0.00      0.00      0.00      0.63      0.00      0.00      0.00      0.00      0.00
+Average:      docker0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:       virbr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:           lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+rxerr/s ：接收错误
+txerr/s ：发送错误   
+coll/s  ：发送数据包冲突
+rxdrop/s：接收缓存不足时每秒丢弃
+txdrop/s：发送缓存不足时每秒丢弃
+txcarr/s：发送时发生载波错误  
+rxfram/s：接收时发生帧同步错误
+rxfifo/s：接收时FIFO溢出
+txfifo/s: 发送时FIFO溢出
+</code></pre></li>
+<li><p>NFS - NFS客户端活动</p>
+<pre><code>$ sar -n NFS 1
+Linux 4.2.0-27-generic (ubuntu)         07/27/2016      _x86_64_        (2 CPU)
+
+08:10:22 PM    call/s retrans/s    read/s   write/s  access/s  getatt/s
+08:10:23 PM      0.00      0.00      0.00      0.00      0.00      0.00
+08:10:24 PM      0.00      0.00      0.00      0.00      0.00      0.00        
+
+08:10:25 PM      0.00      0.00      0.00      0.00      0.00      0.00
+Average:         0.00      0.00      0.00      0.00      0.00      0.00
+
+call/s  : 产生RPC请求数量
+retrans/s：重传RPC请求数量  
+read/s  ：read RPC调用数量
+write/s ：write
+access/s：access
+getatt/s：getattr 
+</code></pre></li>
+<li><p>NFSD - NFS服务端活动</p>
+<pre><code>$ sar -n NFSD 1
+Linux 4.2.0-27-generic (ubuntu)         07/27/2016      _x86_64_        (2 CPU)
+
+08:13:00 PM   scall/s badcall/s  packet/s     udp/s     tcp/s     hit/s    miss/s   sread/s  swrite/s saccess/s sgetatt/s
+08:13:01 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:13:02 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+^C
+08:13:02 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+scall/s  ：接收RPC请求数量
+badcall/s：接收错误RPC请求数量  
+packet/s ：接收网络数据包数量    
+udp/s    ：接收UDP包数量 
+tcp/s    ：接收TCP包数量
+hit/s    ：回复缓存命中数量 
+miss/s   ：回复缓存未命中数量
+sread/s  ：接收read RPC调用数量
+swrite/s ：write
+saccess/s：access
+sgetatt/s：getattr
+</code></pre></li>
+<li><p>SOCK - IPv4 socket</p>
+<pre><code>$ sar -n SOCK 1
+Linux 4.2.0-27-generic (ubuntu)         07/27/2016      _x86_64_        (2 CPU)
+
+08:17:11 PM    totsck    tcpsck    udpsck    rawsck   ip-frag    tcp-tw
+08:17:12 PM       361        15        20         0         0         0
+08:17:13 PM       361        15        20         0         0         0
+^C
+08:17:14 PM       361        15        20         0         0         0
+Average:          361        15        20         0         0         0
+
+totsck ：系统使用的socket总数   
+tcpsck ：tcp数量   
+udpsck ：udp数量
+rawsck ：raw数量   
+ip-frag：当前队列IP分片数量    
+tcp-tw ：出于TIME_WAIT的数量
+</code></pre></li>
+<li><p>IP - IPv4数据包</p>
+<pre><code>$ sar -n IP 1
+Linux 4.2.0-27-generic (ubuntu)         07/27/2016      _x86_64_        (2 CPU)
+
+08:19:30 PM    irec/s  fwddgm/s    idel/s     orq/s   asmrq/s   asmok/s  fragok/s fragcrt/s
+08:19:31 PM      1.00      0.00      1.00      0.00      0.00      0.00      0.00      0.00
+08:19:32 PM      3.00      0.00      3.00      1.00      0.00      0.00      0.00      0.00
+^C
+08:19:33 PM      6.58      0.00      6.58      3.95      0.00      0.00      0.00      0.00
+Average:         3.26      0.00      3.26      1.45      0.00      0.00      0.00      0.00
+
+irec/s  ：每秒收到数据包数量，包括错误接收  
+fwddgm/s：收到的需要转发数据包数量，非最终目的IP    
+idel/s  ：收到数据包成功传递到IP协议的数量，包括ICMP   
+orq/s   ：本地IP协议栈到IP传输请求的数据包总数，包括ICMP
+asmrq/s ：收到的需要重组的IP分片数量  
+asmok/s ：成功重组的的IP数据包数量 
+fragok/s：成功分片的IP数据包数量
+fragcrt/s：生成的IP数据包分片数量
+</code></pre></li>
+<li><p>EIP - IPv4 网络错误</p>
+<pre><code>$ sar -n EIP 1
+Linux 4.2.0-27-generic (ubuntu)         07/27/2016      _x86_64_        (2 CPU)
+
+08:26:24 PM ihdrerr/s iadrerr/s iukwnpr/s   idisc/s   odisc/s   onort/s    asmf/s   fragf/s
+08:26:25 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+08:26:26 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+^C
+08:26:27 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+ihdrerr/s：因为IP头错误，丢弃的输入数据包，包括CS、版本、格式、TTL、OPT等
+iadrerr/s: 因为目标地址非法，丢弃的输入数据包
+iukwnpr/s: 成功接收但因为协议错误丢弃的数据包  
+idisc/s  : 接收IP数据报数量，不包括丢弃的包
+odisc/s  : 发送，不包括丢弃的包
+onort/s  : 因为路由不正确丢弃的IP数据报数量
+asmf/s   : 通过重组算法检测到的故障数量，不一定是丢弃的分片数量
+fragf/s  : 因为无法分片丢弃的IP数据报数量
+</code></pre></li>
+<li><p>ICMP </p>
+<pre><code>~$ sar -n ICMP 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/28/2016      _x86_64_        (2 CPU)
+
+07:44:53 PM    imsg/s    omsg/s    iech/s   iechr/s    oech/s   oechr/s     itm/s    itmr/s     otm/s    otmr/s  iadrmk/s iadrmkr/s  oadrmk/s oadrmkr/s
+07:44:54 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+^C
+07:44:55 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+imsg/s ：接收消息总数，包括错误    
+omsg/s ：发送消息总数，包括错误   
+iech/s ：接收Echo request消息总数  
+iechr/s：接收Echo reply消息总数
+oech/s ：发送Echo request消息总数  
+oechr/s：接收Echo reply消息总数     
+itm/s  ：接收Timestamp request消息总数  
+itmr/s ：接收Timestamp reply消息总数    
+otm/s  ：发送Timestamp request消息总数  
+otmr/s ：发送Timestamp reply消息总数  
+iadrmk/s ：接收Address Mask request消息总数
+iadrmkr/s：发送Address Mask reply消息总数  
+oadrmk/s ：接收Address Mask request消息总数
+oadrmkr/s：发送Address Mask reply消息总数
+</code></pre></li>
+<li><p>EICMP</p>
+<pre><code>$ sar -n EICMP 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/28/2016      _x86_64_        (2 CPU)
+
+07:50:06 PM    ierr/s    oerr/s idstunr/s odstunr/s   itmex/s   otmex/s iparmpb/s oparmpb/s   isrcq/s   osrcq/s  iredir/s  oredir/s
+07:50:07 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+07:50:08 PM      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+ierr/s   ：接收到的ICMP消息体错误的消息数量    
+oerr/s   ：无法发送的内部错误的ICMP消息
+idstunr/s：接收的ICMP目的不可达消息数量 
+odstunr/s：发送的ICMP目的不可达消息数量   
+itmex/s  ：接收的ICMP超时消息数量  
+otmex/s  ：发送的ICMP超时消息数量
+iparmpb/s：接收的ICMP参数错误的消息数量 
+oparmpb/s：发送的ICMP参数错误的消息数量
+isrcq/s  ：接收的ICMP源抑制消息数量  
+osrcq/s  ：发送的ICMP源抑制消息数量
+iredir/s ：接受的ICMP重定向消息数量 
+oredir/s ：发送的ICMP重定向消息数量
+</code></pre></li>
+<li><p>TCP</p>
+<pre><code>$ sar -n TCP 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/28/2016      _x86_64_        (2 CPU)
+
+07:56:45 PM  active/s passive/s    iseg/s    oseg/s
+07:56:46 PM      0.00      0.00      0.00      0.00
+07:56:47 PM      0.00      0.00      1.00      1.00
+Average:         0.00      0.00      0.50      0.50
+
+active/s ：连接从CLOSED转到SYN-SENT状态的次数
+passive/s：连接从LISTEN转到SYN-RCVD状态的次数    
+iseg/s   ：接收到的分段数，包括错误的分段 
+oseg/s   ：发送的分段数，不包含重发的字节数
+</code></pre></li>
+<li><p>ETCP</p>
+<pre><code>$ sar -n ETCP 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/28/2016      _x86_64_        (2 CPU)
+
+07:59:34 PM  atmptf/s  estres/s retrans/s isegerr/s   orsts/s
+07:59:35 PM      0.00      0.00      0.00      0.00      0.00
+07:59:36 PM      0.00      0.00      0.00      0.00      0.00
+Average:         0.00      0.00      0.00      0.00      0.00
+
+atmptf/s ：连接从SYN-SENT或SYN-RCVD直接转为CLOSED，加上从SYN-RCVD直接转为LISTEN状态的次数  
+estres/s ：连接从ESTABLISHED或CLOSE-WAIT直接转为CLOSED状态的次数
+retrans/s：重传的分段数，即TCP分段包含了一个或多个之前的字节
+isegerr/s：接收的错误分段数   
+orsts/s  ：发送的RST分段数
+</code></pre></li>
+<li><p>UDP</p>
+<pre><code>$ sar -n UDP 1 2
+Linux 4.2.0-27-generic (ubuntu)         07/28/2016      _x86_64_        (2 CPU)
+
+08:06:01 PM    idgm/s    odgm/s  noport/s idgmerr/s
+08:06:02 PM      4.00      0.00      0.00      0.00
+08:06:03 PM      1.98      0.00      0.00      0.00
+Average:         2.99      0.00      0.00      0.00
+
+idgm/s ：接收的UDP报文数   
+odgm/s ：发送的UDP报文数 
+noport/s ：接收的目标端口为0的报文数 
+idgmerr/s：接收的因缺乏目标端口而不能处理的报文数
+</code></pre></li>
+</ul>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/07/28/阅读笔记-Linux性能优化大师-第二章，监控工具——sar/" data-id="cir6kkex300popn63889j5ffb" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux性能优化大师/">Linux性能优化大师</a></div><div class="post-nav"><a href="/2016/07/23/linux内核驱动与文件系统-内核学习之no-stack-function/" class="next">内核学习之no-stack-function</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/07/28/阅读笔记-Linux性能优化大师-第二章，监控工具——sar/">第二章，监控工具——sar</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/23/linux内核驱动与文件系统-内核学习之no-stack-function/">内核学习之no-stack-function</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/17/开发环境搭建-systemtap磨难记-ubuntu1404/">systemtap磨难记(ubuntu1404)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/11/开发环境搭建-ubuntu-server-14-04LTS-64-bit-安装systemtap/">ubuntu_server_14.04LTS(64 bit)安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-补充：链接顺序与优先级/">第十二章 补充：链接顺序与优先级</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-C-经验谈/">第十二章 C++经验谈</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/04/开发环境搭建-ubuntu-server15-10安装systemtap/">ubuntu_server15.10安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/开发环境搭建-扩展虚拟机硬盘容量/">扩展虚拟机硬盘容量</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/03/阅读笔记-Linux多线程服务器编程-第十一章-反思C-对象与虚函数/">第十一章 反思C++对象与虚函数</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/06/23/阅读笔记-Linux多线程服务器编程-第十章-补充：ODR原则/">第十章 补充：ODR原则</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
