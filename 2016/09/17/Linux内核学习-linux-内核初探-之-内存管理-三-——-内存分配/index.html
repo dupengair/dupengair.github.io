@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>linux 内核初探 之 内存管理(三) —— 内存分配 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">linux 内核初探 之 内存管理(三) —— 内存分配</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">linux 内核初探 之 内存管理(三) —— 内存分配</h1><div class="post-meta">Sep 17, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-内核初探-之-内存管理-三-——-内存分配"><span class="toc-number">1.</span> <span class="toc-text">linux 内核初探 之 内存管理(三) —— 内存分配</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、按页分配"><span class="toc-number">2.</span> <span class="toc-text">一、按页分配</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、分配内存块"><span class="toc-number">3.</span> <span class="toc-text">二、分配内存块</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、虚拟地址连续-、物理地址不连续"><span class="toc-number">4.</span> <span class="toc-text">三、虚拟地址连续    、物理地址不连续</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="linux-内核初探-之-内存管理-三-——-内存分配"><a href="#linux-内核初探-之-内存管理-三-——-内存分配" class="headerlink" title="linux 内核初探 之 内存管理(三) —— 内存分配"></a>linux 内核初探 之 内存管理(三) —— 内存分配</h1><hr>
+<h1 id="一、按页分配"><a href="#一、按页分配" class="headerlink" title="一、按页分配"></a>一、按页分配</h1><ol>
+<li><p>分配页</p>
+<pre><code>// 分配一页，返回指向页页结构的指针 &lt;linux/gfp.h&gt;
+struct page* alloc_pages(gfp_t gfp_mask)        // 分配2^order页，返回指向第一页结构的指针
+struct page* alloc_pages(gfp_t gfp_mask, unsigned int order)
+</code></pre></li>
+<li><p>将页结构转为逻辑地址（注意是物理地址，不是虚拟地址）</p>
+<pre><code>// 返回请求的第一个页的逻辑地址 &lt;linux/mm.h&gt;
+void *page_address(struct page* page)
+</code></pre></li>
+<li><p>直接获得页的逻辑地址</p>
+<pre><code>// 分配一页，返回指向逻辑地址的指针
+__get_free_page(gfp_t gfp_mask)
+// 分配2^order页，返回指向第一页逻辑地址的指针
+__get_free_page(gfp_t gfp_mask, unsigned int order)
+</code></pre></li>
+<li><p>获得内容为0的一页</p>
+<pre><code>// 分配一页，内容填0，返回指向逻辑地址的指针
+unsigned long get_zeroed_page(gfp_t gfp_mask)
+</code></pre></li>
+<li><p>释放页</p>
+<pre><code>void __free_pages(struct page *page, unsigned int order)
+void free_pages(unsigned long addr, unsigned int order)
+void free_page(unsigned long addr)
+</code></pre></li>
+<li><p>一些原则</p>
+<ul>
+<li>释放页时，只能释放自己分配的页</li>
+<li>程序开始时先进行分配，有利于分配失败时的处理</li>
+<li>如果分配的目的不是页，常用kmalloc()</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、分配内存块"><a href="#二、分配内存块" class="headerlink" title="二、分配内存块"></a>二、分配内存块</h1><ol>
+<li><p>分配物理连续的内存块</p>
+<pre><code>// &lt;linux/slab_def.h&gt;
+void *kmalloc(size_t size, gfp_t flags)
+</code></pre><ul>
+<li>返回以字节为单位的一块物理连续的内存</li>
+<li>除非没有足够内存可用，否则总是返回成功</li>
+<li>需要检查返回值是否为NULL</li>
+</ul>
+</li>
+<li><p>gfp_mask标志</p>
+<ul>
+<li><p>标志可分3类</p>
+<ul>
+<li>行为修饰符<ul>
+<li>表示如何分配所需内存，某些场合对分配方法有要求，如中断不能睡眠</li>
+</ul>
+</li>
+<li>区修饰符<ul>
+<li>表示从哪一区分配</li>
+</ul>
+</li>
+<li>类型修饰符<ul>
+<li>组合了前两种，简化应用</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>行为修饰符</p>
+<pre><code>__GFP_WAIT: 可以睡眠
+__GFP_HIGH: 可以访问紧急缓冲池
+__GFP_IO:   可以启动磁盘IO
+__GFP_FS:   可以启动文件系统IO
+__GFP_COLD: 应该使用高速缓存中快要淘汰的页
+__GFP_NOWARN: 不打印失败报告
+__GFP_REPEAT: 失败时重新分配
+__GFP_NOFALL: 失败时无限重新分配，不允许失败
+__GFP_NORETRY: 失败时不重新分配
+__GFP_NO_GROW: slab层内部使用
+__GFP_COMP:    添加混合页元数据，在hugetlb内部使用
+</code></pre></li>
+<li><p>区修饰符</p>
+<pre><code>__GFP_DMA:      从ZONE_DMA分配
+__GFP_DMA32:    从ZONE_DMA32分配
+__GFP_HIGHMEM:  从ZONE_HIGHMEM或ZONE_NORMAL分配
+</code></pre><ul>
+<li>内核优先从<code>ZONE_NORMAL</code>开始，可以确保其它区有空闲页</li>
+<li>不能给<code>__get_free_pages()</code>或<code>kalloc()</code>指定<code>ZONE_HIGHMEM</code>，因为分配的是逻辑地址，而不是page结构，当前可能还没映射到内核虚拟地址空间，因此可能根本没有逻辑地址，只有 <code>alloc_pages()</code>才能分配高端内存</li>
+</ul>
+</li>
+<li><p>类型标志</p>
+<ul>
+<li>GFP_ATOMIC<ul>
+<li>等价于<code>__GFP_HIGH</code></li>
+<li>用于不能睡眠的地方，如中断、持有自旋锁、底半</li>
+</ul>
+</li>
+<li>GFP_NOWAIT<ul>
+<li>等价于0    </li>
+<li>与上相同，但调用不退给紧急内存池，增加了失败的可能性</li>
+</ul>
+</li>
+<li>GFP_NOIO<ul>
+<li>等价于<code>__GFP_WAIT</code></li>
+<li>可以阻塞但不启动磁盘IO，能阻塞磁盘IO代码，防止引发更多的IO</li>
+</ul>
+</li>
+<li>GFP_NOFS<ul>
+<li>等价于<code>__GFP_WAIT|__GFP_IO</code></li>
+<li>可能阻塞或磁盘IO，但不启动文件系统操作，用在文件系统操作中不能再启动文件系统操作时</li>
+</ul>
+</li>
+<li>GFP_KERNEL<ul>
+<li>等价于_<code>_GFP_WAIT|__GFP_IO|__GFP_FS</code></li>
+<li>常规方式，可能阻塞，首选标志，用于睡眠安全的进程上下文中</li>
+</ul>
+</li>
+<li>GFP_USER<ul>
+<li>等价于<code>__GFP_WAIT|__GFP_IO|__GFP_FS</code></li>
+<li>常规方式，可能阻塞，用于为用户空间分配内存时</li>
+</ul>
+</li>
+<li>GFP_HIGHUSER<ul>
+<li>等价于<code>__GFP_WAIT|__GFP_IO|__GFP_FS|__GFP_HIGHMEM</code></li>
+<li>从<code>ZONE_HIGHMEM</code>分配，用于为用户空间分配内存</li>
+</ul>
+</li>
+<li>GFP_DMA<ul>
+<li>等价于<code>__GFP_DMA</code></li>
+<li>从<code>ZONE_DMA</code>分配，通常用于驱动</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>标志的使用</p>
+<ul>
+<li>内核代码趋向于使用正确的标志</li>
+<li>最常用的<code>GFP_KERNEL</code>，可能睡眠，普通优先级，只用在可以重新安全调度的进程上下文，对请求没有约束，成功率高</li>
+<li><code>GFP_ATOMIC</code>有严格限制，成功率低</li>
+<li><code>GFP_NOIO</code>不启动磁盘IO，<code>GFP_NOFS</code>可能启动磁盘IO但不启动文件系统IO，因为文件系统操作可能又会导致分配，从而递归，产生死锁</li>
+<li>DMA一般与KERNEL、ATOMIC结合使用</li>
+<li>大部分代码用KERNEL或ATOMIC</li>
+</ul>
+</li>
+<li><p>使用场景</p>
+<ul>
+<li>进程上下文，可以睡眠：KERNEL</li>
+<li>进程上下文，不能睡眠：ATOMIC</li>
+<li>中断、软中断、tasklet：ATOMIC</li>
+<li>用于DMA，可以睡眠：DMA|KERNEL</li>
+<li>用于DMA，不能睡眠：DMA|ATOMIC</li>
+</ul>
+</li>
+<li><p>释放</p>
+<pre><code>void kfree(const void* ptr)
+</code></pre><ul>
+<li>释放由kmalloc()分配到内存，注意配对使用</li>
+<li>kfree(NULL)是安全的</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、虚拟地址连续-、物理地址不连续"><a href="#三、虚拟地址连续-、物理地址不连续" class="headerlink" title="三、虚拟地址连续    、物理地址不连续"></a>三、虚拟地址连续    、物理地址不连续</h1><pre><code>void* malloc(unsigned long size)
+void vfree(const void *addr)
+</code></pre><ol>
+<li>类似用户空间malloc的分配，虚拟地址连续，但不保证物理地址连续</li>
+<li>通过分配非连续的物理内存块，再修正页表，把内存映射到逻辑地址连续的区域</li>
+<li>大多数情况，只有硬件需要物理地址连续的内存，对内核而言，所有内存都是逻辑上连续的</li>
+<li>内核代码多使用kmalloc主要是处于性能的考虑，vmalloc必须专门建立页表项，一个个映射获得的物理页，会导致比直接内存映射大得多的TLB(硬件缓冲区，用于缓存虚拟地址到物理地址的映射关系)抖动</li>
+<li>一般需要获取大块内存时才会用到vmalloc，如装载模块</li>
+<li>函数可能睡眠，不能用于中断或者其它不允许阻塞的情况</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-三-——-内存分配/" data-id="cit6ujfm6001s21631d2gvb8r" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-一-——-页-page/" class="pre">linux 内核初探 之 内存管理(一) —— 页 page</a><a href="/2016/08/27/开发环境搭建-Tmux应用/" class="next">Tmux应用</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-二-——-区-zone/">linux 内核初探 之 内存管理(二) —— 区 zone</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-一-——-页-page/">linux 内核初探 之 内存管理(一) —— 页 page</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-三-——-内存分配/">linux 内核初探 之 内存管理(三) —— 内存分配</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/08/27/开发环境搭建-Tmux应用/">Tmux应用</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/08/02/开发环境搭建-Kali2-0安装VSCode＋Python开发环境/">Kali2.0安装VSCode＋Python开发环境</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/28/阅读笔记-Linux性能优化大师-第二章，监控工具——sar/">第二章，监控工具——sar</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/23/linux内核驱动与文件系统-内核学习之no-stack-function/">内核学习之no-stack-function</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/17/开发环境搭建-systemtap磨难记-ubuntu1404/">systemtap磨难记(ubuntu1404)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/11/开发环境搭建-ubuntu-server-14-04LTS-64-bit-安装systemtap/">ubuntu_server_14.04LTS(64 bit)安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-补充：链接顺序与优先级/">第十二章 补充：链接顺序与优先级</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

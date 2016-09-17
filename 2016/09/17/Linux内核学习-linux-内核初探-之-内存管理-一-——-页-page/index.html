@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>linux 内核初探 之 内存管理(一) —— 页 page | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">linux 内核初探 之 内存管理(一) —— 页 page</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">linux 内核初探 之 内存管理(一) —— 页 page</h1><div class="post-meta">Sep 17, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-内核初探-之-内存管理-一-——-页-page"><span class="toc-number">1.</span> <span class="toc-text">linux 内核初探 之 内存管理(一) —— 页 page</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一-基础"><span class="toc-number">2.</span> <span class="toc-text">一. 基础</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二-struct-page-lt-linux-mm-types-h-gt"><span class="toc-number">3.</span> <span class="toc-text">二. struct page <linux/mm_types.h></span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、总结"><span class="toc-number">4.</span> <span class="toc-text">三、总结</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="linux-内核初探-之-内存管理-一-——-页-page"><a href="#linux-内核初探-之-内存管理-一-——-页-page" class="headerlink" title="linux 内核初探 之 内存管理(一) —— 页 page"></a>linux 内核初探 之 内存管理(一) —— 页 page</h1><hr>
+<h1 id="一-基础"><a href="#一-基础" class="headerlink" title="一. 基础"></a>一. 基础</h1><ol>
+<li>内核进行内存管理的基本单位——物理页，处理器寻址的基本单位——字／字节</li>
+<li>从虚拟内存的角度，页是最小单位因为MMU以页（page）为单位管理系统页表</li>
+<li>大多数32bit系统支持页大小为4KB，64bit为8KB</li>
+</ol>
+<h1 id="二-struct-page-lt-linux-mm-types-h-gt"><a href="#二-struct-page-lt-linux-mm-types-h-gt" class="headerlink" title="二. struct page &lt;linux/mm_types.h&gt;"></a>二. struct page <code>&lt;linux/mm_types.h&gt;</code></h1><pre><code>typedef struct page {
+            struct address_space *mapping;
+            unsigned long index;
+            atomic_t _count;
+            atomic_t _mapcount;
+            unsigned long flags;
+            struct list_head lru;
+            unsigned long age;
+            void *virtual; 
+            struct zone_struct *zone;
+            union {
+                unsigned long private;
+                struct kmem_cache *slab;    /* SLUB: Pointer to slab */
+                struct page *first_page;    /* Compound tail pages */
+            ...
+        } mem_map_t;
+</code></pre><ol>
+<li><p>flags <code>linux/page-flags.h</code></p>
+<ul>
+<li>状态(是否为脏、是否被锁定在内存中）</li>
+<li><p>主要分4部分，其中标志位flag向高位增长，其余位字段向低位增长，中间存在空闲位。</p>
+<pre><code> -&gt; 低位增长           高位增长 &lt;-
+｜section｜node|zone|...|flag|
+</code></pre><ul>
+<li>section：主要用于稀疏内存模型SPARSEMEM，可忽略。</li>
+<li>node：NUMA节点号，标识该page属于哪一个节点。</li>
+<li>zone：内存域标志，标识该page属于哪一个zone</li>
+<li><p>flag：page的状态标识</p>
+<ul>
+<li><p>常用的有：</p>
+<pre><code>PG_locked：page被锁定，说明有使用者正在操作该page。
+PG_error：状态标志，表示涉及该page的IO操作发生了错误。
+PG_referenced：表示page刚刚被访问过。
+PG_active：page处于inactive LRU链表。PG_active和PG_referenced一起控制该page的活跃程度，这在内存回收时将会非常有用。
+PG_uptodate：表示page的数据已经与后备存储器是同步的，是最新的。
+PG_dirty：与后备存储器中的数据相比，该page的内容已经被修改。
+PG_lru：表示该page处于LRU链表上。
+PG_slab：该page属于slab分配器。
+PG_reserved：设置该标志，防止该page被交换到swap。
+PG_private：如果page中的private成员非空，则需要设置该标志。参考6)对private的解释。
+PG_writeback：page中的数据正在被回写到后备存储器。
+PG_swapcache：表示该page处于swap cache中。
+PG_mappedtodisk：表示page中的数据在后备存储器中有对应。
+PG_reclaim：表示该page要被回收。当PFRA决定要回收某个page后，需要设置该标志。
+PG_swapbacked：该page的后备存储器是swap。
+PG_unevictable：该page被锁住，不能交换，并 shm_locked、mlock锁定的页。
+PG_mlocked：该page在vma中被锁定，一般是通过系统调用mlock()锁定了一段内存。
+</code></pre></li>
+<li><p>内核中提供了一些标准宏，用来检查、操作某些特定的比特位：</p>
+<pre><code>PageXXX(page)：检查page是否设置了PG_XXX位
+SetPageXXX(page)：设置page的PG_XXX位
+ClearPageXXX(page)：清除page的PG_XXX位
+TestSetPageXXX(page)：设置page的PG_XXX位，并返回原值
+TestClearPageXXX(page)：清除page的PG_XXX位，并返回原值                  
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><code>_count</code></p>
+<ul>
+<li>引用计数，如果要操作该page，引用计数会+1，操作完成-1</li>
+<li>-1时为没有引用，0为空闲，可以解除映射。通过<code>page_count()</code>检查</li>
+<li>页的用途：<ul>
+<li>页缓存使用，mapping指向和当前页关联的<code>address_space</code>对象</li>
+<li>私有数据，private指向</li>
+<li>作为进程页表中的映射</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><code>_mapcount</code></p>
+<ul>
+<li>被页表映射的次数，也就是说该page同时被多少个进程共享</li>
+<li>初始值为-1<ul>
+<li>如果只被一个进程的页表映射了，该值为0</li>
+<li>如果该page处于伙伴系统中，该值为<code>PAGE_BUDDY_MAPCOUNT_VALUE</code>（-128）</li>
+</ul>
+</li>
+<li>内核通过判断该值是否为<code>PAGE_BUDDY_MAPCOUNT_VALUE</code>来确定该page是否属于伙伴系统。</li>
+<li>注意区分<code>_count</code>和<code>_mapcount</code>，<code>_mapcount</code>表示的是映射次数，而<code>_count</code>表示的是使用次数；被映射了不一定在使用，但要使用必须先映射</li>
+</ul>
+</li>
+<li><p>mapping</p>
+<ul>
+<li>有三种含义<ul>
+<li>如果mapping = 0，说明该page属于交换缓存（swap cache）；当需要使用地址空间时会指定交换分区的地址空间<code>swapper_space</code></li>
+<li>如果mapping != 0，bit[0] = 0，说明该page属于页缓存或文件映射，mapping指向文件的地址空间<code>address_space</code></li>
+<li>如果mapping != 0，bit[0] != 0，说明该page为匿名映射，mapping指向<code>struct anon_vma</code>对象, 通过mapping恢复<code>anon_vma</code>的方法：<code>anon_vma = (struct anon_vma *)(mapping - PAGE_MAPPING_ANON)</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>index</p>
+<ul>
+<li>在映射的虚拟空间（<code>vma_area</code>）内的偏移；一个文件可能只映射一部分，假设映射了1M的空间，index指的是在1M空间内的偏移，而不是在整个文件内的偏移</li>
+</ul>
+</li>
+<li><p>private</p>
+<ul>
+<li>私有数据指针，由应用场景确定其具体的含义：<ul>
+<li>如果设置了<code>PG_private</code>标志，表示<code>buffer_heads</code></li>
+<li>如果设置了<code>PG_swapcache</code>标志，private存储了该page在交换分区中对应的位置信息swp_entry_t</li>
+<li>如果<code>_mapcount = PAGE_BUDDY_MAPCOUNT_VALUE</code>，说明该page位于伙伴系统，private存储该伙伴的阶</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>lru</p>
+<ul>
+<li>链表头，主要有3个用途：<ul>
+<li>page处于伙伴系统中时，用于链接相同阶的伙伴（只使用伙伴中的第一个page的lru即可达到目的）</li>
+<li>page属于slab时，<code>page-&gt;lru.next</code>指向page驻留的的缓存的管理结构，page-&gt;lru.prec指向保存该page的slab的管理结构</li>
+<li>page被用户态使用或被当做页缓存使用时，用于将该page连入zone中相应的lru链表，供内存回收时使用</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>virtual</p>
+<ul>
+<li>页的虚拟地址，通常情况下为页在虚拟内存中的地址</li>
+<li>对于高端内存，不会永久映射到内核地址空间，只在需要的时候动态映射，这个域的值为0</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、总结"><a href="#三、总结" class="headerlink" title="三、总结"></a>三、总结</h1><ol>
+<li>必须理解page结构是用来描述一个具体的物理页，与虚拟页无关。物理页中的数据可能由于交换等原因不在和同一个page结构相关联。内核仅仅用这个数据结构来描述当前时刻，这个物理页的状态，其目的在于描述物理内存本身，而不是其中的数据</li>
+<li>内核用这个结构体管理物理页的目的在于，内核需要知道一个页是否空闲，如果已经被分配，被分配给了谁</li>
+<li>每个页一个结构题的代价并不高，对于4GB内存，页大小8K来说，需要分配<code>4*1024*1024/8=524288</code>个页，大约占内存20M</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-一-——-页-page/" data-id="cit6ujfm5001p2163nc5fzxpo" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-二-——-区-zone/" class="pre">linux 内核初探 之 内存管理(二) —— 区 zone</a><a href="/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-三-——-内存分配/" class="next">linux 内核初探 之 内存管理(三) —— 内存分配</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-二-——-区-zone/">linux 内核初探 之 内存管理(二) —— 区 zone</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-一-——-页-page/">linux 内核初探 之 内存管理(一) —— 页 page</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/09/17/Linux内核学习-linux-内核初探-之-内存管理-三-——-内存分配/">linux 内核初探 之 内存管理(三) —— 内存分配</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/08/27/开发环境搭建-Tmux应用/">Tmux应用</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/08/02/开发环境搭建-Kali2-0安装VSCode＋Python开发环境/">Kali2.0安装VSCode＋Python开发环境</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/28/阅读笔记-Linux性能优化大师-第二章，监控工具——sar/">第二章，监控工具——sar</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/23/linux内核驱动与文件系统-内核学习之no-stack-function/">内核学习之no-stack-function</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/17/开发环境搭建-systemtap磨难记-ubuntu1404/">systemtap磨难记(ubuntu1404)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/11/开发环境搭建-ubuntu-server-14-04LTS-64-bit-安装systemtap/">ubuntu_server_14.04LTS(64 bit)安装systemtap</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/08/阅读笔记-Linux多线程服务器编程-第十二章-补充：链接顺序与优先级/">第十二章 补充：链接顺序与优先级</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
