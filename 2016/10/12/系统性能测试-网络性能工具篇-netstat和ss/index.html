@@ -1,0 +1,143 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>网络性能工具篇(netstat和ss) | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">网络性能工具篇(netstat和ss)</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">网络性能工具篇(netstat和ss)</h1><div class="post-meta">Oct 12, 2016<span> | </span><span class="category"><a href="/categories/系统性能/">系统性能</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#网络性能工具篇-netstat和ss"><span class="toc-number">1.</span> <span class="toc-text">网络性能工具篇(netstat和ss)</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、netstat"><span class="toc-number">2.</span> <span class="toc-text">一、netstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、ss（超有用）"><span class="toc-number">3.</span> <span class="toc-text">二、ss（超有用）</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、iptraf"><span class="toc-number">4.</span> <span class="toc-text">三、iptraf</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="网络性能工具篇-netstat和ss"><a href="#网络性能工具篇-netstat和ss" class="headerlink" title="网络性能工具篇(netstat和ss)"></a>网络性能工具篇(netstat和ss)</h1><hr>
+<h1 id="一、netstat"><a href="#一、netstat" class="headerlink" title="一、netstat"></a>一、netstat</h1><pre><code># netstat -aln
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 0.0.0.0:1124            0.0.0.0:*               LISTEN      
+tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN      
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      
+tcp        0      0 0.0.0.0:2808            0.0.0.0:*               LISTEN      
+tcp        0      0 0.0.0.0:2809            0.0.0.0:*               LISTEN      
+tcp        0      0 0.0.0.0:1113            0.0.0.0:*               LISTEN      
+tcp        0      0 0.0.0.0:4505            0.0.0.0:*               LISTEN      
+tcp        0      0 127.0.0.1:2810          0.0.0.0:*               LISTEN      
+tcp        0      0 0.0.0.0:443             0.0.0.0:*               LISTEN      
+tcp        0      0 10.82.16.74:22          10.82.16.71:1971        ESTABLISHED 
+tcp        0      0 127.0.0.1:2808          127.0.0.1:51251         ESTABLISHED 
+tcp        0      0 127.0.0.1:39131         127.0.0.1:2810          ESTABLISHED 
+tcp        0      0 10.82.16.74:22          10.82.16.71:1973        ESTABLISHED 
+tcp        0      0 127.0.0.1:2810          127.0.0.1:39131         ESTABLISHED 
+tcp        0     52 10.82.16.74:22          10.82.16.71:1974        ESTABLISHED 
+tcp        0      0 127.0.0.1:51251         127.0.0.1:2808          ESTABLISHED 
+netstat: /proc/net/tcp6: No such file or directory
+udp        0      0 0.0.0.0:9981            0.0.0.0:*                           
+udp        0      0 0.0.0.0:49444           0.0.0.0:*                           
+udp        0      0 0.0.0.0:44958           0.0.0.0:*                           
+netstat: /proc/net/udp6: No such file or directory
+netstat: /proc/net/raw6: No such file or directory
+Active UNIX domain sockets (servers and established)
+Proto RefCnt Flags       Type       State         I-Node Path
+unix  3      [ ]         DGRAM                      1189 /dev/log
+unix  2      [ ACC ]     SEQPACKET  LISTENING        953 /run/udev/control
+unix  3      [ ]         DGRAM                       958 
+unix  3      [ ]         DGRAM                       957 
+unix  2      [ ]         DGRAM                      1191 
+</code></pre><ol>
+<li><p>Active Internet connections</p>
+<pre><code>Proto: socket使用的协议（tcp、udp、raw、tcp6、udp6、raw6）
+Recv-Q
+    Established: socket所在的应用程序还未读取的字节数
+    Listening: 包含当前syc_backlog的最大值 ？
+Send-Q
+    Established: 已发出还未被远程主机确认的字节数
+    Listening: 包含当前syc_backlog的最大值 ？
+Local Address: 本地IP、端口
+Foreign Address: 远程主机IP、端口
+State: tcp才有状态
+    ESTABLISHED: 已建立连接
+    SYN_SENT : 主动打开
+    SYN_RECV : 被动打开
+    FIN_WAIT1: 主动关闭
+    FIN_WAIT2: 等对方关闭
+    TIME_WAIT: 等待2MSL
+    CLOSE    : 已关闭
+    CLOSE_WAIT: 被动关闭，对方已关闭，等待本地关闭
+    LAST_ACK : 本地已执行关闭，等对方确认
+    LISTEN   : 正在监听
+    CLOSING  : 两端已执行关闭，仍然有数据没有发送完成
+    UNKNOWN  : 未知状态
+</code></pre></li>
+<li><p>Active UNIX domain sockets</p>
+<pre><code>Proto : socket使用的协议，通常是unix
+RefCnt: 应用计数，附加到socket的进程数
+Flags : 
+    SO_ACCEPTION (ACC): 用于还未连接的socket，进程正在accept等待请求
+    SO_WAITDATA (W)
+    SO_NOSPACE (N)
+Type  : socket的访问类型
+    SOCK_DGRAM : 无连接模式，UDP
+    SOCK_STREAM: 流式套接字，TCP
+    SOCK_RAW   : 原始套接字
+    SOCK_RDM   : 提供可靠消息传递
+    SOCK_SEQPACKET: 连续数据包的socket ？
+    UNKNOWN    : 面向未来的类型
+Stat:
+    FREE      : socket还未被分配
+    LISTENING : 监听链接请求
+    CONNECTING: 正在建立连接的socket
+    CONNECTED : 已经连接的socket
+    DISCONNECTING: 已经断开连接的
+    (empty)      : 没有连接到任何socket
+    UNKNOWN   : 永远不会发生
+I-Node: socket的inode编号
+Path  : 附加到socket的应用程序名称
+</code></pre></li>
+<li><p>-r -n显示路由表</p>
+<pre><code># netstat -r -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
+0.0.0.0         10.82.16.1      0.0.0.0         UG        0 0          0 eth0
+10.82.16.0      0.0.0.0         255.255.255.0   U         0 0          0 eth0
+169.254.0.0     0.0.0.0         255.255.0.0     U         0 0          0 eth0
+224.0.0.0       0.0.0.0         240.0.0.0       U         0 0          0 eth0 
+</code></pre></li>
+</ol>
+<h1 id="二、ss（超有用）"><a href="#二、ss（超有用）" class="headerlink" title="二、ss（超有用）"></a>二、ss（超有用）</h1><ol>
+<li><p>参数</p>
+<pre><code>-alnp: 同netstat
+-e: 详细socket信息
+-m: socket内存信息
+-i: TCP内部信息
+-o: 定时器信息
+-s: summary
+-t: tcp
+-u: udp
+-w: raw
+-x: unix
+-4/6
+</code></pre></li>
+<li><p>显示tcp连接详细信息，不解析用户名</p>
+<pre><code># ss -ntei 
+State      Recv-Q Send-Q                                  Local Address:Port            Peer Address:Port 
+ESTAB      0      0                                         10.82.16.74:22              10.82.16.71:1971   ino:9474 sk:9b3ac080
+         sack cubic rto:258 rtt:34.25/52 ato:40 mss:1460 cwnd:10 send 3.4Mbps rcv_rtt:363372 rcv_space:29340
+ESTAB      0      0                                           127.0.0.1:2808             27.0.0.1:51255  ino:11630167 sk:a3c6eb00
+         ts sack cubic wscale:7,7 rto:201 rtt:1.875/0.75 ato:40 mss:65468 cwnd:10 send 2793.3Mbps rcv_rtt:1 rcv_space:43690
+</code></pre></li>
+</ol>
+<h1 id="三、iptraf"><a href="#三、iptraf" class="headerlink" title="三、iptraf"></a>三、iptraf</h1><ol>
+<li>功能项<ul>
+<li>IP traffic monitor<ul>
+<li>统计TCP/UDP连接流量</li>
+</ul>
+</li>
+<li>General interface statistics<ul>
+<li>统计IP包流量</li>
+</ul>
+</li>
+<li>Detailed interface statistics<ul>
+<li>根据协议统计流量</li>
+</ul>
+</li>
+<li>Statistaical breakdowns<ul>
+<li>根据包大小分布或TCP/UDP端口统计流量</li>
+</ul>
+</li>
+<li>LAN station monitor<ul>
+<li>根据MAC地址统计流量</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/10/12/系统性能测试-网络性能工具篇-netstat和ss/" data-id="ciu5p05q300bng763lzzh79ng" class="article-share-link">分享到</a><div class="tags"><a href="/tags/系统性能/">系统性能</a></div><div class="post-nav"><a href="/2016/10/12/系统性能测试-网络性能工具篇-tcpdump/" class="pre">网络性能工具篇(tcpdump)</a><a href="/2016/10/11/算法学习-基础算法学习-三-——-字符串/" class="next">基础算法学习(三) —— 字符串</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/开发环境搭建-VIM配置/">VIM配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-系统性能工具篇-perf/">系统性能工具篇(perf)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-系统性能工具篇-应用程序小工具/">系统性能工具篇(应用程序小工具)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-系统性能工具篇-系统小工具/">系统性能工具篇(系统小工具)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-系统性能工具篇-vmstat/">系统性能工具篇(vmstat)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-系统性能工具篇-sar/">系统性能工具篇(sar)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-系统性能工具篇-numastat/">系统性能工具篇(numastat)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-系统性能工具篇-iostat/">系统性能工具篇(iostat)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-网络性能工具篇-tcpdump/">网络性能工具篇(tcpdump)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-网络性能工具篇-netstat和ss/">网络性能工具篇(netstat和ss)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
