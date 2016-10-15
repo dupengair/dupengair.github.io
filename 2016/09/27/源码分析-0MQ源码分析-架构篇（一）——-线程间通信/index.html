@@ -1,0 +1,544 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>0MQ源码分析 架构篇（一）—— 线程间通信 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">0MQ源码分析 架构篇（一）—— 线程间通信</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">0MQ源码分析 架构篇（一）—— 线程间通信</h1><div class="post-meta">Sep 27, 2016<span> | </span><span class="category"><a href="/categories/源码分析/">源码分析</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#0MQ源码分析-架构篇（一）——-线程间通信"><span class="toc-number">1.</span> <span class="toc-text">0MQ源码分析 架构篇（一）—— 线程间通信</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、概要"><span class="toc-number">2.</span> <span class="toc-text">一、概要</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、实现"><span class="toc-number">3.</span> <span class="toc-text">二、实现</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、改进"><span class="toc-number">4.</span> <span class="toc-text">三、改进</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、点评与学习"><span class="toc-number">5.</span> <span class="toc-text">四、点评与学习</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="0MQ源码分析-架构篇（一）——-线程间通信"><a href="#0MQ源码分析-架构篇（一）——-线程间通信" class="headerlink" title="0MQ源码分析 架构篇（一）—— 线程间通信"></a>0MQ源码分析 架构篇（一）—— 线程间通信</h1><hr>
+<h1 id="一、概要"><a href="#一、概要" class="headerlink" title="一、概要"></a>一、概要</h1><ol>
+<li>url<ul>
+<li>zmq线程间通信采用url“inproc://localhost”</li>
+</ul>
+</li>
+<li><p>高性能</p>
+<ul>
+<li><p>引种自</p>
+<blockquote>
+<p>1、无锁的队列模型</p>
+<p>对于跨线程间的交互（用户端和session）之间的数据交换通道pipe，采用无锁的队列算法CAS；在pipe的两端注册有异步事件，在读或者写消息到pipe的时，会自动触发读写事件。</p>
+<p>2、批量处理的算法</p>
+<p>对于传统的消息处理，每个消息在发送和接收的时候，都需要系统的调用，这样对于大量的消息，系统的开销比较大，zeroMQ对于批量的消息，进行了适应性的优化，可以批量的接收和发送消息。</p>
+<p>3、多核下的线程绑定，无须CPU切换</p>
+<p>区别于传统的多线程并发模式，信号量或者临界区， zeroMQ充分利用多核的优势，每个核绑定运行一个工作者线程，避免多线程之间的CPU切换开销。</p>
+</blockquote>
+</li>
+<li><p>其中1、3都是在说线程间通信的高效实现，基于源码我们分析一下是如何实现的</p>
+</li>
+</ul>
+</li>
+<li>源码阅读<ul>
+<li>感脚就一个字：“这里的山路十八弯” @_@</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、实现"><a href="#二、实现" class="headerlink" title="二、实现"></a>二、实现</h1><ol>
+<li><p>消息载体mailbox</p>
+<ul>
+<li>总述<ul>
+<li>消息的载体即存放消息的容器，类似于生活中的信箱</li>
+<li>在zmq中这个容器被抽象为mailbox的概念，用于存放和收发邮件</li>
+<li>每个要接收/发送消息的对象，其实就是socket_base的子类以及ctx、reaper thread和io threads，都会创建一个mailbox用于存储自己要接收的消息</li>
+<li>发送消息的过程就是发送方将消息放入接收方绑定的<code>io_thread</code>的mailbox里，再通知接收方进行处理的过程。这里<code>io_thread</code>进行转发和通知，扮演了postman的角色</li>
+</ul>
+</li>
+<li><p>mailbox</p>
+<ul>
+<li><p>mailbox组合了<code>cpipe_t</code>类，用于实现收发的动作，类似于在信上写明了是走航空还是陆运</p>
+<ul>
+<li><p>mailbox实现的recv和send动作，需要被poller调用，所以需要一个fd给poller用，因此这里组合的signaler就起这个作用，每个mailbox一个signaler     </p>
+<pre><code>// send
+void zmq::mailbox_t::send (const command_t &amp;cmd_)
+{
+    sync.lock ();
+    cpipe.write (cmd_, false);
+    const bool ok = cpipe.flush ();
+    sync.unlock ();
+    if (!ok)
+        signaler.send ();
+}
+
+// recv 
+int zmq::mailbox_t::recv (command_t *cmd_, int timeout_)
+{
+    //  Try to get the command straight away.
+    if (active) {
+        if (cpipe.read (cmd_))
+            return 0;
+
+        //  If there are no more commands available, switch into passive state.
+        active = false;
+    }
+
+    //  Wait for signal from the command sender.
+    int rc = signaler.wait (timeout_);
+    if (rc == -1) {
+        errno_assert (errno == EAGAIN || errno == EINTR);
+        return -1;
+    }
+
+    //  Receive the signal.
+    rc = signaler.recv_failable ();
+    if (rc == -1) {
+        errno_assert (errno == EAGAIN);
+        return -1;
+    }
+
+    //  Switch into active state.
+    active = true;
+
+    //  Get a command.
+    const bool ok = cpipe.read (cmd_);
+    zmq_assert (ok);
+    return 0;
+}
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>signaler</p>
+<ul>
+<li>提供fd给别人使用，比如mailbox，一般上层类通过它的<code>get_fd()</code>接口取出fd后放入poller，即可实现对读写事件的监听</li>
+<li>在linux下优先用eventfd实现，否则用socketpair</li>
+<li>mailbox调用cpipe的发送后，会通过signaler.send()发送信号通知对端接收。在接收端通过signaler.wait()等待信号到来，好继续接收</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>消息分发的流水线：ctx中的slots</p>
+<ul>
+<li><p>概述</p>
+<ul>
+<li>每个要发送消息的对象会将自己的mailbox放到ctx的slots里对应的位置，消息发送时，由ctx通过slots进行统一的发送操作</li>
+<li><p>slots就是指向<code>i_mailbox</code>基类的指针数组，实际存放的是<code>mailbox_t</code>类型的对象</p>
+<pre><code>slots = (i_mailbox **) malloc (sizeof (i_mailbox*) * slot_count);
+</code></pre></li>
+<li><p>由于每个对象在ctx的slots中有一个位置，所以消息从一个对象发送到另一个对象的过程，就是通过ctx将消息放入destination所绑定的<code>io_thread</code>对应的slot里，然后由<code>io_thread</code>这个postman通知destination进行处理(即调用destination的<code>process_command</code>函数)</p>
+<pre><code>void zmq::ctx_t::send_command (uint32_t tid_, const command_t &amp;command_)
+{
+    slots [tid_]-&gt;send (command_);
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>slots的个数</p>
+<ul>
+<li>sockets个数 + io threads个数 + reaper thread + ctx</li>
+<li><p>代码中即为：</p>
+<pre><code>slot_count = mazmq + ios + 2;
+</code></pre></li>
+</ul>
+</li>
+<li><p>slots的初始化</p>
+<ul>
+<li><p>在<code>create_socket()</code>中初始化</p>
+<ul>
+<li>如果是第一次调用，则初始化“io threads + reaper thread + ctx”的部分，这部分为系统所用，然后为当前创建的socket初始化一个mailbox，插入到slots中</li>
+<li><p>如果不是第一次，则系统那些mailbox就不用初始化了，直接将socket创建的mailbox插入到slots里就行</p>
+<pre><code>slots[slot] = s-&gt;get_mailbox();
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>slots的索引</p>
+<ul>
+<li><p>0和1固定分配给ctx和reaper thread</p>
+<pre><code>//  Initialise the infrastructure for zmq_ctx_term thread.
+slots [term_tid] = &amp;term_mailbox;
+
+//  Create the reaper thread.
+reaper = new (std::nothrow) reaper_t (this, reaper_tid);
+slots [reaper_tid] = reaper-&gt;get_mailbox ();
+</code></pre></li>
+<li><p>然后分配给io threads</p>
+<pre><code> //  Create I/O thread objects and launch them.
+for (int i = 2; i != ios + 2; i++) {
+    io_thread_t *io_thread = new (std::nothrow) io_thread_t (this, i);
+    io_threads.push_back (io_thread);
+    slots [i] = io_thread-&gt;get_mailbox ();
+    io_thread-&gt;start ();
+}
+</code></pre></li>
+</ul>
+<ul>
+<li><p>初始化完系统所用的slots，将剩余的slots先初始化为0，为每个空位编号</p>
+<pre><code>//  In the unused part of the slot array, create a list of empty slots.
+for (int32_t i = (int32_t) slot_count - 1;
+      i &gt;= (int32_t) ios + 2; i--) {
+    empty_slots.push_back (i);
+    slots [i] = NULL;
+}        
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>* 剩下的部分每`create_socket()`一次，从剩余的slots取出一个空位，将生成的mailbox按顺序插入到空位，其id对应当前空位id
+
+        //  Create the socket and register its mailbox.
+        socket_base_t *s = socket_base_t::create (type_, this, slot, sid);
+        if (!s) {
+            empty_slots.push_back (slot);
+            slot_sync.unlock ();
+            return NULL;
+        }
+        sockets.push_back (s);
+        slots [slot] = s-&gt;get_mailbox ();
+</code></pre><ol>
+<li><p>IO复用的抽象机制——poller实现</p>
+<ul>
+<li>概述<ul>
+<li>zmq中将不同平台的poll机制抽象为<code>poller_t</code>类型，实现统一的poll操作</li>
+<li>在编译时会检测系统支持的poll机制，如select、poll、epoll(Linux)，kqueue(BSD、Mac OS)，devpoll，在生成的头文件中自动选择当前环境下最优的，linux下一般是epoll</li>
+<li>通过将OS提供的接口封装，然后typedef成<code>poller_t</code>类型，就统一了不同平台下的poll实现(其实就是那个阻塞wait事件，以及设置事件属性的动作)，为其它类提供了poller用于IO复用。可以用这个poller来添加fd和事件回调函数，然后设置监控类型(读/写，在类中统一成pollin/pollout)，即可被纳入等待触发的过程中</li>
+<li>拥有poller的类可以start工作线程(工作线程在poller内部实现)，就开始了等待和响应事件的过程。系统一共有3处创建poller，两处为系统中，一处为用户层接口，可以在用户自己的线程中使用zmq提供的poll机制<ul>
+<li>每个io thread对象一个poller，负责inproc的消息通信</li>
+<li>reap thread对象一个，貌似负责系统的GC，还没看到那里，后面再细看</li>
+<li>用户可通过<code>zmq_poller_new()</code>来为自己的代码创建poller，此操作会生成一个poller线程来响应事件</li>
+</ul>
+</li>
+<li>事件响应，则是通过继承接口类<code>i_poll_events</code>实现其中的in/out/timer事件</li>
+<li>timer事件，在<code>poller_base_t</code>中实现，被各个<code>poller_t</code>类型继承，在类实现的loop中与fd事件一起处理，从而使poller具有了timer的功能    </li>
+</ul>
+</li>
+<li><p>统一不同平台的poll操作</p>
+<ul>
+<li>如上所述，通过编译生成头文件的宏定义，在编译时为当前平台选择了唯一确定的poll操作 </li>
+<li>将特定的poll实现，如<code>epoll_t</code>类型typedef为<code>poller_t</code>类型，在系统中统一进行操作</li>
+<li>poller实现的操作主要有<ul>
+<li>添加删除fd：<code>add_fd/rm_fd</code></li>
+<li>设置事件类型：<code>set/reset_pollin/pollout</code></li>
+<li>实现工作循环，主要是等待和响应timer和fd事件：<code>worker_routine</code></li>
+<li>启动/退出poller，即创建和停止线程：<code>start/stop</code></li>
+</ul>
+</li>
+<li><p>类<code>epoll_t</code>定义</p>
+<pre><code>class epoll_t : public poller_base_t
+{
+public:
+    epoll_t (const ctx_t &amp;ctx_);
+    ~epoll_t ();
+    //  &quot;poller&quot; concept.
+    handle_t add_fd (fd_t fd_, zmq::i_poll_events *events_);
+    void rm_fd (handle_t handle_);
+    void set_pollin (handle_t handle_);
+    void reset_pollin (handle_t handle_);
+    void set_pollout (handle_t handle_);
+    void reset_pollout (handle_t handle_);
+    void start ();
+    void stop ();
+
+private:
+    //  Main worker thread routine.
+    static void worker_routine (void *arg_);
+    //  Main event loop.
+    void loop ();
+    // Reference to ZMQ context.
+    const ctx_t &amp;ctx;
+    //  Main epoll file descriptor
+    fd_t epoll_fd;
+    struct poll_entry_t
+    {
+        fd_t fd;
+        epoll_event ev;
+        zmq::i_poll_events *events;
+    };
+    //  Handle of the physical thread doing the I/O work.
+    thread_t worker;
+};
+
+typedef epoll_t poller_t;
+</code></pre><ul>
+<li>注意后那个typedef，每中类型的poller实现，都会将自己的类类型定义为<code>poller_t</code>，统一操作</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>timer的实现</p>
+<ul>
+<li>timer由<code>poller_base_t</code>类实现，每一种poller都继承自它，也就为它们加入了timer事件的实现</li>
+<li>timer的事件也是<code>i_poll_events</code>接口类的实现</li>
+<li>有意思的是，timer类实现了两大类操作<ul>
+<li>添加/删除timer和执行timer事件触发判断的常规方法<code>add/cancel/execute_timer</code></li>
+<li>计算系统负载的方法<code>get/adjust_load</code>，用于工作线程的负载均衡，后续详解</li>
+</ul>
+</li>
+<li><p><code>timer_t</code>定义：</p>
+<pre><code>class poller_base_t
+{
+public:
+    poller_base_t ();
+    virtual ~poller_base_t ();
+
+    //  Returns load of the poller. Note that this function can be
+    //  invoked from a different thread!
+    int get_load ();
+
+    void add_timer (int timeout_, zmq::i_poll_events *sink_, int id_);
+    void cancel_timer (zmq::i_poll_events *sink_, int id_);
+
+protected:
+    //  Called by individual poller implementations to manage the load.
+    void adjust_load (int amount_);
+
+    uint64_t execute_timers ();
+
+private:
+    //  List of active timers.
+    struct timer_info_t
+    {
+        zmq::i_poll_events *sink;
+        int id;
+    };
+    typedef std::multimap &lt;uint64_t, timer_info_t&gt; timers_t;
+    timers_t timers;
+    //  Load of the poller. Currently the number of file descriptors
+    //  registered.
+    atomic_counter_t load;
+    poller_base_t (const poller_base_t&amp;);
+    const poller_base_t &amp;operator = (const poller_base_t&amp;);
+};
+</code></pre></li>
+</ul>
+</li>
+<li><p>poller的使用</p>
+<ul>
+<li>这里主要以系统中用到的io thread为例讲解poller使用</li>
+<li>创建<ul>
+<li>前面说过poller创建是在io/reap thread和用户接口中</li>
+</ul>
+</li>
+<li><p>启动/停止</p>
+<ul>
+<li><p>在io thread中实现start启动工作线程</p>
+<pre><code>void zmq::io_thread_t::start ()
+{
+    //  Start the underlying I/O thread.
+    poller-&gt;start ();
+}            
+</code></pre></li>
+<li><p>io thread对象析构时delete poller，在poller的析构函数中停止并退出工作线程</p>
+<pre><code>zmq::epoll_t::~epoll_t ()
+{
+    //  Wait till the worker thread exits.
+    worker.stop ();
+
+    close (epoll_fd);
+    for (retired_t::iterator it = retired.begin (); it != retired.end (); ++it) {
+        LIBZMQ_DELETE(*it);
+    }
+}        
+</code></pre></li>
+</ul>
+</li>
+<li>事件处理——<code>io_object_t</code>类<ul>
+<li>主要是用于设置事件属性，类似面向对象的pImp方法</li>
+<li>要实现某一类的事件处理，需要继承<code>io_object_t</code>类，并实现其中的event处理函数，添加fd与设置其属性，可以直接调用继承自这个类的方法</li>
+<li>在io_object_t<code>类中，添加fd与设置事件类型，是通过</code>聚合poller，并且封装<code>poller_t</code>类的<code>add_fd</code>、 <code>set_pollin/out</code>、 <code>add/cancel_timer</code>系列方法实现</li>
+<li>在io_object_t<code>类中，事件处理的实现，是通过继承</code>i_poll_events<code>这个接口类实现，这个接口类定义了</code>in/out/timer_event<code>这几个虚函数，用于实现事件处理，在</code>io_object_t`中没有任何处理，需要客户端继承这个类去实现</li>
+</ul>
+</li>
+<li><p>IO复用 —— <code>io_thread_t</code>类</p>
+<ul>
+<li>这个类主要是管理poller，start/stop polling，扮演一个worker的角色</li>
+<li>通过<code>get_load</code>方法获取在<code>poller_base</code>基类中计算的负载情况</li>
+<li>只实现了<code>in_event</code>，用于线程间通信，从发到这个线程上的mailbox中取出cmd，再调用cmd的<code>process_command</code>方法来执行命令</li>
+<li>每个<code>io_object_t</code>对象会通过plug方法，绑定一个<code>io_thread_t</code>，从而获得其poller来添加设置事件</li>
+</ul>
+</li>
+<li><p>实现一类事件处理的具体过程：</p>
+<ul>
+<li>客户端继承<code>io_object_t</code>类，实现events函数</li>
+<li>调用ctx的<code>choose_io_thread()</code>方法，从系统中获取到一个io thead，然后创建<code>io_object_t</code>对象，从而将其绑定到一个poller上</li>
+<li>使用时，通过<code>add_fd</code>方法添加fd并通过<code>set_pollin/out</code>设置其属性，即可执行事件处理</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>消息投递——无锁的队列算法CAS的PIPE实现</p>
+</li>
+<li>cmd收发的过程<ul>
+<li>一个object绑定到一个<code>io_thread</code>上</li>
+<li>object将cmd放到destination所绑定的<code>io_thread</code>上</li>
+<li><code>io_thread</code>从自己的mailbox取出cmd，调用destination的<code>process_command</code>进行处理</li>
+</ul>
+</li>
+<li><p>系统负载均衡——load的计算与负载均衡</p>
+<ul>
+<li><p>定义</p>
+<ul>
+<li><p>系统负载在<code>poller_base</code>中定义，封装为一个原子变量，避免了锁操作</p>
+<pre><code> //  Load of the poller. Currently the number of file descriptors registered.
+atomic_counter_t load;
+</code></pre></li>
+</ul>
+</li>
+<li><p>计算</p>
+<ul>
+<li><p>load计算在<code>poller_base</code>中</p>
+<pre><code>int zmq::poller_base_t::get_load ()
+{
+    return load.get ();
+}
+
+void zmq::poller_base_t::adjust_load (int amount_)
+{
+    if (amount_ &gt; 0)
+        load.add (amount_);
+    else
+    if (amount_ &lt; 0)
+        load.sub (-amount_);
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>改变</p>
+<ul>
+<li><p>根据poller对fd的添加删除来变化</p>
+<pre><code>zmq::epoll_t::handle_t zmq::epoll_t::add_fd (fd_t fd_, i_poll_events *events_)
+{
+    ...
+
+    //  Increase the load metric of the thread.
+    adjust_load (1);
+
+    return pe;
+}
+
+void zmq::epoll_t::rm_fd (handle_t handle_)
+{
+    ...
+
+    //  Decrease the load metric of the thread.
+    adjust_load (-1);
+}        
+</code></pre></li>
+</ul>
+</li>
+<li><p>负载均衡</p>
+<ul>
+<li>系统根据当前负载，选择一个负载最低的io thread来添加事件，主要是在ctx的<code>choose_io_thread()</code>实现的</li>
+<li>每当添加fd到poller之前，都要调用这个函数从ctx获取到一个io thread，才创建<code>io_object_t</code>对象，这个io thread绑定到对象上，然后就可以将要监听对象的fd添加到io thread中，以使能<code>io_object_t</code>定义的事件处理</li>
+<li>每次调用<code>choose_io_thread()</code>，其内部都会判断每个线程的负载，即当前已添加的fd数量，以选出负载最小的worker线程</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、改进"><a href="#三、改进" class="headerlink" title="三、改进"></a>三、改进</h1><ol>
+<li>mailbox<ul>
+<li>mailbox组合了<code>cpipe_t</code>类，将消息发送方式写死成只用pipe，好比这个信箱只让走航空。如果改为聚合，可以由外部决定其实现，则类似于写信时可以选择填写运输方式水陆空</li>
+</ul>
+</li>
+<li>poller<ul>
+<li>这里poller实现是通过宏定义选择，而不是传统OOP先定义基类，再派生出不同实现，再通过多态进行动态操作的做法</li>
+</ul>
+</li>
+<li>poller事件抽象的绑定<ul>
+<li>poller的属性绑定到方法的过程，即<code>io_object_t</code>通过构造函数传入<code>io_thread_t</code>的过程，当<code>object_t</code>对象生成时，绑定关系就无法改变了</li>
+<li>如果对象的事件处理过程是可能变化的，比如事件响应的策略随时间或者负载进行变化，可以设计为在使用过程中实时绑定，即可以传入不同的<code>io_thread_t</code>对象，从而对事件响应产生不同过程</li>
+</ul>
+</li>
+<li>负载均衡的处理<ul>
+<li>当前系统的负载计算，是统计添加到<code>io_thread</code>上的fd数量，这是个静态量，实际的系统负载取决于fd的活跃程度，这与fd的数量不是正相关的</li>
+<li>可以采用类似cache的LRU算法，将活跃的fd分摊到不同的worker线程，才是真正实时的负载均衡</li>
+</ul>
+</li>
+<li><p>yqueue.hpp里的pop和push</p>
+<ul>
+<li><p>pop和push是一个对等操作，其函数实现时，内部判断条件却相反，影响可读性：</p>
+<pre><code>//  Adds an element to the back end of the queue.
+inline void push ()
+{
+    ...    
+    if (++end_pos != N)
+        return;
+    ...
+}
+
+//  Removes an element from the front end of the queue.
+inline void pop ()
+{
+    if (++ begin_pos == N) {
+        ...
+    }
+}
+</code></pre><ul>
+<li>其含义是当元素个数push/pop满一个chunk(即pos == N)时，再进行集中的alloc/free chunk的操作</li>
+<li><p>这里可以两个都像pop那样判断等于N，再进行操作</p>
+<pre><code>if (++ begin_pos/end_pos == N) {
+    ...
+}
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、点评与学习"><a href="#四、点评与学习" class="headerlink" title="四、点评与学习"></a>四、点评与学习</h1><ol>
+<li><p>关于接口</p>
+<ul>
+<li><p>所有声明于zmq.h的接口只用到了这个头文件中声明的数据结构，没有暴露任何库内部的细节，相关的参数类型都是<code>void *</code></p>
+<pre><code>ZMQ_EXPORT void *zmq_socket (void *, int type);
+ZMQ_EXPORT int zmq_close (void *s);
+</code></pre></li>
+<li><p>cpp实现中，将参数转为内部数据结构使用，这样库自身的数据结构的维护就完全在库内部进行，不给客户端造成任何负担，可以方便的修改升级</p>
+<pre><code>// Sockets
+void *zmq_socket (void *ctx_, int type_)
+{
+    ...
+    zmq::ctx_t *ctx = (zmq::ctx_t *) ctx_;
+    zmq::socket_base_t *s = ctx-&gt;create_socket (type_);
+    return (void *) s;
+}
+
+int zmq_close (void *s_)
+{
+    ...
+    ((zmq::socket_base_t*) s_)-&gt;close ();
+    return 0;
+}
+</code></pre></li>
+<li><p>C++库维护与升级、二进制兼容性的相关知识可以参考陈硕《C++服务端编程》第十一章《反思C++对象与虚函数》，本条目可以看作该内容的补充</p>
+</li>
+</ul>
+</li>
+<li>关于poller的应用——事件抽象<ul>
+<li>将event操作，即设置属性与通知的动作，通过不同的类抽象成方法与属性<ul>
+<li>这里方法，是指对于event的响应方式，对event/timer的polling操作</li>
+<li>这里属性，是指对于一类事件，如何设置其属性，如添加/删除fd，设置/修改event/timer属性的方式</li>
+</ul>
+</li>
+<li>通过两个类，将方法与属性分离：<ul>
+<li><code>io_object_t</code>为每类事件设置属性，这一层屏蔽了不同poller的差异，为设置事件属性提供了统一的接口，通过实时挂接到不同的poller上，即聚合<code>io_thread_t</code>，可以为一类事件提供多种polling动作的实现</li>
+<li><code>io_thread_t</code>为完成事件的通知动作，即event和timer的polling过程</li>
+</ul>
+</li>
+<li>客户端继承<code>io_object_t</code>，实现event和timer的处理，看不到poller内部的实现</li>
+</ul>
+</li>
+<li>再论值语义与对象语义<ul>
+<li>陈硕在《Linux服务器编程 * 第十一章 反思C++对象与虚函数》中谈论对象语义与值语义：<ul>
+<li>对象语义：<ul>
+<li>不可拷贝</li>
+<li>拷贝无任何意义</li>
+<li>通常继承noncopyable类</li>
+</ul>
+</li>
+<li>值语义：<ul>
+<li>可以拷贝</li>
+<li>拷贝与原对象无关</li>
+<li>如内置类型</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>zmq中几乎所有类都不允许拷贝<ul>
+<li>因为每个类的对象都代表了实际的含义</li>
+<li>直接拷贝对象没有任何意义，如不会有两个一模一样的client</li>
+<li>这里是对陈硕书里思想的印证和典型应用，赞一个</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/09/27/源码分析-0MQ源码分析-架构篇（一）——-线程间通信/" data-id="ciub8qpu200b11z63xboqqa06" class="article-share-link">分享到</a><div class="tags"><a href="/tags/源码分析/">源码分析</a></div><div class="post-nav"><a href="/2016/09/27/渗透测试-渗透测试入门学习笔记（一）代理-——-Proxy/" class="pre">渗透测试入门学习笔记（一）代理 —— Proxy</a><a href="/2016/09/27/C-C-经验累积-0MQ源码分析-架构篇（一）——-线程间通信/" class="next">0MQ源码分析 架构篇（一）—— 线程间通信</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-四-——-树/">基础算法学习(四) —— 树</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-三-——-字符串/">基础算法学习(三) —— 字符串</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-二-——-栈与队列/">基础算法学习(二) —— 栈与队列</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-一-——-线性表/">基础算法学习(一) —— 线性表</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/Linux内核学习-Linux内核初探-之-内存管理-七-——-内核内存分配函数的选择/">Linux内核初探 之 内存管理(七) —— 内核内存分配函数的选择</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/Linux内核学习-Linux内核初探-之-内存管理-六-——-per-cpu-data/">Linux内核初探 之 内存管理(六) —— per cpu data</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/Linux内核学习-Linux内核初探-之-内存管理-五-——-静态分配与高端内存映射/">Linux内核初探 之 内存管理(五) —— 静态分配与高端内存映射</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/Linux内核学习-Linux内核初探-之-内存管理-四-——-Slab层/">Linux内核初探 之 内存管理(四) —— Slab层</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/开发环境搭建-VIM配置/">VIM配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-系统性能工具篇-perf/">系统性能工具篇(perf)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
