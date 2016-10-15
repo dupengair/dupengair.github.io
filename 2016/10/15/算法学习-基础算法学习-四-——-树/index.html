@@ -1,0 +1,776 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>基础算法学习(四) —— 树 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">基础算法学习(四) —— 树</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">基础算法学习(四) —— 树</h1><div class="post-meta">Oct 15, 2016<span> | </span><span class="category"><a href="/categories/算法学习/">算法学习</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#基础算法学习-四-——-树"><span class="toc-number">1.</span> <span class="toc-text">基础算法学习(四) —— 树</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、概念"><span class="toc-number">2.</span> <span class="toc-text">一、概念</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、存储结构"><span class="toc-number">3.</span> <span class="toc-text">二、存储结构</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、二叉树的概念"><span class="toc-number">4.</span> <span class="toc-text">三、二叉树的概念</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、二叉树的遍历"><span class="toc-number">5.</span> <span class="toc-text">四、二叉树的遍历</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、二叉树的创建"><span class="toc-number">6.</span> <span class="toc-text">五、二叉树的创建</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、线索二叉树"><span class="toc-number">7.</span> <span class="toc-text">六、线索二叉树</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、树、森林、二叉树"><span class="toc-number">8.</span> <span class="toc-text">七、树、森林、二叉树</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#八、赫夫曼树"><span class="toc-number">9.</span> <span class="toc-text">八、赫夫曼树</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="基础算法学习-四-——-树"><a href="#基础算法学习-四-——-树" class="headerlink" title="基础算法学习(四) —— 树"></a>基础算法学习(四) —— 树</h1><hr>
+<h1 id="一、概念"><a href="#一、概念" class="headerlink" title="一、概念"></a>一、概念</h1><ol>
+<li>树定义<ul>
+<li>根结点唯一</li>
+<li>子树互不相交</li>
+</ul>
+</li>
+<li>度<ul>
+<li>子树的数量</li>
+</ul>
+</li>
+<li>深度<ul>
+<li>结点的最大层次</li>
+</ul>
+</li>
+<li>森林<ul>
+<li>互不相交的树的集合</li>
+</ul>
+</li>
+<li>有序树<ul>
+<li>子树从左至右有次序</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、存储结构"><a href="#二、存储结构" class="headerlink" title="二、存储结构"></a>二、存储结构</h1><pre><code>                A 0
+        |                |
+        B 1             C 2
+    |        |            |
+    D 3     E 4         F 5
+|        |            |    |    |
+G 6     H 7            I 8    J 9 K 10
+</code></pre><ol>
+<li><p>parent表示法</p>
+<ul>
+<li>每个结点用附设指示器指示父节点位置</li>
+<li>根据parent很容易找到父节点，时间复杂度为O(1)</li>
+<li><p>要找子树需要遍历</p>
+<pre><code>data + parent        
+
+下标        data    parent
+0         A        -1
+1        B        0
+2        C        0
+3        D        1
+4        E        1
+5        F        2
+6        G        3
+7        H        3
+8        I        5
+9        J        5
+10        K        5
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<pre><code>template &lt;typename T&gt;
+struct TNode {
+    T data;
+    int parent;
+};
+
+template &lt;typename T, typename N&gt;
+struct TTree {
+    TNode&lt;T&gt; nodes[N];
+    int length;
+};
+</code></pre><ol>
+<li><p>孩子表示法</p>
+<ul>
+<li>把每个子树排列起来，用单链表存储，则n个子树有n个子树链表</li>
+<li>查找子结点方便</li>
+<li><p>查找parent需要整数遍历</p>
+<pre><code>data + first child        child + next
+
+下标        data     first        child     next
+0        A        -&gt;            1        -&gt;        2    @
+1        B        -&gt;            3        -&gt;        4    @
+2        C        -&gt;            5         @    
+3        D        -&gt;            6        -&gt;        7    @
+4        E        @
+5        F        -&gt;            8        -&gt;        9    @
+6        G        @
+7        H        @
+8        I        @
+9        J        @    
+10        K        @
+
+template &lt;typename T&gt;
+struct TChild {
+    T data;
+    struct TChild* next;
+};    
+
+template &lt;typename T&gt;
+struct TNode {
+    T data;
+    struct TChild* first;
+};    
+
+template &lt;typename T, typename N&gt;
+struct TTree {
+    TNode&lt;T&gt; nodes[N];
+    int length;
+};    
+</code></pre></li>
+</ul>
+</li>
+<li><p>孩子兄弟表示法    </p>
+<ul>
+<li>两个指针分别指向结点的第一个child和右兄弟</li>
+<li><p>实际是是把复杂的树转成了二叉树</p>
+<pre><code>data + first + right
+
+下标        data    first     right    
+0        A         -&gt; 1        @
+1        B         -&gt; 3        -&gt; 2                 
+2        C        -&gt; 5        @
+3        D        -&gt; 6        -&gt; 4 
+4        E        @        @
+5        F        -&gt; 8        @
+6        G        @        -&gt; 7
+7        H        @        @
+8        I        @        -&gt; 9
+9        J        @        -&gt; 10
+10        K        @        -&gt; 10    
+
+                             A 0
+                        /
+                        B 1
+                /                \
+                C 2                D 3
+            /                /        \    
+            F 5                G 6        E 4    
+        /                /    
+        I 8                H 7
+    /    
+    J 9
+/    
+K 10
+
+template &lt;typename T&gt;
+struct TNode {
+    T data;
+    struct TNode* first * right;
+};    
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="三、二叉树的概念"><a href="#三、二叉树的概念" class="headerlink" title="三、二叉树的概念"></a>三、二叉树的概念</h1><ol>
+<li>特点<ul>
+<li>每个结点最多2棵子树</li>
+<li>子树左右有序，即使只有一棵子树</li>
+</ul>
+</li>
+<li>特殊二叉树<ul>
+<li>斜树<ul>
+<li>所有结点都是一个方向，都是左子树或者右子树</li>
+<li>结点个数与深度相同</li>
+</ul>
+</li>
+<li>满树<ul>
+<li>所有结点都有左右子树，所有叶子都在同一层(最底层)</li>
+</ul>
+</li>
+<li>完全二叉树<ul>
+<li>按层序编号，位置与编号相同，编号是连续的</li>
+<li>满树一定是完全二叉树，完全二叉树不一定满树(如缺最后一个，或者叶子不在同一层，反正编号不连续)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>性质<ul>
+<li>第i层有2^i个节点(i从0开始)</li>
+<li>深度为k，最多有2^k-1个节点</li>
+<li>n个节点的完全二叉树深度为log2n+1</li>
+<li>对n个节点的完全二叉树按层序编号，对于节点i：<ul>
+<li>i=1，则为根，i&gt;1，则parent为i/2</li>
+<li>i&gt;n/2, 则i无左子树，否则左子树是2i</li>
+<li>i&gt;(n-1)/2，则i无右子树，否则右子树是2i+1</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>存储结构</p>
+<ul>
+<li>顺序存储<ul>
+<li>数组</li>
+<li>按层序编号</li>
+<li>极端情况时浪费空间，如斜树</li>
+</ul>
+</li>
+<li><p>链表存储</p>
+<ul>
+<li><p>一个数据域 + 两个指针域    </p>
+<pre><code>lchild + data + rchild
+
+template &lt;typename T&gt;
+struct TBiNode {
+    T data;
+    struct TBiNode *lchild *rchild;
+};
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、二叉树的遍历"><a href="#四、二叉树的遍历" class="headerlink" title="四、二叉树的遍历"></a>四、二叉树的遍历</h1><pre><code>      A
+  /           \
+ B            C
+/         /     \    
+D        E       F
+ \         \      /    \
+  G          H     I        J
+/    \     /      \    / \
+K     L  M       N  O   P
+</code></pre><ol>
+<li><p>前序遍历</p>
+<ul>
+<li>通过根节点，先遍历<strong>一条分支</strong>的<strong>所有</strong>左子树，再遍历所有右子树</li>
+<li><p>一条分支上所有左边遍历完再遍历所有右边</p>
+<pre><code>ABD-&gt;GK-&gt;L-&gt;CE-&gt;HM-&gt;FI-&gt;N-&gt;JO-&gt;P
+</code></pre></li>
+<li><p>代码</p>
+<pre><code>void PreTraverse(TBiNode *T)
+{
+    if(!T) 
+        return;
+
+    printf(&quot;%d &quot;, T-&gt;data);
+    PreTraverse(T-&gt;lchild);
+    PreTraverse(T-&gt;rchild);
+}
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<ol>
+<li><p>中序遍历</p>
+<ul>
+<li>从最下层子树开始，从左叶-&gt;根-&gt;右页结点，再一层层向上推进，一侧遍历完后到达根节点，再遍历另一侧</li>
+<li><p>左分支遍历完后右分支，左叶-&gt;根-&gt;右页</p>
+<pre><code>D-&gt;KGL-&gt;B-&gt;A-&gt;E-&gt;MH-&gt;C-&gt;IN-&gt;F-&gt;OJP
+</code></pre></li>
+<li><p>代码</p>
+<pre><code>void MidTraverse(TBiNode *T)
+{
+    if(!T) 
+        return;
+
+    MidTraverse(T-&gt;lchild);
+    printf(&quot;%d &quot;, T-&gt;data);
+    MidTraverse(T-&gt;rchild);
+}
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<ol>
+<li><p>后序遍历</p>
+<ul>
+<li>从最下层子树开始，从左到右遍历叶结点再到根</li>
+<li><p>先叶再根，从左到右，左叶-&gt;右页-&gt;根</p>
+<pre><code>KLG-&gt;DB-&gt;MH-&gt;E-&gt;NI-&gt;OPJ-&gt;F-&gt;C-&gt;A
+</code></pre></li>
+<li><p>代码</p>
+<pre><code>void PostTraverse(TBiNode *T)
+{
+    if(!T) 
+        return;
+
+    PostTraverse(T-&gt;lchild);
+    PostTraverse(T-&gt;rchild);
+    printf(&quot;%d &quot;, T-&gt;data);
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>层序遍历</p>
+<ul>
+<li><p>从上到下，从左至右，按层遍历</p>
+<pre><code>A-&gt;BC-&gt;DEF-&gt;GHIJ-&gt;KLMNOP
+</code></pre></li>
+</ul>
+</li>
+<li><p>问题求解</p>
+<ul>
+<li>通过中序遍历 + 另一种遍历形式，可以确定一棵二叉树</li>
+<li>已知中序 + 前序，求后序；已知中序 + 后序， 求前序<ul>
+<li>先通过前后序确定根节点，再确定靠近根结点的结点，再展开考虑</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="五、二叉树的创建"><a href="#五、二叉树的创建" class="headerlink" title="五、二叉树的创建"></a>五、二叉树的创建</h1><ol>
+<li><p>创建有很多方法，可以利用二叉树的性质，或者遍历</p>
+<ul>
+<li><p>这里利用二叉树的性质，从一个数组构造一棵完全平衡树</p>
+<ul>
+<li>第i层有2^i个节点(i从0开始)</li>
+<li><p>深度为k，最多有2^k-1个节点</p>
+<pre><code>#include &lt;math.h&gt;
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>#define MAXSIZE 15
+#define DEPTH    4
+
+int a[MAXSIZE] ={0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+
+typedef struct BiNode {
+    int data;
+    struct BiNode *lchild, *rchild;
+}TBiNode;
+
+
+bool InitBiTree(TBiNode** T, int *a)
+{
+    for(int i=0; i&lt;MAXSIZE; i++) {
+        T[i] = (TBiNode*)malloc(sizeof(TBiNode));
+        T[i]-&gt;data = a[i];
+        T[i]-&gt;lchild = NULL;
+        T[i]-&gt;rchild = NULL;        
+    }
+
+    int cnt = 0;
+    for(int i=0; i&lt;DEPTH-1; i++)
+        for(int j=0; j&lt;pow(2, i); j++) {
+            T[cnt]-&gt;lchild = T[2*cnt+1];
+            T[cnt]-&gt;rchild = T[2*cnt+2];
+            ++cnt;
+        }
+}
+</code></pre><h1 id="六、线索二叉树"><a href="#六、线索二叉树" class="headerlink" title="六、线索二叉树"></a>六、线索二叉树</h1><ol>
+<li><p>概念</p>
+<ul>
+<li><p>二叉树存在空指针域</p>
+<pre><code>                [1]0[2]
+            /             \    
+        [3]1[4]         [5]2[6]
+        /     \         /     \
+    [7]3[8] [N]4[N] [N]5[N] [N]6[N]
+    /     \
+[N]7[N] [N]8[N] 
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<pre><code>* 将二叉树以某种次序遍历，使其线索化
+    + 以中序遍历
+
+            738-&gt;14-&gt;0-&gt;526
+
+    + 空指针的rchild，指向后继    
+
+                              [1]0[5]
+                          /             \    
+                      [3]1[4]         [5]2[6]
+                      /     \         /     \
+                  [7]3[8] [N]4[0] [N]5[2] [N]6[N]
+                  /     \
+              [N]7[3] [N]8[1] 
+
+    + 空指针的lchild，指向前驱
+
+
+                              [1]0[2]
+                          /             \    
+                      [3]1[4]         [5]2[6]
+                      /     \         /     \
+                  [7]3[8] [1]4[]   [0]5[] [2]6[]
+                  /     \
+              [N]7[]  [3]8[] 
+
+* 线索化的实质，即是在遍历过程中，将空指针改为指向前驱或者后继的线索，其本质上，其实是将二叉树转化为了一个双向链表，为添加删除和查找结点带来了遍历            
+</code></pre><ol>
+<li><p>数据结构</p>
+<ul>
+<li><p>需要扩展标志，以指出lchild是指向左子树，还是指向前驱，rchild是指向右子树，还是指向后继</p>
+<pre><code>ltag + lchild + data + rchild + rtag 
+</code></pre><ul>
+<li>ltag == 0, lchild指向左子树，否则指向前驱</li>
+<li>rtag == 0, rchild指向右子树，否则指向后继</li>
+</ul>
+</li>
+<li><p>于是二叉树存储内容如下：</p>
+<pre><code>                         [0][1]0[2][0]
+                  /                         \    
+           [0][3]1[4][0]               [0][5]2[6][0]
+           /           \               /           \
+    [0][7]3[8][0] [1][N]4[N][1] [1][N]5[N][1] [1][N]6[N][1]
+    /                    \
+[1][N]7[N][1]       [1][N]8[N][1] 
+</code></pre></li>
+</ul>
+</li>
+<li><p>实现</p>
+<ul>
+<li>线索化<ul>
+<li>线索化的过程，即按某种顺序遍历时，将空指针指向前驱或后继结点的过程</li>
+<li>对于lchild，直接判断没有左子树，则lchild指向前驱，因为前驱已经遍历过</li>
+<li>对于rchild，因为后继还没遍历过，无法将当前结点的rchild指向后继，所以此时只能去处理前驱结点<ul>
+<li>判断前驱是否有右子树，如果没有，则rchild指向当前结点</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>线索化实现</p>
+<pre><code>void MidThreading(TBiNode *T)
+{
+    if(!T) 
+        return;
+
+    static TBiNode* pre = NULL;    
+    MidTraverseAndThreading(T-&gt;lchild);
+    printf(&quot;threading node: %d&quot;, T-&gt;data);
+    if(pre) {
+         if(!T-&gt;lchild) {
+             T-&gt;ltag = THREAD;
+             T-&gt;lchild = pre;
+             printf(&quot;, lchild of %d point to pre: %d&quot;, T-&gt;data, pre-&gt;data); 
+         } else 
+             T-&gt;ltag = CHILD; 
+         if(!pre-&gt;rchild) {
+             pre-&gt;rtag = THREAD;
+             pre-&gt;rchild = T;
+             printf(&quot;, rchild of %d point to next: %d&quot;, pre-&gt;data, T-&gt;data); 
+         } else 
+             T-&gt;rtag = CHILD; 
+    }
+    printf(&quot;\n&quot;);
+    pre = T;
+    MidTraverseAndThreading(T-&gt;rchild);
+}
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<pre><code>* 遍历
+</code></pre><h1 id="七、树、森林、二叉树"><a href="#七、树、森林、二叉树" class="headerlink" title="七、树、森林、二叉树"></a>七、树、森林、二叉树</h1><ol>
+<li><p>树转为二叉树</p>
+<pre><code>        1
+    /   |  \   
+   2    3    4
+ / | \    |  / \    
+5  6  7    8 9     10    
+</code></pre><ul>
+<li><p>加线：在所有兄弟间加线</p>
+<pre><code>        1
+    /   |  \   
+   2 -  3 -    4
+ / | \    |  / \    
+5- 6- 7    8 9- 10    
+</code></pre></li>
+<li><p>去线：去掉除长子外的父子结点间的连线</p>
+<pre><code>        1
+    /          
+   2 -  3 -    4
+ /        |  /      
+5- 6- 7    8 9- 10    
+</code></pre></li>
+<li><p>调整形状，对树进行顺时针旋转，注意加线的兄弟结点作右孩子，长子还是做左孩子不变</p>
+<pre><code>     1
+    /  
+   2    
+ /    \
+5      3   
+ \    / \
+  6  8   4
+   \    /
+    7  9
+        \
+        10
+</code></pre></li>
+</ul>
+</li>
+<li><p>森林转为二叉树</p>
+<pre><code>   1     5      7
+ / | \   |   / \
+2  3  4  6  8    9
+            |    
+             10
+</code></pre><ul>
+<li><p>把每个树转为二叉树</p>
+<pre><code>  1   5     7
+ /     /    /
+2    6    8
+ \      / \
+  3       9  10
+   \
+    4
+</code></pre></li>
+<li><p>第一棵树不动，后面的树依次做第一棵树的右子树</p>
+<pre><code>   1                   
+ /    \                 
+2       5             
+ \    /    \        
+  3     6     7            
+   \    /
+    4  8
+      / \
+     9  10
+</code></pre></li>
+</ul>
+</li>
+<li><p>二叉树转为树</p>
+<pre><code>    1
+   /
+  2
+ / \
+3   4  
+ \   \
+  5   6
+     /
+    7
+</code></pre><ul>
+<li>即上述过程的逆过程</li>
+<li><p>加线：将结点的右子结点全部与父节点相连</p>
+<pre><code>1-&gt;4, 1-&gt;6, 2-&gt;5
+
+    1
+   /|\
+  2 | \
+ /|\|  \
+3 | 4   \
+ \|  \   \
+  5       6
+         /
+        7
+</code></pre></li>
+<li><p>去线：去掉所有结点和右孩子原来的连线</p>
+<pre><code>    1
+   /|\
+  2 | \
+ /| |  \
+3 | 4   \
+  |      \
+  5       6
+         /
+        7
+</code></pre></li>
+<li><p>调整形状</p>
+<pre><code>     1
+   / | \
+  2  4  6
+ / \   /
+3  5  7  
+</code></pre></li>
+</ul>
+</li>
+<li><p>二叉树转化为森林</p>
+<pre><code>   1                   
+ /    \                 
+2       5             
+ \    /    \        
+  3     6     7            
+   \    /
+    4  8
+      / \
+     9  10
+</code></pre><ul>
+<li><p>从根结点开始，删除每个右结点的连线</p>
+<pre><code>   1                   
+ /                     
+2       5             
+ \    /            
+  3     6     7            
+   \    /
+    4  8
+      / \
+     9  10
+</code></pre></li>
+<li><p>每个二叉树转化为树</p>
+<pre><code>   1     5      7
+ / | \   |   / \
+2  3  4  6  8    9
+            |    
+             10
+</code></pre></li>
+</ul>
+</li>
+<li><p>遍历</p>
+<ul>
+<li><p>树的遍历</p>
+<pre><code>     1
+   / | \
+  2  4  6
+ / \   /
+3  5  7  
+</code></pre><ul>
+<li><p>先根遍历：从根开始，按从左到右子树的顺序</p>
+<pre><code>1-&gt;235-&gt;4-&gt;67
+</code></pre></li>
+<li><p>后根遍历：从叶开始</p>
+<pre><code>352-&gt;4-&gt;76-&gt;1
+</code></pre></li>
+</ul>
+</li>
+<li><p>森林的遍历</p>
+<pre><code>   1     5      7
+ / | \   |   / \
+2  3  4  6  8    9
+            |    
+             10    
+</code></pre><ul>
+<li><p>前序遍历，从根开始，按从左到右树的顺序</p>
+<pre><code>1234-&gt;56-&gt;78 10 9
+</code></pre></li>
+<li><p>后续遍历，从叶开始</p>
+<pre><code>2341-&gt;65-&gt;10 897
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="八、赫夫曼树"><a href="#八、赫夫曼树" class="headerlink" title="八、赫夫曼树"></a>八、赫夫曼树</h1><ol>
+<li><p>原理</p>
+<ul>
+<li><p>当二叉树的部分路径带有权值</p>
+<pre><code>树a：
+        N
+(5)-&gt;/ \
+    A   N
+ (15)-&gt;/ \
+      B   N
+   (40)-&gt;/ \
+        C   N
+     (30)-&gt;/ \&lt;-(10)
+          D   E    
+树b：
+            N
+       /         \
+      N              N
+     / \(40) (30)/ \(10)
+    N    C       D    E
+(5)/ \(15)
+  A   B    
+</code></pre><ul>
+<li><p>路径长度：</p>
+<pre><code>a：1 + 1 + 2 + 2 + 3 + 3 + 4 + 4 = 20
+b：1 + 1 + 2 + 2 + 2 + 2 + 3 + 3 = 16
+</code></pre></li>
+<li><p>带权路径长度WPL：</p>
+<pre><code>a：5*1 + 15*2 + 40*3 + 30*4 + 10*4 = 315
+b: 40*2 + 30*2 + 10*2 + 5*3 + 15*3 = 220
+</code></pre></li>
+<li><p>显然树b的WPL比a低很多</p>
+</li>
+</ul>
+</li>
+<li>WPL最小的二叉树叫做赫夫曼树 <ul>
+<li>其主要思想就是权值越大，长度越长</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>构造</p>
+<ul>
+<li><p>先将权值按排成升序序列</p>
+<pre><code>队列：A5, E10, B15, D30, C40
+</code></pre></li>
+<li><p>依次两两取出带权值节点构成树，再将权值和放入序列，保持序列依然有序，直到元素全部取出序列为空</p>
+<ul>
+<li><p>取出A5, E10，放入N15    </p>
+<pre><code>    N(15)
+(5)/ \(10)        队列：N15, B15, D30, C40
+  A   E    
+</code></pre></li>
+<li><p>取出N15, B15，放入N30</p>
+<pre><code>      N(30)
+ (15)/ \(15)    队列：N30, D30, C40
+    N   B
+(5)/ \(10)        
+  A   E    
+</code></pre></li>
+<li><p>取出N30, D30，放入N60，注意要保持队列有序</p>
+<pre><code>        N(60)
+   (30)/ \(30)    队列：C40, N60
+      N   D
+ (15)/ \(15)    
+    N   B
+(5)/ \(10)        
+  A   E
+</code></pre></li>
+<li><p>取出C40, N60，队列为空，赫夫曼树构造完成</p>
+<pre><code>      N
+ (40)/ \(60)
+    C   N
+   (30)/ \(30)    
+      N   D
+ (15)/ \(15)    
+    N   B
+(5)/ \(10)        
+  A   E
+
+WPL: 40*1 + 30*2 + 15*3 + 5*4 + 10*4 = 205
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>赫夫曼编码</p>
+<ul>
+<li><p>对字符进行编码时，如果以定长编码：</p>
+<ul>
+<li><p>如对ABCDEF， 以二进制编码</p>
+<pre><code> A   B   C   D   E   F
+000 001 010 011 100 101
+</code></pre></li>
+<li><p>则编码后</p>
+<pre><code>BAEAB DAD DEAD CAFE
+001000100000001 011000011 011100000011 010000101100 = 48个字符
+</code></pre></li>
+</ul>
+<ul>
+<li><p>字母出现的频率，合起来为100时，可以按赫夫曼树来编码</p>
+<pre><code>A：27, B:8, C:15, D：15，E：30，F：5
+</code></pre></li>
+</ul>
+</li>
+<li><p><strong>以频率作为权值</strong>，构造赫夫曼树</p>
+<ul>
+<li><p>将其分为2组，分别构成左右子树，要注意2点：</p>
+<ul>
+<li>根节点的权值和为100</li>
+<li><p>转换为赫夫曼编码后，任意字符不可为其它字符的前缀，否则无法解码，这叫做前缀编码</p>
+<p>  A27, E30    F5, B8, C15, D15</p>
+</li>
+</ul>
+</li>
+<li><p>构成赫夫曼树</p>
+<pre><code>           N      
+   (57)/        \(43)
+     N           N
+(27)/ \(30) (15)/ \(28)  
+  A    E       D   N
+            (13)/ \(15)
+               N   C
+           (5)/ \(8)
+             F   B
+</code></pre></li>
+<li><p>将左分支权值改为0，有分支为1</p>
+<pre><code>          N      
+   (0)/      \(1)
+     N        N
+(0)/ \(1) (0)/ \(1)  
+  A   E     D   N
+            (0)/ \(1)
+              N   C
+          (0)/ \(1)
+            F   B
+</code></pre></li>
+<li><p>得出赫夫曼编码</p>
+<pre><code>A   B    C  D  E  F    
+00 1101 111 10 01 1100
+</code></pre></li>
+</ul>
+</li>
+<li><p>对字符进行赫夫曼编码</p>
+<pre><code>BAEAB DAD DEAD CAFE
+11010001001101 100010 10010010 11100110001 = 39个字符
+</code></pre><ul>
+<li>比定长编码压缩了48 - 39 = 9个字符</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/10/15/算法学习-基础算法学习-四-——-树/" data-id="ciub6xrnj00auux63el3i9gmd" class="article-share-link">分享到</a><div class="tags"><a href="/tags/算法学习/">算法学习</a></div><div class="post-nav"><a href="/2016/10/15/算法学习-基础算法学习-三-——-字符串/" class="next">基础算法学习(三) —— 字符串</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-四-——-树/">基础算法学习(四) —— 树</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-三-——-字符串/">基础算法学习(三) —— 字符串</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-二-——-栈与队列/">基础算法学习(二) —— 栈与队列</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-一-——-线性表/">基础算法学习(一) —— 线性表</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/Linux内核学习-Linux内核初探-之-内存管理-七-————-内核内存分配函数的选择/">Linux内核初探 之 内存管理(七) ———— 内核内存分配函数的选择</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/Linux内核学习-Linux内核初探-之-内存管理-六-————-per-cpu-data/">Linux内核初探 之 内存管理(六) ———— per cpu data</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/Linux内核学习-Linux内核初探-之-内存管理-五-————-静态分配与高端内存映射/">Linux内核初探 之 内存管理(五) ———— 静态分配与高端内存映射</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/Linux内核学习-Linux内核初探-之-内存管理-四-————-Slab层/">Linux内核初探 之 内存管理(四) ———— Slab层</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/开发环境搭建-VIM配置/">VIM配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/12/系统性能测试-系统性能工具篇-perf/">系统性能工具篇(perf)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
