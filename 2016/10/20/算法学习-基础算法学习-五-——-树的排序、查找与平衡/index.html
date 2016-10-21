@@ -1,0 +1,756 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>基础算法学习(五) —— 树的排序、查找与平衡 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">基础算法学习(五) —— 树的排序、查找与平衡</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">基础算法学习(五) —— 树的排序、查找与平衡</h1><div class="post-meta">Oct 20, 2016<span> | </span><span class="category"><a href="/categories/算法学习/">算法学习</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#基础算法学习-五-——-树的排序、查找与平衡"><span class="toc-number">1.</span> <span class="toc-text">基础算法学习(五) —— 树的排序、查找与平衡</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、二叉排序树"><span class="toc-number">2.</span> <span class="toc-text">一、二叉排序树</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、平衡二叉树——AVL树"><span class="toc-number">3.</span> <span class="toc-text">二、平衡二叉树——AVL树</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、多路查找树"><span class="toc-number">4.</span> <span class="toc-text">三、多路查找树</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="基础算法学习-五-——-树的排序、查找与平衡"><a href="#基础算法学习-五-——-树的排序、查找与平衡" class="headerlink" title="基础算法学习(五) —— 树的排序、查找与平衡"></a>基础算法学习(五) —— 树的排序、查找与平衡</h1><hr>
+<h1 id="一、二叉排序树"><a href="#一、二叉排序树" class="headerlink" title="一、二叉排序树"></a>一、二叉排序树</h1><ol>
+<li><p>基本概念</p>
+<ul>
+<li>特点：插入、删除和查找的效率都很高</li>
+<li>创建时按大小创建，通过中序遍历时得到一个有序序列</li>
+<li>二叉排序树：<ul>
+<li>左子树所有结点的值小于根结点</li>
+<li>右子树所有结点的值大于根结点</li>
+<li>左右子树分别都是二叉排序树</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>实现</p>
+<ul>
+<li><p>定义</p>
+<pre><code>typedef struct BiNode {
+    int data;
+    struct BiNode *lchild, *rchild;
+}TBiNode;
+</code></pre></li>
+<li><p>查找</p>
+<ul>
+<li>值小查左边，值大查右边，递归查找</li>
+<li>查找走的就是根结点到待查结点的路径，其比较次数为待查结点在树中的深度</li>
+<li><p>所以二叉排序树查找的性能取决于树的形状(即深度)，如果是斜树，则性能很差</p>
+<pre><code>bool SearchBST(TBiNode *T, int key, TBiNode *f, TBiNode **p)
+{
+    if(!T) {
+        *p = f;
+        return false;
+    } else if(key == T-&gt;data ) {
+        *p = T;
+        return true;
+    } else if(key &lt; T-&gt;data) 
+        return SearchBST(T-&gt;lchild, key, T, p);
+   else 
+       return SearchBST(T-&gt;rchild, key, T, p);
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>插入</p>
+<ul>
+<li>查找时如果失败，此时返回的位置为待插入元素的前驱</li>
+<li>插入值比该结点小作为左子结点，否则为右子结点</li>
+<li><p>插入时不用移动元素</p>
+<pre><code>bool InsertBST(TBiNode **T, int key)
+{
+    printf(&quot;insert: %d\n&quot;, key);
+
+    TBiNode *p, *s;
+    if (!SearchBST(*T, key, NULL, &amp;p)) {
+        s = (TBiNode*)malloc(sizeof(TBiNode));
+        s-&gt;data = key;
+        s-&gt;lchild = s-&gt;lchild = NULL;
+        if(!p) 
+            *T = s;
+        else if(key &lt; p-&gt;data)
+            p-&gt;lchild = s;
+        else
+            p-&gt;rchild = s;
+        return true;
+    } else
+        return false;
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>构建</p>
+<ul>
+<li><p>通过插入的方式来构建二叉树，即为排序二叉树</p>
+<pre><code>bool CreateBST(TBiNode **T, int *a)
+{
+    for(int i=0; i&lt;MAXSIZE; i++)
+        InsertBST(T, a[i]);
+}
+
+#define MAXSIZE 11
+int a[MAXSIZE] = {62, 38, 88, 58, 47, 35, 73, 51, 99, 37, 93};
+TBiNode *T = NULL;
+CreateBST(&amp;T, a);
+</code></pre></li>
+</ul>
+</li>
+<li><p>遍历</p>
+<ul>
+<li><p>采用中序遍历</p>
+<pre><code>void InTraverse(TBiNode *T)
+{
+    if(!T) {
+        printf(&quot;\n&quot;);
+        return;
+    }
+    InTraverse(T-&gt;lchild);
+    printf(&quot;%d &quot;, T-&gt;data);
+    InTraverse(T-&gt;rchild);
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>删除</p>
+<ul>
+<li>如果被删除的是叶子结点，直接删除，对整棵树没有影响</li>
+<li>如果被删除结点只有一个子树，将该子树接上被删除结点的父节点，去代替被删除结点即可，因为树已经排序，所以没有影响</li>
+<li><p>如果同时有左右子树，则需要从左或者右子树中选择一个结点来代替被删除结点，有两种做法：</p>
+<ul>
+<li>从左子树，选择最大的，即被删除结点的前驱</li>
+<li><p>从右子树，选择最小的，即被删除结点的后继</p>
+<pre><code>// 这里从左子树选最大的，即前驱
+bool Delete(TBiNode **p)
+{
+    TBiNode *q, *s;
+    if((*p)-&gt;rchild == NULL) {            // 右子树为空，接左子树
+        q = *p;
+        *p = (*p)-&gt;lchild;
+        free(q);
+    } else if((*p)-&gt;lchild == NULL) {    // 左子树为空，接右子树
+        q = *p;
+        *p = (*p)-&gt;rchild;
+        free(q);
+    } else {            // 左右子树都不为空
+        q = *p;
+        s = (*p)-&gt;lchild;        // 从左子树中选
+        while(s-&gt;rchild) {        // 向右转挑出最大值
+            q = s;                // q为s的前驱，要接入s的子树
+            s = s-&gt;rchild;
+        } 
+        (*p)-&gt;data = s-&gt;data;    // s找到了，将值覆盖待删除结点p
+        if(q != *p)        // 如果s不是p的左结点，将s的左子树接入q的右子树
+            q-&gt;rchild = s-&gt;lchild;
+        else            // 此时，s就是p的左结点，只能接入q的左子树，即找到的s就是p的后继结点
+            q-&gt;lchild = s-&gt;lchild;
+        free(s);
+    }
+}
+
+bool DeleteBST(TBiNode **T, int key)
+{
+    if(!*T)
+        return false;
+    else {
+    if(key == (*T)-&gt;data)
+        return Delete(T);
+    else if(key &lt; (*T)-&gt;data)
+        return DeleteBST(&amp;(*T)-&gt;lchild, key);
+    else
+        return DeleteBST(&amp;(*T)-&gt;rchild, key);
+    }
+}
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>总结</p>
+<ul>
+<li>二叉排序树查找走的就是根结点到待查结点的路径，其比较次数为待查结点在树中的深度，所以二叉排序树查找的性能取决于树的形状(即深度)，如果是斜树，则性能很差</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、平衡二叉树——AVL树"><a href="#二、平衡二叉树——AVL树" class="headerlink" title="二、平衡二叉树——AVL树"></a>二、平衡二叉树——AVL树</h1><ol>
+<li><p>定义</p>
+<ul>
+<li>平衡二叉树：每一个节点的左右子树高度差小于等于1的二叉排序树</li>
+<li><p>平衡因子BF：左子树高度减去右子树高度</p>
+<pre><code>    4        
+   / \       
+  2   5         AVL树
+ / \   \             
+1   3   7   
+
+    4
+   / \
+  2   5(-2)        深度相差大于1
+ / \   \
+1   3   7(1)
+       /
+      6(0)                 
+
+    4
+   / \
+  2   6            不是二叉排序树
+ / \   \
+1   3   5
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<pre><code>* 最小不平衡子树：
+
+            4
+           / \
+          2   5(-2)    &lt;---    
+         / \   \
+        1   3   7(1)
+               /
+              6(0)
+</code></pre><ol>
+<li><p>实现原理</p>
+<ul>
+<li>以最小不平衡子树为轴进行旋转，如果BF&gt;0右旋，BF&lt;0左旋</li>
+<li><p>当最小不平衡子树的BF与其子树的BF符号相反时，要先对子树节点进行一次旋转，至符号相同后再旋转最小不平衡子树</p>
+<ul>
+<li><p>BF&gt;0，需要右旋</p>
+<pre><code>    (2)3  &lt;--          2
+      /             / \
+  (1)2             1   3   
+    / 
+(0)1
+</code></pre></li>
+<li><p>BF&lt;0，需要左旋</p>
+<pre><code>    4(0)
+   / \
+  2   5(-2)    &lt;-- 
+ / \   \
+1   3   6(-1)
+         \
+          7(0)
+
+     4
+   /   \
+  2     6
+ / \   / \
+1   3 5   7
+</code></pre></li>
+<li><p>旋转时，要注意满足排序的特性，可能要移动节点位置</p>
+<pre><code>  4(-2)    &lt;--
+ / \
+2   5(-1)
+   / \
+  3   6(-1)
+       \
+        7(0)
+
+     5
+   /   \
+  4     6
+ / \     \
+2   3     7
+</code></pre></li>
+<li><p>当符号不同时，先旋转其子树至符号相同，再旋转最小不平衡子树自身</p>
+<pre><code>    4(0)
+   / \
+  2   5(-2) &lt;--
+ / \   \
+1   3   7(1) &lt;--
+       /
+      6(0)
+
+    4(0)
+   / \
+  2   5(-2) &lt;--
+ / \   \
+1   3   6(-1)
+         \
+          7                      
+
+     4
+   /   \
+  2     6
+ / \   / \
+1   3 5   7
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>实现算法 </p>
+<ul>
+<li><p>定义</p>
+<pre><code>typedef struct BiNode {
+    int data;
+    int bf;        // 平衡因子
+    struct BiNode *lchild, *rchild;
+}TBiNode;
+</code></pre></li>
+<li><p>左旋</p>
+<ul>
+<li>先将L的左子树挂到P的右子树上</li>
+<li><p>再将P挂到L的左子树上(见上面情况3)</p>
+<pre><code>  2(-2) &lt;- P
+ / \
+1   4(-1) &lt;- L
+   / \
+  3   5(-1)
+       \
+        6(0)
+
+     4
+   /   \
+  2     6
+ / \   / \
+1   3 5   7
+
+void L_Rotate(TBiNode **P)
+{
+    TBiNode *L;
+    L = (*P)-&gt;rchild;
+    (*P)-&gt;rchild = L-&gt;lchild;
+    L-&gt;lchild = (*P);
+    *P = L;
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>右旋</p>
+<ul>
+<li>先将L的右子树挂接到P的左子树</li>
+<li><p>再将P挂接到L的右子树上</p>
+<pre><code>  P -&gt; (2)5
+            / \
+L -&gt; (1)3   6
+       / \    
+   (1)2   4    
+     /
+ (0)1  
+
+    3      
+   / \
+  2      5  
+ /   / \          
+1    4   6           
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>            void R_Rotate(TBiNode **P)
+            {
+                TBiNode *L;
+                L = (*P)-&gt;lchild;
+                (*P)-&gt;lchild = L-&gt;rchild;
+                L-&gt;rchild = (*P);
+                *P = L;
+            }
+
+* 左平衡
+    + 添加新元素后，__左子树高__时，要检查T的左子树的平衡度BF
+
+              T -&gt; (1)8      
+                     / \
+            L -&gt; (0)4   9  
+                   / \        
+                  2   6  
+
+    + 如果是左子树的左边长高，说明左子树根节点L与根结点T的符号__相同__，直接右旋即可，平衡后T和L的BF都变为0
+
+              T -&gt; (2)8      
+                     / \
+            L -&gt; (1)4   9  
+                   / \        
+               (1)2   6 
+                 /
+                1
+
+            L -&gt; (0)4 &lt;- T 
+                   / \        
+               (1)2   8(0) 
+                 /   / \
+                1   6   9
+
+    + 如果是左子树的右边长高，说明左子树根节点L与根结点T的符号__相反__，需要进行双旋。此时要判断新插入的节点在叶节点Lr的左边还是右边：
+        - 如果在Lr的左边插入，则插入后Lr和L的符号相反，平衡后L的BF为0，T的BF为-1
+
+                   T -&gt; (2)8      
+                          / \
+                L -&gt; (-1)4   9  
+                        / \        
+                       2   6(1) &lt;- Lr
+                          / 
+                         5   
+
+                先左旋：L_Rotate         
+                  T -&gt; (2)8      
+                         / \
+                L -&gt; (2)6   9  
+                       /        
+                   (0)4
+                     / \  
+                    2    5 
+
+                再右旋：R_Rotate                    
+                L -&gt; (0)6 
+                       / \       
+                      4   8(-1) &lt;- T
+                     / \   \
+                    2   5   9      
+
+        - 如果是在Lr的右边插入，则插入后Lr和L的符号相同，平衡后，T的BF为0，L的BF为1
+
+                        (2)8      
+                          / \
+                L -&gt; (-1)4   9  
+                        / \        
+                       2   6(-1) &lt;- Lr
+                            \
+                             7
+
+                先左旋：L_Rotate                 
+                 T -&gt; (2)8      
+                        / \
+                L -&gt;(1)6   9
+                       / \                 
+                  (1)4   7   
+                    /    
+                   2                            
+
+                再右旋：R_Rotate
+                   T -&gt; (0)6 
+                          / \
+                L -&gt; (1) 4   8(0)
+                        /   / \     
+                       2   7   9    
+
+    + 实现代码
+
+            #define LH 1
+            #define EH 0
+            #define RH -1
+
+            void LeftBalance(TBiNode **T)
+            {
+                TBiNode *L, *Lr;
+                L = (*T)-&gt;lchild;
+                switch(L-&gt;bf) {        // 左子树高时，要检查T的左子树的BF
+                    case LH:         // 左子树的左边长高，说明左子树根节点L与根结点T的符号相同，直接右旋
+                        (*T)-&gt;bf = L-&gt;bf = EH;
+                        R_Rotate(T);
+                        break;
+                    case RH:        // 左子树的右边长高，说明左子树根节点L与根结点T的符号相反，需要进行双旋
+                        Lr = L-&gt;rchild;
+                        switch(Lr-&gt;bf) {
+                            case LH:
+                                (*T)-&gt;bf = RH;
+                                L-&gt;bf = EH;
+                                break;
+                            case EH:
+                                (*T)-&gt;bf = L-&gt;bf = EH;
+                                break;
+                            case RH:
+                                (*T)-&gt;bf = EH;
+                                L-&gt;bf=LH;
+                                break;
+                        }
+                        Lr-&gt;bf = EH;
+                        L_Rotate(&amp;(*T)-&gt;lchild);        // 先旋转子树
+                        R_Rotate(T);                    // 再旋转根节点
+                        break;
+                }
+            }
+
+* 右平衡
+    + 右平衡与左平衡处理相反，分析过程略，代码如下：
+
+            void RightBalance(TBiNode **T)
+            {
+                TBiNode *R, *Rl;
+                R = (*T)-&gt;rchild;
+                switch(R-&gt;bf) {
+                    case RH: 
+                    (*T)-&gt;bf = R-&gt;bf = EH;
+                    L_Rotate(T);
+                    break;
+                case LH:
+                    Rl = R-&gt;lchild;
+                    switch(Rl-&gt;bf) {
+                    case RH:
+                        (*T)-&gt;bf = LH;
+                        R-&gt;bf = EH;
+                        break;
+                    case EH:
+                        (*T)-&gt;bf = R-&gt;bf = EH;
+                        break;
+                    case LH:
+                        (*T)-&gt;bf = EH;
+                        R-&gt;bf=RH;
+                        break;
+                    }
+                    Rl-&gt;bf = EH;
+                    R_Rotate(&amp;(*T)-&gt;rchild);
+                    L_Rotate(T);
+                    break;
+                }
+            }
+
+* 插入新节点
+
+        bool InsertAVL(TBiNode **T, int e, bool *taller)
+        {
+            if(!*T) {                                // 插入新节点，树长高
+                *T = (TBiNode *)malloc(sizeof(TBiNode));
+                (*T)-&gt;data = e;
+                (*T)-&gt;lchild = (*T)-&gt;rchild = NULL;
+                (*T)-&gt;bf = EH;
+                *taller = true;
+            } else {
+                if(e == (*T)-&gt;data) {                // 节点已存在时不进行插入
+                    *taller = false;
+                    return false;
+                } else if (e &lt; (*T)-&gt;data) {        // 插入值小于当前值时搜索左子树
+                    if(!InsertAVL(&amp;(*T)-&gt;lchild, e, taller))    // 继续在左子树中搜索和插入操作失败
+                        return false;
+                    if(taller) {                    // 在左子树插入成功使得左子树长高
+                        switch((*T)-&gt;bf) {
+                            case LH:                // 插入前左子树比右子树高，需要左平衡处理
+                                LeftBalance(T);
+                                *taller = false;
+                                break;
+                            case EH:                // 插入前左右子树平衡，插入后因左子树长高而长高
+                                (*T)-&gt;bf = LH;
+                                *taller = true;
+                                break;
+                            case RH:                // 插入前右子树比左子树高，插入后平衡
+                                (*T)-&gt;bf = EH;
+                                *taller = false;
+                                break;
+                        }
+                    }
+                } else {                            // 插入值大于当前值时搜索右子树
+                    if(!InsertAVL(&amp;(*T)-&gt;rchild, e, taller))    // 继续在右子树中搜索和插入操作失败
+                        return false;
+                    if(taller) {                    // 在右子树插入成功使得右子树长高
+                        switch((*T)-&gt;bf) {
+                            case RH:                // 插入前右子树比左子树高，需要右平衡处理
+                                RightBalance(T);
+                                *taller = false;
+                                break;
+                            case EH:                // 插入前左右子树平衡，插入后因右子树长高而长高
+                                (*T)-&gt;bf = RH;
+                                *taller = true;
+                                break;
+                            case LH:                // 插入前左子树比右子树高，插入后平衡
+                                (*T)-&gt;bf = EH;
+                                *taller = false;
+                                break;
+                        }
+                    }
+                }
+            }
+            return true;    
+        }
+</code></pre><ol>
+<li>算法复杂度<ul>
+<li>创建时，边插入元素边平衡</li>
+<li>查找、插入和删除的复杂度都为O(logn)</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、多路查找树"><a href="#三、多路查找树" class="headerlink" title="三、多路查找树"></a>三、多路查找树</h1><ol>
+<li><p>2-3 树</p>
+<ul>
+<li><p>概念</p>
+<ul>
+<li>2节点包含一个元素和2个叶子，顺序与二叉排序树一样，要么有2个孩子，要么没有孩子，不能只有一个孩子</li>
+<li><p>3节点包括2个元素和3个叶子，按顺序分布，中间的叶子在2个根元素中间</p>
+<pre><code>            8
+   /           \
+  4         (12   14)
+ / \       /    |   \
+1 (6 7) (9 10)  13   15
+</code></pre></li>
+</ul>
+</li>
+<li><p>插入</p>
+<ul>
+<li><p>插入到2节点的叶子，直接升级为3节点即可</p>
+<pre><code>               8
+      /             \
+     4         (12      14)
+    /  \       /     |   \
+(1 2)  (6 7) (9 10)  13   15
+</code></pre></li>
+<li><p>在3节点中插入，要分3种情况：</p>
+<ul>
+<li><p>情况1：根为2节点，拆分叶子的3节点，将根变为3节点，新插入元素为3节点根的中间叶子</p>
+<pre><code>           8
+     /           \
+  (4  6)       (12   14)
+ /  |  \      /    |   \
+1   5   7 (9 10)  13   15
+</code></pre></li>
+<li><p>情况2：叶子和根都是3节点，拆分3节点根，变为2个2节点，将上一层的根节点变为3节点</p>
+<pre><code>    (8       12)
+   /      |    \
+  4      10    14
+ / \     / \   / \
+1 (6 7) 9  11 13  15
+</code></pre></li>
+<li><p>情况3：当叶子和根都是3节点时，只能拆分根节点，此时树会长高</p>
+<pre><code>插入2：
+       (8       12)
+       /       |   \
+   (4   6)     10   14
+   /  |  \    / \   / \
+(1 3) 5   7  9  11 13  15    
+
+结果：
+            8
+      /          \
+     4           12
+   /   \       /   \
+  2     6     10   14
+ / \   / \   / \   / \
+1   3 5   7 9  11 13 15 
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>删除</p>
+<ul>
+<li><p>删除3节点的叶子</p>
+<pre><code>     (12 14)       (12 14)
+    /   |  \   -&gt;  /  |  \
+(9 10)  13  15   10  13  15 
+</code></pre></li>
+<li><p>删除2节点的叶子，有4种情况</p>
+<ul>
+<li><p>根节点是2节点，有一个3节点的叶子，删除后左旋</p>
+<pre><code>  4           6
+ / \     -&gt;  / \
+1  (6 7)    4   7
+</code></pre></li>
+<li><p>根节点是2节点，右孩子也是2节点，整棵树变形再删除，然后左旋</p>
+<pre><code>删除4：
+       8
+   /        \
+  6      (12  14)
+ / \     /   |  \
+4   7 (9 10) 13 15
+
+先变形:
+         9
+   /             \
+  6           (12  14)
+ / \          /   |  \
+4   (7 8)   10   13  15
+
+再删除，然后左旋：
+         9
+   /          \
+  7        (12  14)
+ / \       /   |  \
+6   8 (9 10)  13  15
+</code></pre></li>
+<li><p>根节点是3节点，将节点拆分</p>
+<pre><code>   (12 14)            14
+  /   |  \   -&gt;       / \
+10   13  15     (10 12)  15 
+</code></pre></li>
+<li><p>如果是满二叉树，删除任何一个叶子都不能满足2-3树的定义，需要减少层数</p>
+<pre><code>删除7
+     8           (8   14)
+   /   \         /   |  \
+  6     14 -&gt;  (4 6) 9  15
+ / \   / \
+4   7 9  15
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>2-3-4树</p>
+<ul>
+<li><p>4节点包含大中小3个元素和4个叶子，要么就没叶子</p>
+<pre><code>    3   5   8
+   /  |   |  \
+(1 2) 4 (6 7) 9
+</code></pre></li>
+</ul>
+</li>
+<li><p>B树</p>
+<ul>
+<li>定义<ul>
+<li>平衡的多路查找树，如2-3树、2-3-4树</li>
+<li>节点的最大元素个数称为B树的阶order，如2-3树的阶为3阶B树，2-3-4树为4阶B树</li>
+</ul>
+</li>
+<li>性质<ul>
+<li>根节点至少有两棵子树</li>
+<li>所有叶子节点都在同一层次</li>
+<li>每一个根节点都有k和孩子和k-1个元素</li>
+</ul>
+</li>
+<li>查找<ul>
+<li>顺时针查找结点和在结点中查找关键字的过程</li>
+<li>从根结点开始向下，判断在哪个区间，属于哪个叶子结点</li>
+<li>在叶子节点中查找元素</li>
+</ul>
+</li>
+<li>插入和删除<ul>
+<li>类似2-3树和2-3-4树，比较麻烦</li>
+</ul>
+</li>
+<li>通过B树减少查找过程中的磁盘数据交换<ul>
+<li>使B树的阶树与磁盘存储页面大小相匹配，一页可以存下一个结点的数据</li>
+<li>将根结点装入内存，判断完后依次装入叶结点</li>
+<li>最终的交换次数为树的深度</li>
+</ul>
+</li>
+<li>优势<ul>
+<li>与二叉树相比，结点可以容纳更多元素，使得每一次磁盘访问都可以获得最大数量的数据，减少了必需访问的结点和数据块的数量，提高了性能</li>
+<li>适用于内外存数据交换要求较高的场景下，执行查找的操作</li>
+</ul>
+</li>
+<li>缺陷<ul>
+<li>查找效率高，但需要中序遍历的时候效率低，需要在多个结点间来回移动，增加了内外存数据交换次数，不适于遍历</li>
+<li>遍历时每次经过结点，还要对节点中的数据进行一次遍历</li>
+<li>查找快，遍历慢</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>B+树</p>
+<ul>
+<li>为文件系统而生</li>
+<li><p>定义</p>
+<ul>
+<li>在子结点中保存根节点中的后继元素作为关键字</li>
+<li><p>叶子节点保存指向下一叶子节点的指针，形成链表</p>
+<pre><code>           3        5         8
+      /        |         |        \
+-&gt; (1 2)[3] -&gt; 4[5] -&gt; (6 7)[8] -&gt; 9
+</code></pre></li>
+</ul>
+</li>
+<li>性质<ul>
+<li>叶子节点的关键字数等于根节点元素个数</li>
+<li>叶子节点包含根节点全部关键字，且自身按顺序连接</li>
+<li>根节点可以看做为索引，只含有子树中的最大关键字</li>
+</ul>
+</li>
+<li>操作<ul>
+<li>从根节点出发，可以进行随机查找</li>
+<li>从叶节点出发，可以遍历，不需要经过根节点</li>
+</ul>
+</li>
+<li>优势<ul>
+<li>适合带范围的查找与遍历，先从根节点出发找到起点与终点，再从叶节点遍历所有记录<ul>
+<li>如遍历[4， 8]范围内的元素</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/10/20/算法学习-基础算法学习-五-——-树的排序、查找与平衡/" data-id="ciujcgmop00bqzq63qyazfu55" class="article-share-link">分享到</a><div class="tags"><a href="/tags/算法学习/">算法学习</a></div><div class="post-nav"><a href="/2016/10/21/算法学习-基础算法学习-六-——-图的基本概念/" class="pre">基础算法学习(六) —— 图的基本概念</a><a href="/2016/10/20/Linux内核学习-Linux内核初探-之-进程的内存管理-三-————-内存操作/" class="next">Linux内核初探 之 进程的内存管理(三) ———— 内存操作</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/10/21/算法学习-基础算法学习-六-——-图的基本概念/">基础算法学习(六) —— 图的基本概念</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/20/算法学习-基础算法学习-五-——-树的排序、查找与平衡/">基础算法学习(五) —— 树的排序、查找与平衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/20/Linux内核学习-Linux内核初探-之-进程的内存管理-三-————-内存操作/">Linux内核初探 之 进程的内存管理(三) ———— 内存操作</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/19/Linux内核学习-Linux内核初探-之-进程的内存管理-二-————-虚拟内存/">Linux内核初探 之 内存管理(七) —— 内核内存分配函数的选择</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/19/Linux内核学习-Linux内核初探-之-进程的内存管理-一-————-进程地址空间/">Linux内核初探 之 进程的内存管理(一) ———— 进程地址空间</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/18/Linux内核学习-Linux内核初探-之-页高速缓存/">Linux内核初探 之 高速缓存</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-四-——-树/">基础算法学习(四) —— 树</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-三-——-字符串/">基础算法学习(三) —— 字符串</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-二-——-栈与队列/">基础算法学习(二) —— 栈与队列</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-一-——-线性表/">基础算法学习(一) —— 线性表</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

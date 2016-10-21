@@ -1,0 +1,232 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>Linux内核初探 之 高速缓存 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Linux内核初探 之 高速缓存</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Linux内核初探 之 高速缓存</h1><div class="post-meta">Oct 18, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux内核初探-之-高速缓存"><span class="toc-number">1.</span> <span class="toc-text">Linux内核初探 之 高速缓存</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、页高速缓存cache"><span class="toc-number">2.</span> <span class="toc-text">一、页高速缓存cache</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、内核对页高速缓存的管理"><span class="toc-number">3.</span> <span class="toc-text">二、内核对页高速缓存的管理</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、缓冲区高速缓存"><span class="toc-number">4.</span> <span class="toc-text">三、缓冲区高速缓存</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、flusher线程"><span class="toc-number">5.</span> <span class="toc-text">四、flusher线程</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="Linux内核初探-之-高速缓存"><a href="#Linux内核初探-之-高速缓存" class="headerlink" title="Linux内核初探 之 高速缓存"></a>Linux内核初探 之 高速缓存</h1><hr>
+<h1 id="一、页高速缓存cache"><a href="#一、页高速缓存cache" class="headerlink" title="一、页高速缓存cache"></a>一、页高速缓存cache</h1><ol>
+<li><p>引入</p>
+<ul>
+<li>磁盘访问速度远远低于内存和CPU缓存</li>
+<li>数据局部性原理，一次访问中用到的数据，极有可能短期内再次高速缓存命中</li>
+<li>用于内核实现磁盘缓存，把磁盘访问变为对内存的访问，以减少磁盘IO </li>
+<li>页高速缓存由内存中的物理页面组成，这些页来自对普通文件、块设备文件和内存映射文件的读取，</li>
+<li>缓存大小能根据设备空闲内存大小动态调整</li>
+</ul>
+</li>
+<li><p>操作</p>
+<ul>
+<li>读<ul>
+<li>内核发起读操作时，先检查数据是否在页高速缓存中，命中的话就直接从内存中读取</li>
+<li>未命中时必需调度块IO操作从磁盘读取数据，并放入页缓存中</li>
+</ul>
+</li>
+<li>写<ul>
+<li>策略一：不缓存 nowrite<ul>
+<li>写时跳过缓存，直接写入磁盘，同时使缓存失效</li>
+<li>很少使用，不但直接写磁盘，还要使缓存失效</li>
+</ul>
+</li>
+<li>策略二：写透缓存 write-through cache<ul>
+<li>写立即穿透缓存并写入磁盘，同时更新缓存和磁盘文件</li>
+<li>对缓存一致性有好处，不需要让缓存失效，实现简单</li>
+</ul>
+</li>
+<li>策略三：回写 writeback<ul>
+<li>写操作写到缓存中，然后将页面标记为dirty page，磁盘不在写入时同步更新，而是由回写进程周期性将脏页链表中的页写入磁盘</li>
+<li>脏的是高速缓存对应的磁盘中的数据，而不是高速缓存中的数据，用未同步更为恰当</li>
+<li>Linux的做法</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>回收<ul>
+<li>Linux回收通过选择干净页进行简单替换，如果缓存中干净页面不足，内核强制性进行写操作并回收</li>
+<li>策略一： 最近最少使用 LRU<ul>
+<li>跟踪每个页面的访问，构造以访问时间为序的链表，回收最老时间戳的页面，即链表头所指页面</li>
+<li>设计思想为：如果缓存数据越久不访问，则近期访问的可能性越低</li>
+<li>无法处理大量文件只访问一次的情况，这些页面靠前会使降低访问效率，并且缓存会很快耗尽</li>
+</ul>
+</li>
+<li>策略二：双链 LRU/2<ul>
+<li>同时维护活跃链表和非活跃链表，作为FIFO队列尾进头出</li>
+<li>处于活跃链表上的页面为热的，不会被换出，只能换出非活跃链表上的页面，活跃链表中的页面在访问时必需同时处于非活跃链表中</li>
+<li>两个链表需要保持平衡，如果活跃链表过多，超过了非活跃链表，活跃链表头部的页面将移入非活跃链表，以便再次回收</li>
+<li>双链策略解决了大量文件一次访问的问题，更普遍的实现是n个链表，即LRU/n</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、内核对页高速缓存的管理"><a href="#二、内核对页高速缓存的管理" class="headerlink" title="二、内核对页高速缓存的管理"></a>二、内核对页高速缓存的管理</h1><ol>
+<li><p><code>address_space</code>对象</p>
+<ul>
+<li>Linux页高速缓存的目标是缓存任何基于页的对象，在高速缓存中的页可能包含多个不连续的物理块，因此不能用设备名称和块号来索引页高速缓存中的数据</li>
+<li>Linux采用<code>address_space</code>对象来管理缓存项和页IO操作，这个对象对应与VMA的物理地址，与VMA是一对多的映射关系，表示一个物理内存地址可能对应多个虚拟地址</li>
+<li><p><code>address_space</code>结构体定义</p>
+<pre><code>struct address_space {
+    struct inode        *host;        /* owner: inode, block_device */
+    struct radix_tree_root    page_tree;    /* radix tree of all pages */
+    spinlock_t            tree_lock;    /* and lock protecting it */
+    unsigned int        i_mmap_writable;/* count VM_SHARED mappings */
+    struct rb_root        i_mmap;        /* tree of private and shared mappings */
+    struct list_head    i_mmap_nonlinear;/*list VM_NONLINEAR mappings */
+    struct mutex        i_mmap_mutex;    /* protect tree, count, list */
+
+    /* Protected by tree_lock together with the radix tree */
+    unsigned long        nrpages;    /* number of total pages */
+    pgoff_t                writeback_index;/* writeback starts here */
+    const struct address_space_operations *a_ops;    /* methods */
+    unsigned long        flags;        /* error bits/gfp mask */
+
+    struct backing_dev_info *backing_dev_info; /* device readahead, etc */
+    spinlock_t            private_lock;    /* for use by the address_space */
+    struct list_head    private_list;    /* ditto */
+    void                *private_data;    /* ditto */
+} __attribute__((aligned(sizeof(long))));
+</code></pre><ul>
+<li><code>i_mmap</code>是一个优先搜索树，包含所有的共享与私有页面<ul>
+<li>一个被缓存的文件只与一个<code>address_space</code>结构体关联，但它可以有多个vma结构体，因为物理页对虚拟页是一对多的映射关系</li>
+</ul>
+</li>
+<li>nrpages描述了总页数</li>
+<li>host域指向关联的索引节点inode，如果关联对象不是inode则置空</li>
+<li><code>a_ops</code>指向地址空间对象中的操作方法列表</li>
+<li><code>page_tree</code>对应了每个<code>address_space</code>对象唯一的基树radix tree<ul>
+<li>基树是一个二叉树，只要指定文件偏移，就能迅速在基树中检索到页</li>
+<li>通过<code>find_get_page()</code>中调用<code>radix_tree_lookup_slot()</code>完成</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><code>address_space</code>操作</p>
+<ul>
+<li><p><code>address_space_operations</code>结构体定义了缓存对象实现的页IO操作，这些方法提供了管理页高速缓存的行为，包括读取、更新等，最重要的是<code>writepage()</code>和<code>readpage()</code>方法</p>
+<pre><code>struct address_space_operations {
+    int (*writepage)(struct page *page, struct writeback_control *wbc);
+    int (*readpage)(struct file *, struct page *);
+
+    /* Write back some dirty pages from this mapping. */
+    int (*writepages)(struct address_space *, struct writeback_control *);
+
+    /* Set a page dirty.  Return true if this dirtied it */
+    int (*set_page_dirty)(struct page *page);
+
+    int (*readpages)(struct file *filp, struct address_space *mapping,
+                    struct list_head *pages, unsigned nr_pages);
+
+    int (*write_begin)(struct file *, struct address_space *mapping,
+                    loff_t pos, unsigned len, unsigned flags,
+                    struct page **pagep, void **fsdata);
+    int (*write_end)(struct file *, struct address_space *mapping,
+                    loff_t pos, unsigned len, unsigned copied,
+                    struct page *page, void *fsdata);
+    ...
+</code></pre></li>
+<li><p>linux高速缓存页面的读操作</p>
+<ul>
+<li><p>以<code>&lt;block2mtd.c&gt;的page_read()为例</code></p>
+<pre><code>page_read()    &lt;block2mtd.c&gt;
+read_mapping_page() &lt;pagemap.h&gt; -&gt;
+read_cache_page() &lt;filemap.c&gt; -&gt;
+read_cache_page_async() -&gt;
+do_read_cache_page() -&gt;
+__read_cache_page() -&gt;
+
+static inline struct page *read_mapping_page(struct address_space *mapping, pgoff_t index, void *data)
+{
+    filler_t *filler = (filler_t *)mapping-&gt;a_ops-&gt;readpage;
+    return read_cache_page(mapping, index, filler, data);
+}
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>    + 最终调用`find_get_page()`在高速缓存页面中查找数据，如果没找到返回空，则通过`__page_cache_alloc()`分配一个新页面并加入到页高速缓存中
+
+            static struct page *__read_cache_page(struct address_space *mapping,
+            pgoff_t index, int (*filler)(void *, struct page *), void *data, gfp_t gfp)
+            {
+                struct page *page;
+                int err;
+            repeat:
+                page = find_get_page(mapping, index);
+                if (!page) {
+                    page = __page_cache_alloc(gfp | __GFP_COLD);
+                    if (!page)
+                        return ERR_PTR(-ENOMEM);
+                    err = add_to_page_cache_lru(page, mapping, index, gfp);
+                    if (unlikely(err)) {
+                        ...
+                        return ERR_PTR(err);
+                    }
+                    err = filler(data, page);
+                    if (err &lt; 0) {
+                        ...
+                    }
+                }
+                return page;
+            }
+
+    + 在上面的函数中，最后需要的数据从磁盘读入，写入到高速缓存中，再返回给客户
+
+            filler_t *filler = (filler_t *)mapping-&gt;a_ops-&gt;readpage;
+            err = filler(data, page);
+
+* 写比较复杂，有各种同步、异步的写操作，留待以后研究
+</code></pre><h1 id="三、缓冲区高速缓存"><a href="#三、缓冲区高速缓存" class="headerlink" title="三、缓冲区高速缓存"></a>三、缓冲区高速缓存</h1><ol>
+<li>块IO缓冲是独立的物理磁盘块映射到的内存页面，也需要通过页高速缓存来管理，通常被称为缓冲区高速缓存</li>
+<li>在实现上，块IO缓冲没有作为独立缓存，而是页高速缓存的一部分</li>
+<li>块IO操作一次读写一个独立的磁盘块，普通的块IO操作即读写i节点，通过缓存将磁盘块映射到内存页，并且缓存到页高速缓存中</li>
+</ol>
+<h1 id="四、flusher线程"><a href="#四、flusher线程" class="headerlink" title="四、flusher线程"></a>四、flusher线程</h1><ol>
+<li>dirty page回写的时机<ul>
+<li>系统空闲内存低于阀值<code>dirty_background_ratio</code>，内核通过回写来释放内存</li>
+<li>dirty page在内存中驻留时间超过<code>dirty_expire_centisecs</code>，保证缓存一致性</li>
+<li>用户进程调用sync()和fsync()时</li>
+</ul>
+</li>
+<li><p>释放系统内存</p>
+<ul>
+<li><p>内核调用唤醒多个flusher线程</p>
+<pre><code>wakeup_flusher_threads() &lt;fs-writeback.c&gt; -&gt;
+__bdi_start_writeback()
+</code></pre></li>
+<li><p>满足下列情况时，才停止回写，除非所有脏页回写完了，没有多余的脏页可写</p>
+<ul>
+<li>指定的最小数目的页被回写</li>
+<li>空闲内存超过阀值<code>dirty_background_ratio</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>缓存一致性<ul>
+<li>flusher线程周期性唤醒，把过期的dirty page回写</li>
+</ul>
+</li>
+<li><p>系统配置</p>
+<ul>
+<li><p><code>/proc/sys/vm</code>中可以配置的回写参数</p>
+<pre><code>dirty_background_ratio：内存中dirty page的百分比
+dirty_expire_interval ：dirty page的数据超时时间，单位10ms
+dirty_ratio              ：单个进程产生的dirty page占系统全部内存的百分比
+dirty_writeback_interval：flusher线程的运行频率
+laptop_mode              ：笔记本模式
+</code></pre></li>
+<li>笔记本模式<ul>
+<li>将硬盘转动的机械行为最小化，允许硬盘尽可能长时间的停留，以省电</li>
+<li><code>dirty_expire_interval</code>和<code>dirty_writeback_interval</code>会很大</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>2.6之前的内核，由bdflush和kupdated两个线程完成</li>
+<li>pdflush线程数动态变化，且采用了拥塞避免策略<ul>
+<li>主动尝试从没有拥塞的队列回写页，防止在一个设备上拥塞，而其它设备得不到响应</li>
+<li>提高了IO操作的公平性，降低了饥饿的风险</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/10/18/Linux内核学习-Linux内核初探-之-页高速缓存/" data-id="ciujcgmjr002gzq6388hxud8n" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/10/19/Linux内核学习-Linux内核初探-之-进程的内存管理-一-————-进程地址空间/" class="pre">Linux内核初探 之 进程的内存管理(一) ———— 进程地址空间</a><a href="/2016/10/15/算法学习-基础算法学习-四-——-树/" class="next">基础算法学习(四) —— 树</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/10/21/算法学习-基础算法学习-六-——-图的基本概念/">基础算法学习(六) —— 图的基本概念</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/20/算法学习-基础算法学习-五-——-树的排序、查找与平衡/">基础算法学习(五) —— 树的排序、查找与平衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/20/Linux内核学习-Linux内核初探-之-进程的内存管理-三-————-内存操作/">Linux内核初探 之 进程的内存管理(三) ———— 内存操作</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/19/Linux内核学习-Linux内核初探-之-进程的内存管理-二-————-虚拟内存/">Linux内核初探 之 内存管理(七) —— 内核内存分配函数的选择</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/19/Linux内核学习-Linux内核初探-之-进程的内存管理-一-————-进程地址空间/">Linux内核初探 之 进程的内存管理(一) ———— 进程地址空间</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/18/Linux内核学习-Linux内核初探-之-页高速缓存/">Linux内核初探 之 高速缓存</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-四-——-树/">基础算法学习(四) —— 树</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-三-——-字符串/">基础算法学习(三) —— 字符串</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-二-——-栈与队列/">基础算法学习(二) —— 栈与队列</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/15/算法学习-基础算法学习-一-——-线性表/">基础算法学习(一) —— 线性表</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
