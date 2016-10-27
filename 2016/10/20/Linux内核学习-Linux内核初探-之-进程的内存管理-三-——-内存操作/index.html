@@ -1,0 +1,249 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>Linux内核初探 之 进程的内存管理(三) —— 内存操作 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Linux内核初探 之 进程的内存管理(三) —— 内存操作</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Linux内核初探 之 进程的内存管理(三) —— 内存操作</h1><div class="post-meta">Oct 20, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux内核初探-之-进程的内存管理-三-————-内存操作"><span class="toc-number">1.</span> <span class="toc-text">Linux内核初探 之 进程的内存管理(三) ———— 内存操作</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、-查找地址区间"><span class="toc-number">2.</span> <span class="toc-text">一、 查找地址区间</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、创建和删除地址区间"><span class="toc-number">3.</span> <span class="toc-text">二、创建和删除地址区间</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、地址转换——页表"><span class="toc-number">4.</span> <span class="toc-text">三、地址转换——页表</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="Linux内核初探-之-进程的内存管理-三-————-内存操作"><a href="#Linux内核初探-之-进程的内存管理-三-————-内存操作" class="headerlink" title="Linux内核初探 之 进程的内存管理(三) ———— 内存操作"></a>Linux内核初探 之 进程的内存管理(三) ———— 内存操作</h1><hr>
+<h1 id="一、-查找地址区间"><a href="#一、-查找地址区间" class="headerlink" title="一、 查找地址区间"></a>一、 查找地址区间</h1><ol>
+<li><p>查找指定地址之后的VMA</p>
+<pre><code>&lt;mm/mmap.c&gt;
+/* Look up the first VMA which satisfies  addr &lt; vm_end,  NULL if none. */
+struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr)
+{
+    struct vm_area_struct *vma = NULL;
+
+    /* Check the cache first. */
+    /* (Cache hit rate is typically around 35%.) */
+    vma = ACCESS_ONCE(mm-&gt;mmap_cache);
+    if (!(vma &amp;&amp; vma-&gt;vm_end &gt; addr &amp;&amp; vma-&gt;vm_start &lt;= addr)) {
+        struct rb_node *rb_node;
+
+        rb_node = mm-&gt;mm_rb.rb_node;
+        vma = NULL;
+
+        while (rb_node) {
+            struct vm_area_struct *vma_tmp;
+
+            vma_tmp = rb_entry(rb_node,
+                       struct vm_area_struct, vm_rb);
+
+            if (vma_tmp-&gt;vm_end &gt; addr) {
+                vma = vma_tmp;
+                if (vma_tmp-&gt;vm_start &lt;= addr)
+                    break;
+                rb_node = rb_node-&gt;rb_left;
+            } else
+                rb_node = rb_node-&gt;rb_right;
+        }
+        if (vma)
+            mm-&gt;mmap_cache = vma;
+    }
+    return vma;
+}
+</code></pre><ul>
+<li>成功返回vma，失败返回NULL</li>
+<li>搜索指定addr之后的vma，实际找到的可能不含addr地址</li>
+<li>先检查缓存<code>mm_cache</code>，如果没有命中，再通过红黑树搜索相关内存区域</li>
+<li>找到后返回的同时也缓存一份到进程<code>mm_struct</code>的<code>mm_cache</code>域中，能有效提高缓存命中率(根据注释典型情况下能达到35%)，因为后续更多操作可能会用到</li>
+</ul>
+</li>
+<li><p>查找指定地址之前的VMA</p>
+<pre><code>&lt;mm/mmap.c&gt;
+/*
+ * Same as find_vma, but also return a pointer to the previous VMA in *pprev.
+ */
+struct vm_area_struct *
+find_vma_prev(struct mm_struct *mm, unsigned long addr,
+            struct vm_area_struct **pprev)
+{
+    struct vm_area_struct *vma;
+
+    vma = find_vma(mm, addr);
+    if (vma) {
+        *pprev = vma-&gt;vm_prev;
+    } else {
+        struct rb_node *rb_node = mm-&gt;mm_rb.rb_node;
+        *pprev = NULL;
+        while (rb_node) {
+            *pprev = rb_entry(rb_node, struct vm_area_struct, vm_rb);
+            rb_node = rb_node-&gt;rb_right;
+        }
+    }
+    return vma;
+}
+</code></pre><ul>
+<li>返回第一个小于addr的vma</li>
+<li>利用<code>find_vma()</code>找到addr之后的第一个VMA，然后取它的prev</li>
+</ul>
+</li>
+<li><p>和指定地址相交的VMA</p>
+<pre><code>&lt;mmap.h&gt;
+/* Look up the first VMA which intersects the interval start_addr..end_addr-1,
+   NULL if none.  Assume start_addr &lt; end_addr. */
+static inline struct vm_area_struct * find_vma_intersection(struct mm_struct * mm, unsigned long start_addr, unsigned long end_addr)
+{
+    struct vm_area_struct * vma = find_vma(mm,start_addr);
+
+    if (vma &amp;&amp; end_addr &lt;= vma-&gt;vm_start)
+        vma = NULL;
+    return vma;
+}
+</code></pre><ul>
+<li>同样* 利用<code>find_vma()</code>找到<code>start_addr</code>之后的第一个VMA，只要<code>vma-&gt;vm_start</code>小于<code>end_addr</code>就肯定相交</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、创建和删除地址区间"><a href="#二、创建和删除地址区间" class="headerlink" title="二、创建和删除地址区间"></a>二、创建和删除地址区间</h1><ol>
+<li><p><code>mmap()</code>和<code>do_mmap_pgoff()</code></p>
+<ul>
+<li><p>用户空间通过C库中的方法mmap()，调用系统调用<code>mmap_pgoff</code>创建新的地址区间</p>
+<pre><code>`mmap_pgoff()` &lt;mm/mmap.c&gt; -&gt;
+`vm_mmap_pgoff()` &lt;mm/util.c&gt; -&gt;
+`do_mmap_pgoff()` &lt;mm/mmap.c&gt;
+</code></pre></li>
+<li><p>创建时，如果新区间和一个已知的内存区间相邻，且访问权限相同，则会将两个区间合并，否则才创建新的区间</p>
+</li>
+<li><p>无论是否合并，都会将一个新的vma加入到进程的地址空间中，只是合并的话，会出现重叠区间</p>
+<pre><code>&lt;mm/mmap.c&gt;
+unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
+                            unsigned long len, unsigned long prot,
+                            unsigned long flags, unsigned long pgoff)
+</code></pre><ul>
+<li>从文件偏移pgoff开始，映射file指定的文件中len长度的数据</li>
+<li>如果文件为NULL，offset参数为0，则是匿名映射，不与任何文件关联，否则为文件映射</li>
+<li>addr指定带分配的空闲vma的地址地址，可选</li>
+<li><p>port指定新建vma的访问权限</p>
+<pre><code>&lt;uapi/asm-generic/mman-common.h&gt;
+#define PROT_READ    0x1    /* 对应VM_READ  */
+#define PROT_WRITE    0x2    /* 对应VM_WRITE */
+#define PROT_EXEC    0x4    /* 对应VM_EXEC  */
+#define PROT_NONE    0x0    /* 新建页不可访问 */
+</code></pre></li>
+<li><p>flag指定VMA标志，可以改变映射行为</p>
+<pre><code>&lt;uapi/asm-generic/mman-common.h&gt;
+#define MAP_SHARED    0x01        /* 映射可以共享 */
+#define MAP_PRIVATE    0x02        /* 映射不能共享 */
+#define MAP_FIXED    0x10        /* 新区间必需于指定地址addr */
+#define MAP_ANONYMOUS    0x20    /* 匿名映射 */
+
+&lt;uapi/asm-generic/mman.h&gt;
+#define MAP_GROWSDOWN    0x0100    /* 对应VM_GROWSDOWN */
+#define MAP_DENYWRITE    0x0800    /* 对应VM_DENYWRITE */
+#define MAP_EXECUTABLE    0x1000    /* 对应VM_EXECUTABLE */
+#define MAP_LOCKED    0x2000        /* 对应VM_LOCKED */
+#define MAP_NORESERVE    0x4000    /* 不为映射保留空间 */
+#define MAP_POPULATE    0x8000    /* 填充页表 */
+#define MAP_NONBLOCK    0x10000    /* 在IO操作上不阻塞 */
+#define MAP_STACK    0x20000        /* 对进程/线程栈的最优地址 */
+#define MAP_HUGETLB    0x40000        
+</code></pre></li>
+<li><p>最终调用<code>mmap_region()</code>完成分配动作，先尝试调用<code>vma_merge()</code>，如果失败说明不是相邻区域，则调用<code>kmem_cache_zalloc()</code>从高速缓存<code>vm_area_cachep</code>的slab中分配一个vma结构，然后更新vma结构信息，最后调用<code>vma_link</code>将新的vma加入进程地址空间<code>mm_struct</code>的链表和红黑树中，然后返回新的vma</p>
+<pre><code>&lt;mm/mmap.c&gt;
+unsigned long mmap_region(struct file *file, unsigned long addr,
+                          unsigned long len, unsigned long flags,
+                          vm_flags_t vm_flags, unsigned long pgoff)
+{
+    ...
+
+    /*
+     * Can we just expand an old mapping?
+     */
+    vma = vma_merge(mm, prev, addr, addr + len, vm_flags, NULL, file, pgoff, NULL);
+    if (vma)
+        goto out;
+
+    vma = kmem_cache_zalloc(vm_area_cachep, GFP_KERNEL);
+    if (!vma) {
+        error = -ENOMEM;
+        goto unacct_error;
+    }
+
+    vma-&gt;vm_mm = mm;
+    vma-&gt;vm_start = addr;
+    vma-&gt;vm_end = addr + len;
+    vma-&gt;vm_flags = vm_flags;
+    vma-&gt;vm_page_prot = vm_get_page_prot(vm_flags);
+    vma-&gt;vm_pgoff = pgoff;
+    ...
+
+    if(file) {
+        ... 
+    else {
+        ...
+    }
+    ...
+
+    vma_link(mm, vma, prev, rb_link, rb_parent);
+    file = vma-&gt;vm_file;
+
+out:
+    perf_event_mmap(vma);
+    vm_stat_account(mm, vm_flags, file, len &gt;&gt; PAGE_SHIFT);
+
+    ...
+    if (file)
+        uprobe_mmap(vma);
+
+    return addr;
+
+}
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><code>munmap()</code>和<code>do_munmap()</code>            </p>
+<ul>
+<li><p>munmap()为进程提供了从自身地址空间中删除指定区间的方法，通过<code>vm_munmap()</code>调用<code>do_munmap()</code>完成</p>
+<pre><code>&lt;mm/mmap.c&gt;
+SYSCALL_DEFINE2(munmap, unsigned long, addr, size_t, len)
+{
+    profile_munmap(addr);
+    return vm_munmap(addr, len);
+}
+
+int vm_munmap(unsigned long start, size_t len)
+{
+    int ret;
+    struct mm_struct *mm = current-&gt;mm;
+
+    down_write(&amp;mm-&gt;mmap_sem);
+    ret = do_munmap(mm, start, len);
+    up_write(&amp;mm-&gt;mmap_sem);
+    return ret;
+}
+EXPORT_SYMBOL(vm_munmap);
+</code></pre></li>
+<li><p><code>do_munmap()</code>指定要删除区域所在的进程地址空间，删除区域的起始地址和长度</p>
+<pre><code>/* Munmap is split into 2 main parts -- this part which finds
+ * what needs doing, and the areas themselves, which do the
+ * work.  This now handles partial unmappings.
+ * Jeremy Fitzhardinge &lt;jeremy@goop.org&gt;
+ */
+int do_munmap(struct mm_struct *mm, unsigned long start, size_t len)
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="三、地址转换——页表"><a href="#三、地址转换——页表" class="headerlink" title="三、地址转换——页表"></a>三、地址转换——页表</h1><ol>
+<li>进程操作内存时，内核需要将虚拟地址转化为物理地址，处理器才能操作</li>
+<li>地址转换工作通过页表完成，需要先将虚拟地址分段，使每段虚拟地址都作为一个索引指向页表，页表可以指向下一级页表或者最终的物理页面</li>
+<li>linux使用多级页表完成地址转换，对所有体系结构都使用三级页表进行管理，利用了“最大公约数”的思想，可以在编译时按需简化三级结构<ul>
+<li>顶级页表是页全局目录PGD，包含<code>pgd_t</code>数组，表项指向第二级目录PMD的表项</li>
+<li>二级页表是中间页目录PMD，包含<code>pmd_t</code>数组，表项指向第三级页表PTE</li>
+<li>最后一级为页表PTE，包含<code>pte_t</code>类型的表项，直接指向物理页面</li>
+</ul>
+</li>
+<li>搜索页表的工作由硬件完成</li>
+<li>每个进程都有自己的页表，线程共享页表，进程<code>mm_struct</code>的pgd域指向进程的页全局目录PGD<ul>
+<li>进程操作和检索页表必需使用<code>page_table_lock</code>锁</li>
+</ul>
+</li>
+<li>每一次对虚拟内存的页面访问都必须解析页表，以得到对应的物理地址，因此页表操作的性能很关键，但搜索内存中的物理地址速度有限<ul>
+<li>多数硬件体系结构实现了翻译缓冲(translate lookaside buffer,TLB)，作为虚拟地址映射到物理地址的硬件缓冲<br>*　当访问虚拟地址时，先检查TLB是否缓存了映射，没有命中则通过页表搜索对应的物理地址</li>
+</ul>
+</li>
+<li>2.6以后内核对页表的主要改进是<ul>
+<li>从高端内存分配部分页表</li>
+<li>写时拷贝COW技术，使fork时父子进程共享页表，只有子进程试图改写特定页表项时才拷贝并消除共享</li>
+</ul>
+</li>
+<li>由于Linux是一个基于虚拟内存的操作系统，所以页表管理很重要</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/10/20/Linux内核学习-Linux内核初探-之-进程的内存管理-三-——-内存操作/" data-id="ciusiv0ke002duk63emsizia5" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/10/20/算法学习-基础算法学习-五-——-树的排序、查找与平衡/" class="pre">基础算法学习(五) —— 树的排序、查找与平衡</a><a href="/2016/10/19/Linux内核学习-Linux内核初探-之-进程的内存管理-二-——-虚拟内存/" class="next">Linux内核初探 之 内存管理(七) —— 内核内存分配函数的选择</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/算法学习-基础算法学习-九-——-图的最小生成树/">算法学习-基础算法学习-九-——-图的最小生成树</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/算法学习-基础算法学习-十-——-图的最短路径/">算法学习-基础算法学习-十-——-图的最短路径</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/Linux内核学习-Linux内核初探-之-进程-三-——进程调度算法/">Linux内核初探 之 进程(三) —— 进程调度算法</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/杂项-系统安全性设计/">系统安全性设计</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/25/算法学习-基础算法学习-七-——-图的数据结构/">基础算法学习(七) —— 图的数据结构</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/25/算法学习-基础算法学习-八-——-图的遍历/">基础算法学习(八) —— 图的遍历</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/25/Linux内核学习-Linux内核初探-之-进程-二-——进程管理/">Linux内核初探 之 进程(二) —— 进程管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/24/Linux内核学习-Linux内核初探-之-进程-一-——-进程基础/">Linux内核初探 之 进程(一) —— 进程基础</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/21/算法学习-基础算法学习-六-——-图的基本概念/">基础算法学习(六) —— 图的基本概念</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/20/算法学习-基础算法学习-五-——-树的排序、查找与平衡/">基础算法学习(五) —— 树的排序、查找与平衡</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

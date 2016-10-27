@@ -1,0 +1,279 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">Oct 27, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<h1 id="基础算法学习-九-——-图的最小生成树"><a href="#基础算法学习-九-——-图的最小生成树" class="headerlink" title="基础算法学习(九) —— 图的最小生成树"></a>基础算法学习(九) —— 图的最小生成树</h1><hr>
+<h1 id="一、最小生成树"><a href="#一、最小生成树" class="headerlink" title="一、最小生成树"></a>一、最小生成树</h1><ol>
+<li>最小成本<ul>
+<li>对于一个n个顶点带权的图(网)，用n-1条边将顶点连接，使得权值和最小</li>
+</ul>
+</li>
+<li>最小生成树<ul>
+<li>连通图的生成树是一个极小连通子图，含有全部顶点和n-1条边</li>
+<li>构造连通图的最小代价生成树</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、Prim算法"><a href="#二、Prim算法" class="headerlink" title="二、Prim算法"></a>二、Prim算法</h1><ol>
+<li><p>图的定义</p>
+<ul>
+<li>9个顶点，采用邻接矩阵</li>
+<li><p>不存在的边权值为65535</p>
+<pre><code>const int MAXVEX = 9;
+const int INF = 65535;
+
+struct MGraph {
+    int numVertexes = MAXVEX;
+    int arc[MAXVEX][MAXVEX] = {{0, 10, INF, INF, INF, 11, INF, INF, INF},
+			                                {10, 0, 18, INF, INF, INF, 16, INF, 12}, 
+			                                {INF, INF, 0, 22, INF, INF, INF, INF, 8}, 
+			                                {INF, INF, 22, 0, 20, INF, INF, 16, 21}, 
+			                                {INF, INF, INF, 20, 0, 26, INF, 7, INF}, 
+			                                {11, INF, INF, INF, 26, 0, 17, INF, INF}, 
+			                                {INF, 16, INF, INF, INF, 17, 0, 19, INF}, 
+			                                {INF, INF, INF, 16, 7, INF, 19, 0, INF}, 
+			                                {INF, 12, 8, 21, INF, INF, INF, INF, 0 }};
+} ;
+</code></pre></li>
+</ul>
+</li>
+<li><p>实现</p>
+<ul>
+<li><p>思路</p>
+<ul>
+<li>以顶点为起点，逐步找各顶点上最小权值的边来构成最小生成树</li>
+<li>从起点开始，先找到拥有权值最小边的下一顶点</li>
+<li>找出当前顶点与下一顶点共同的权值最小的边</li>
+</ul>
+</li>
+<li><p>代码</p>
+<pre><code>void MiniSpanTree_Prim(MGraph&amp; G) 
+{
+    int min, i, j, k;
+    int adjvex[MAXVEX];
+    int lowcost[MAXVEX];    // 保存之前找过的所有顶点剩下的边
+
+    lowcost[0] = 0;
+    adjvex[0] = 0;
+
+    // 将V0顶点的权值存入数组，自身除外
+    for (i = 1; i &lt; G.numVertexes; i++) {
+           lowcost[i] = G.arc[0][i];
+           adjvex[i] = 0;
+    }
+
+    for (i = 1; i &lt; G.numVertexes; i++) {
+        min = INF;
+
+        // 找到当前顶点权值最小的边，k指向找到的边
+        j = 1; k = 0;
+        while(j &lt; G.numVertexes) {
+            if(lowcost[j] != 0 &amp;&amp; lowcost[j] &lt; min) {
+                min = lowcost[j];
+                k = j;
+                printf(&quot;min = %d, k = %d\n&quot;, min, k);
+            }
+            j++;
+        }
+
+        // 已找到的顶点，权值为0，以后不再参与
+        lowcost[k] = 0;
+
+        printf(&quot;(%d, %d)\n&quot;, adjvex[k], k);        
+        for(j = 1; j &lt; G.numVertexes; j++) 
+                printf(&quot;before: lowcost[%d] = %d\n&quot;, j, lowcost[j]);
+
+        // 将下一顶点的权值合并到当前的lowcost数组，意思是从刚找到的顶点和之前的顶点出发找最小的
+        // 在下一轮循环中，会找到这两个顶点中权值最小的边
+        for(j = 1; j &lt; G.numVertexes; j++) {
+            if (lowcost[j] != 0 &amp;&amp; G.arc[k][j] &lt; lowcost[j]) {
+                lowcost[j] = G.arc[k][j];
+                adjvex[j] = k;
+                printf(&quot;find: lowcost[%d] = %d, adjvex[%d] = %d\n&quot;, j, lowcost[j], j, adjvex[j]);
+            }
+        }
+
+        for(j = 1; j &lt; G.numVertexes; j++) 
+                printf(&quot;after: lowcost[%d] = %d\n&quot;, j, lowcost[j]);
+    }
+}
+</code></pre><ul>
+<li>lowcost[]数组保存了找到过的所有顶点剩下的边的权值</li>
+</ul>
+</li>
+<li><p>过程</p>
+<ul>
+<li>从v0出发，先找到v1</li>
+<li>从v0和v1出发，找到v5</li>
+<li>从v1和v5出发，找到v8</li>
+<li>从v1、v5、v8出发，找到v2</li>
+<li>从v1、v5、v8、v2出发，找到v6</li>
+<li>从v5、v8、v2、v6出发，找到v7</li>
+<li>从v5、v8、v2、v6、v7出发，找到v4</li>
+<li>从v4、v8、v2、v6、v7出发，找到v3</li>
+</ul>
+</li>
+<li><p>输出</p>
+<pre><code>int main() {             
+    MGraph g;            
+    MiniSpanTree_Prim(g);
+}  
+
+./test_Prim
+(0, 1)
+(0, 5)
+(1, 8)
+(8, 2)
+(1, 6)
+(6, 7)
+(7, 4)
+(7, 3)
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="三、Kruskal算法"><a href="#三、Kruskal算法" class="headerlink" title="三、Kruskal算法"></a>三、Kruskal算法</h1><ol>
+<li><p>图的定义</p>
+<ul>
+<li><p>按权值大小排序，构造边集数组</p>
+<pre><code>const int MAXEDGE = 15;
+const int MAXVEX = 9;
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<pre><code>struct Edge {
+    int begin;
+    int end;
+    int weight;
+};
+
+struct MGraph {
+    int numVertexes = MAXVEX;
+    int numEdges = MAXEDGE;
+    struct Edge edges[MAXEDGE] = { {4, 7, 7}, 
+                                   {2, 8, 8}, 
+                                   {0, 1, 10}, 
+                                   {0, 5, 11}, 
+                                   {1, 8, 12}, 
+                                   {3, 7, 16}, 
+                                   {1, 6, 16}, 
+                                   {5, 6, 17}, 
+                                   {1, 2, 18}, 
+                                   {6, 7, 19}, 
+                                   {3, 4, 20}, 
+                                   {3, 8, 21}, 
+                                   {2, 3, 22}, 
+                                   {3, 6, 24}, 
+                                   {4, 5, 26}};
+} ;
+</code></pre><ol>
+<li><p>实现</p>
+<ul>
+<li><p>思路</p>
+<ul>
+<li>按最小权值边相连，找到不构成环路的权值最小的边</li>
+</ul>
+</li>
+<li><p>代码</p>
+<pre><code>int Find(int *parent, int f)
+{
+    // 如果边相连，返回相连边的终点
+    while(parent[f] &gt; 0) {        
+        f = parent[f];
+        printf(&quot;-&gt;%d&quot;, f);
+    }
+
+    return f;
+}
+
+void MiniSpanTree_Kruskal(MGraph&amp; G)
+{
+    int i, n, m;
+    int parent[MAXVEX];        
+
+    for (i = 0; i &lt; G.numVertexes; i++) 
+        parent[i] = 0;
+
+    for (i = 0; i &lt; G.numEdges; i++) {
+        n = Find(parent, G.edges[i].begin);
+        m = Find(parent, G.edges[i].end);
+
+        // 两个相连的边的顶点，可以互相到达，则形成环
+        if (n != m) {
+            parent[n] = m;    // 将当前边放入数组，表示已找到
+            printf(&quot;[%d] = %d, get edge: (%d, %d, %d)\n&quot;, n, m, G.edges[i].begin, G.edges[i].end, G.edges[i].weight);
+        } else {
+            printf(&quot;circulated, drop the edge: (%d, %d, %d)\n&quot;, G.edges[i].begin, G.edges[i].end, G.edges[i].weight);
+        }
+    }
+}
+</code></pre></li>
+<li><p>过程</p>
+<pre><code>edge    begin            end
+0        [4]                7
+1        [1]                8
+2        [0]                1
+3        [0-&gt;1]            5
+4        [1-&gt;5]            8
+5        [3]                7
+6        [1-&gt;5-&gt;8]        6
+7 X        n=5-&gt;8-&gt;6        -
+        m=6
+8 X        n=1-&gt;5-&gt;8        -
+        m=2-&gt;8
+9        [6]                7
+10 X    n=3-&gt;7            -
+        m=4-&gt;7
+11 X    n=3-&gt;7            -
+        m=8-&gt;6-&gt;7
+12 X    n=2-&gt;8-&gt;6-&gt;7    -
+        m=3-&gt;7
+13 X    n=3-&gt;7            -
+        m=6-&gt;7    
+</code></pre></li>
+<li><p>输出</p>
+<pre><code>int main()                  
+{                           
+    MGraph g;                
+    printall(g);            
+    MiniSpanTree_Kruskal(g);
+}    
+
+./test_Kruskal
+edge: (4, 7, 7)
+edge: (2, 8, 8)
+edge: (0, 1, 10)
+edge: (0, 5, 11)
+edge: (1, 8, 12)
+edge: (3, 7, 16)
+edge: (1, 6, 16)
+edge: (5, 6, 17)
+edge: (1, 2, 18)
+edge: (6, 7, 19)
+edge: (3, 4, 20)
+edge: (3, 8, 21)
+edge: (2, 3, 22)
+edge: (3, 6, 24)
+edge: (4, 5, 26)
+[4] = 7, get edge: (4, 7, 7)
+[2] = 8, get edge: (2, 8, 8)
+[0] = 1, get edge: (0, 1, 10)
+[1] = 5, get edge: (0, 5, 11)
+[5] = 8, get edge: (1, 8, 12)
+[3] = 7, get edge: (3, 7, 16)
+[8] = 6, get edge: (1, 6, 16)
+circulated, drop the edge: (5, 6, 17)
+circulated, drop the edge: (1, 2, 18)
+[6] = 7, get edge: (6, 7, 19)
+circulated, drop the edge: (3, 4, 20)
+circulated, drop the edge: (3, 8, 21)
+circulated, drop the edge: (2, 3, 22)
+circulated, drop the edge: (3, 6, 24)
+circulated, drop the edge: (4, 5, 26)
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h1><ol>
+<li>Kruskal算法主要针对边展开，边少时效率高，适用于稀疏图    </li>
+<li>Prim算法主要针对顶点展开，边数多时效率高，适用于稠密图</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/10/27/算法学习-基础算法学习-九-——-图的最小生成树/" data-id="ciusiv0oy00c3uk63rze3vnjg" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/10/27/算法学习-基础算法学习-十-——-图的最短路径/" class="next"></a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/算法学习-基础算法学习-九-——-图的最小生成树/">算法学习-基础算法学习-九-——-图的最小生成树</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/算法学习-基础算法学习-十-——-图的最短路径/">算法学习-基础算法学习-十-——-图的最短路径</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/Linux内核学习-Linux内核初探-之-进程-三-——进程调度算法/">Linux内核初探 之 进程(三) —— 进程调度算法</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/杂项-系统安全性设计/">系统安全性设计</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/25/算法学习-基础算法学习-七-——-图的数据结构/">基础算法学习(七) —— 图的数据结构</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/25/算法学习-基础算法学习-八-——-图的遍历/">基础算法学习(八) —— 图的遍历</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/25/Linux内核学习-Linux内核初探-之-进程-二-——进程管理/">Linux内核初探 之 进程(二) —— 进程管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/24/Linux内核学习-Linux内核初探-之-进程-一-——-进程基础/">Linux内核初探 之 进程(一) —— 进程基础</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/21/算法学习-基础算法学习-六-——-图的基本概念/">基础算法学习(六) —— 图的基本概念</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/20/算法学习-基础算法学习-五-——-树的排序、查找与平衡/">基础算法学习(五) —— 树的排序、查找与平衡</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
