@@ -1,0 +1,279 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title> | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">dupengair的blog</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title"></h1><div class="post-meta">Nov 5, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="post-content"><hr>
+<p>title: 基础算法学习(十三) —— 查找的基本概念与顺序查找<br>date: 2016-11-4 23:49:14<br>updated:<br>categories: 算法学习<br>tag: 算法学习<br>comments: true<br>toc: true</p>
+<hr>
+<p>**</p>
+<h1 id="基础算法学习-十三-——-查找的基本概念与顺序查找"><a href="#基础算法学习-十三-——-查找的基本概念与顺序查找" class="headerlink" title="基础算法学习(十三) —— 查找的基本概念与顺序查找"></a>基础算法学习(十三) —— 查找的基本概念与顺序查找</h1><hr>
+<h1 id="一、查找"><a href="#一、查找" class="headerlink" title="一、查找"></a>一、查找</h1><ol>
+<li>概念<ul>
+<li>根据给定值，查找关键字相等的数据元素</li>
+</ul>
+</li>
+<li>静态查找表与动态查找表<ul>
+<li>静态查找表<ul>
+<li>检索数据元素是否存在，获得特定数据元素的各种属性</li>
+<li>通常用线性表来组织数据</li>
+</ul>
+</li>
+<li>动态查找表<ul>
+<li>查找的同时进行插入(不存在)或删除(已存在)操作</li>
+<li>可以考虑复杂查找技术，如二叉树</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、索引技术"><a href="#二、索引技术" class="headerlink" title="二、索引技术"></a>二、索引技术</h1><ol>
+<li>索引<ul>
+<li>索引是将关键字与对应记录相关联的过程</li>
+<li>索引按结构可分为：<ul>
+<li>线性索引</li>
+<li>树形索引</li>
+<li>多级索引</li>
+</ul>
+</li>
+<li>线性索引：将索引组织为线性结构<ul>
+<li>稠密索引</li>
+<li>分块索引</li>
+<li>倒排索引</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>稠密索引<ul>
+<li>每个数据对应一个索引项</li>
+<li>索引项一定按关键码有序排列</li>
+<li>优点：<ul>
+<li>可以采用有序查找算法，查找效率高</li>
+</ul>
+</li>
+<li>缺点：<ul>
+<li>数据集大导致索引大，引起内存空间占用和反复访问的问题</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>分块索引<ul>
+<li>记录分成若干块<ul>
+<li>块内无序</li>
+<li>块间有序</li>
+</ul>
+</li>
+<li>每块对应一个索引项，索引项结构包含：<ul>
+<li>块的最大关键字，总是小于下一块的最小关键字</li>
+<li>块中的记录个数</li>
+<li>指向块首元素的指针</li>
+</ul>
+</li>
+<li>查找<ul>
+<li>块间有序，可以执行有序查找算法</li>
+<li>块内无序，只能顺序查找</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>倒排索引<ul>
+<li>将关键字所在的记录与关键字的属性对应存储，可以通过属性反向查找到关键字所在的记录</li>
+<li>实际应用中根据属性值来查找记录，由于不是根据记录来查找属性值，而是由属性来确定关键字的记录位置，所以叫做倒排索引</li>
+<li>记录查找快，到记录号不定长</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、顺序查找"><a href="#三、顺序查找" class="headerlink" title="三、顺序查找"></a>三、顺序查找</h1><ol>
+<li><p>基本款</p>
+<ul>
+<li><p>顺序遍历进行比对</p>
+<pre><code>int BasicSequence_Search(vector&lt;int&gt;&amp; a, int n, int key)
+{
+    a.push_back(key);
+
+    for(int i = 0; i&lt;n; i++)        
+        if(a[i] != key)
+            return i;
+
+    return NOTEXIST;    
+}
+</code></pre><ul>
+<li>每轮循环进行两次比较，i和key</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>超强改进款</p>
+<ul>
+<li><p>放置哨兵，只比较key，大数据量下性能提升</p>
+<pre><code>int Sequence_Search(vector&lt;int&gt;&amp; a, int n, int key)
+{
+    // 最后一个元素作为哨兵
+    a.push_back(key);
+
+    int i = 0;
+    while(a[i] != key)
+        i++;
+
+    if(i &gt; n) 
+        i = NOTEXIST;
+
+    return i;    
+}
+</code></pre><ul>
+<li>只查找key，不比较范围</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>性能<ul>
+<li>复杂度为线性，n很大时效率低下</li>
+<li>对数据记录无要求</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、有序表查找"><a href="#四、有序表查找" class="headerlink" title="四、有序表查找"></a>四、有序表查找</h1><ol>
+<li><p>折半查找</p>
+<ul>
+<li>关键字必需有序，记录必需顺序存储</li>
+<li>适用于静态查找，不适用动态查找，插入删除元素时维持顺序的成本高</li>
+<li><p>实现</p>
+<pre><code>int Binary_search(vector&lt;int&gt;&amp; a, int n, int key)
+{
+    int l, h, m;
+    l = 0;
+    h = n - 1;
+
+    while(l &lt;= h) {
+        m = (l + h)/2;
+        if(key &lt; a[m]) {
+            h = m - 1;
+        } else if(key &gt; a[m]) {
+            l = m + 1;
+        } else
+            return m;
+    }
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>插值查找</p>
+<ul>
+<li>在折半的基础上，计算key在记录中的位置(key与记录间距的比例)作为折半的中间值</li>
+<li>目的是将折半的地方靠近key在记录中的位置，提高折半的成功率</li>
+<li>适用于表长大，关键字分布均匀的记录</li>
+<li><p>实现</p>
+<pre><code>int Insert_search(vector&lt;int&gt;&amp; a, int n, int key)
+{
+    int l, h, m;
+    l = 0;
+    h = n - 1;
+
+    while(l &lt;= h) {
+        m = l + (h - l)*(key - a[l])/(a[h] - a[l]);
+        if(key &lt; a[m]) {
+            h = m - 1;
+        } else if(key &gt; a[m]) {
+            l = m + 1;
+        } else
+            return m;
+    }
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>Fibonacci查找</p>
+<ul>
+<li>使用Fibonacci数组作为下标变化的增量指引</li>
+<li>左半区长，增量变化大(F[k-1])，右半区短，增量变化小(F[K-2])</li>
+<li>将中间值的乘除运算转换为加减，大数据量下有性能优势</li>
+<li><p>实现</p>
+<pre><code>int Fibo[MAXVAL] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
+
+int Fibonacci_Search(vector&lt;int&gt;&amp; a, int n, int key, vector&lt;int&gt;&amp; Fibo)
+{
+    int l, h, m, i, k;
+    l = 0;
+    h = n - 1;
+    k = 0;
+    vector&lt;int&gt; v(a, a + n);
+
+    // 计算记录长度n在Fibo数列中的位置
+    while(n &gt; (Fibo[k] -1)) 
+        k++;
+
+    // 补全长度
+    for(i = n; i&lt;(Fibo[k] - 1); i++)
+        v.push_back(a[n]); 
+
+    while(l &lt;= h) {
+        m = l + Fibo[k-1] -1;
+        if(key &lt; a[m]) {        // 左边部分
+            h = m -1;
+            k = k - 1;            // 变化大
+        } else if(key &gt; a[m]) {    // 右边部分
+            l = m + 1;
+            k = k -2;            // 变化小
+        } else {
+            if (m &lt;= n )
+                return m;
+            else
+                return n;
+        }
+    }
+}
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="五、输出"><a href="#五、输出" class="headerlink" title="五、输出"></a>五、输出</h1><ol>
+<li><p>定义</p>
+<pre><code>#define MAXVAL 10
+#define NOTEXIST 65535
+#define GEN_RAND
+#define GEN_SEQ
+#define GEN_FIBO
+
+int a[MAXVAL] = {58, 3, 69, 94, 37, 5, 82, 16, 7, 42};
+int b[MAXVAL] = {3, 5, 7, 16, 37, 42, 58, 69, 82, 94};  
+int c[MAXVAL] = {0, 1, 6, 24, 35, 47, 59, 62, 73, 99}; 
+int Fibo[MAXVAL] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
+</code></pre></li>
+<li><p>调用</p>
+<pre><code>int main(void)
+{
+    int i;
+
+    STARTCOUNT;
+    i = Sequence_Search(a, sizeof(a)/sizeof(a[0]), 37);
+    ENDCOUNT;
+    printf(&quot;Sequence_Search: %d, result: %d\n\n&quot;, 37, i);
+
+    STARTCOUNT;
+    i = Binary_search(b, sizeof(b)/sizeof(b[0]), 37);
+    ENDCOUNT;
+    printf(&quot;Binary_Search: %d, result: %d\n\n&quot;, 37, i);
+
+    STARTCOUNT;
+    i = Insert_search(b, sizeof(b)/sizeof(b[0]), 37);
+    ENDCOUNT;
+    printf(&quot;Insert_search: %d, result: %d\n\n&quot;, 37, i);
+
+    STARTCOUNT;
+    i = Fibonacci_Search(c, sizeof(c)/sizeof(c[0]), 59);
+    ENDCOUNT;
+    printf(&quot;Fibonacci_Search: %d, result: %d\n\n&quot;, 59, i);
+
+}
+</code></pre></li>
+<li><p>输出</p>
+<pre><code> ./test_Search
+time elapsed: 0 s, 0 ms, 193 us
+Sequence_Search: 37, result: 4
+
+time elapsed: 0 s, 0 ms, 1 us
+Binary_Search: 37, result: 4
+
+time elapsed: 0 s, 0 ms, 0 us
+Insert_search: 37, result: 4
+
+time elapsed: 0 s, 0 ms, 3 us
+Fibonacci_Search: 59, result: 6
+</code></pre></li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/11/05/算法学习-基础算法学习-十三-——-查找的基本概念与顺序查找/" data-id="civ3zkaqj00du20634p2bmb2k" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/11/04/Linux内核学习-Linux内核初探-之-虚拟文件系统-一-——-VFS对象与数据结构/" class="next">Linux内核初探 之 虚拟文件系统(一) —— VFS对象与数据结构</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">17</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">12</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/05/算法学习-基础算法学习-十三-——-查找的基本概念与顺序查找/">算法学习-基础算法学习-十三-——-查找的基本概念与顺序查找</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/04/Linux内核学习-Linux内核初探-之-虚拟文件系统-一-——-VFS对象与数据结构/">Linux内核初探 之 虚拟文件系统(一) —— VFS对象与数据结构</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/03/算法学习-基础算法学习-十二-——-图的关键路径/">基础算法学习(十二) —— 图的关键路径</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/03/Linux内核学习-Linux内核初探-之-进程-五-——-抢占与调度策略/">Linux内核初探 之 进程(五) —— 抢占与调度</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/01/算法学习-基础算法学习-十一-——-图的拓扑排序/">基础算法学习(十一) —— 图的拓扑排序</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/01/Linux内核学习-Linux内核初探-之-进程-四-——-进程调度的实现/">Linux内核初探 之 进程(四) —— 进程调度的实现</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/31/算法学习-基础算法学习-十-——-图的最短路径/">基础算法学习(十) —— 图的最短路径</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/算法学习-基础算法学习-九-——-图的最小生成树/">基础算法学习(九) —— 图的最小生成树</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/Linux内核学习-Linux内核初探-之-进程-三-——进程调度算法/">Linux内核初探 之 进程(三) —— 进程调度算法</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/27/杂项-系统安全性设计/">系统安全性设计</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
