@@ -1,0 +1,270 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>系统性能工具篇(系统小工具) | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">系统性能工具篇(系统小工具)</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">系统性能工具篇(系统小工具)</h1><div class="post-meta">Nov 11, 2016<span> | </span><span class="category"><a href="/categories/系统性能/">系统性能</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#系统性能工具篇-系统小工具"><span class="toc-number">1.</span> <span class="toc-text">系统性能工具篇(系统小工具)</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、top"><span class="toc-number">2.</span> <span class="toc-text">一、top</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、uptime"><span class="toc-number">3.</span> <span class="toc-text">二、uptime</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、ps"><span class="toc-number">4.</span> <span class="toc-text">三、ps</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、free"><span class="toc-number">5.</span> <span class="toc-text">四、free</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、pmap"><span class="toc-number">6.</span> <span class="toc-text">五、pmap</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#六、mpstat"><span class="toc-number">7.</span> <span class="toc-text">六、mpstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#七、slaptop"><span class="toc-number">8.</span> <span class="toc-text">七、slaptop</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="系统性能工具篇-系统小工具"><a href="#系统性能工具篇-系统小工具" class="headerlink" title="系统性能工具篇(系统小工具)"></a>系统性能工具篇(系统小工具)</h1><hr>
+<h1 id="一、top"><a href="#一、top" class="headerlink" title="一、top"></a>一、top</h1><pre><code>top - 19:50:37 up  1:19,  1 user,  load average: 0.24, 0.15, 0.19
+Tasks:  66 total,   1 running,  65 sleeping,   0 stopped,   0 zombie
+Cpu(s):  7.8%us, 11.5%sy,  0.0%ni, 80.6%id,  0.0%wa,  0.0%hi,  0.1%si,  0.0%st
+Mem:    601524k total,   180740k used,   420784k free,        0k buffers
+Swap:        0k total,        0k used,        0k free,   114004k cached
+
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND                                                                
+ 1161 root      20   0  935m  53m  15m S    8  9.1   8:25.58 FwLoader                                                               
+ 2307 root      20   0  1912  880  696 R    4  0.1   0:00.02 top                                                                    
+    1 root      20   0  2456  592  524 S    0  0.1   0:04.24 linuxrc                                                                
+    2 root      20   0     0    0    0 S    0  0.0   0:00.00 kthreadd                                                               
+    3 root      20   0     0    0    0 S    0  0.0   0:00.04 ksoftirqd/0                                                            
+    5 root       0 -20     0    0    0 S    0  0.0   0:00.00 kworker/0:0H                                                           
+    7 root       0 -20     0    0    0 S    0  0.0   0:00.00 kworker/u:0H   
+
+%MEM：主存大小
+VIRT：虚拟内存大小
+RES ：常驻集合大小
+</code></pre><h1 id="二、uptime"><a href="#二、uptime" class="headerlink" title="二、uptime"></a>二、uptime</h1><pre><code># uptime 
+ 19:49:51 up  1:18,  1 user,  load average: 0.12, 0.12, 0.18
+</code></pre><ol>
+<li>系统负载 —— 可运行态进程和不可中断态进程总数</li>
+<li>包含当前时间、已运行时间、当前登陆用户数，系统过去1、5、15分钟的平均负载</li>
+<li>可运行态：正在使用或等待cpu。 不可中断态：正在等待IO访问</li>
+<li>平均负载为1意味着单个cpu总是有负载的，对于单cpu来说1或2是可接受的，这个数字等于cpu个数为最佳</li>
+<li>可由uptime确定问题在自身还是在网络，如果cpu负载不高，问题可能和自身无关</li>
+</ol>
+<h1 id="三、ps"><a href="#三、ps" class="headerlink" title="三、ps"></a>三、ps</h1><ol>
+<li><p>以当前有效用户ID运行</p>
+</li>
+<li><p>显示</p>
+<ul>
+<li>显示单个进程： ps -C FwLoader</li>
+<li>显示单个进程某列： ps -C FwLoader -o pid=</li>
+<li>显示线程信息：ps -L $(pidof FwLoader)</li>
+</ul>
+</li>
+<li><p>参数</p>
+<pre><code>-s：显示信号格式
+-u：显示面向用户格式
+-v：显示虚拟内存格式
+-e：所有进程
+-f：全格式列表
+-F：额外的全格式
+</code></pre></li>
+<li><p>状态</p>
+<pre><code>D：不可中断睡眠
+R：正在运行或可运行
+S：可中断睡眠
+T：已停止
+Z：已死亡，还未被父进程回收
+BSD格式：
+&lt;：高优先级，其它用户不能nice
+N：低优先级，其它用户可以nice
+L：内存中锁定分页，用于实时或定制IO
+s：session leader
+l：多线程
++：前台进程组
+</code></pre></li>
+<li><p>实例</p>
+<pre><code># ps -aux
+Warning: bad ps syntax, perhaps a bogus &apos;-&apos;? See http://procps.sf.net/faq.html
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.0   2456   592 ?        Ss   18:22   0:03 init  
+root        19  0.0  0.0      0     0 ?        S&lt;   18:22   0:00 [kblockd]
+root        20  0.0  0.0      0     0 ?        S&lt;   18:22   0:00 [rpciod]
+root        21  0.0  0.0      0     0 ?        S    18:22   0:00 [kworker/0:1]
+root        24  0.0  0.0      0     0 ?        S&lt;   18:22   0:00 [nfsiod]        
+root       516  0.0  0.0      0     0 ?        S    18:23   0:03 [kworker/u:2]
+root       633  0.0  0.1   7148  1020 ?        S&lt;sl 18:23   0:03 /usr/sbin/wdDae
+root       668  0.0  0.0   1832   460 ?        Ss   18:23   0:00 /usr/sbin/dropb
+root       791  0.0  0.1   1976   784 ttyS0    R+   19:48   0:00 ps -aux
+root       800  0.0  0.0   2456   496 ?        Ss   18:23   0:03 /sbin/zcip eth0
+root       957  0.0  0.0      0     0 ?        S    18:23   0:00 [kworker/1:2]
+root      1021  0.0  0.0   2456   496 ?        Ss   18:23   0:00 /usr/bin/runsvd        
+root      1031  0.0  0.2  12780  1560 ?        Sl   18:23   0:00 /usr/sbin/fails        
+root      1174  0.3  0.0   1544   420 ?        Ss   18:23   0:18 udevd --daemon        
+root      1312  0.0  0.2  13452  1576 ?        Sl   18:23   0:00 /usr/sbin/idcpd
+root      1842  0.2  0.0   1540   368 ?        S    18:23   0:12 udevd --daemon
+...
+
+%MEM：主内存使用百分比
+RSS：常驻集合大小，包括系统库在内的映射共享段
+VSZ：虚拟内存大小
+</code></pre></li>
+</ol>
+<h1 id="四、free"><a href="#四、free" class="headerlink" title="四、free"></a>四、free</h1><pre><code># free -lm
+             total       used       free     shared    buffers     cached
+Mem:           587        176        410          0          0        111
+Low:           587        176        410
+High:            0          0          0
+-/+ buffers/cache:         65        522
+Swap:            0          0          0
+</code></pre><ol>
+<li>shared表示/proc/meminfo中Shmem字段（实测有差别）</li>
+<li><p>含义</p>
+<pre><code>Mem: used = 已使用 + buffer + cache
+     free = 空闲
+-/+ buffers/cache: used = 已使用
+                   free = 空闲 + buffer + cache
+</code></pre></li>
+<li>64bit系统不再使用high内存</li>
+<li>使用/proc/buddyinfo确定每个区域可用的内存块。列代表可用的分页数量，第一列为0，每列的可用分页数量为当前数字乘以2的列数次幂，再乘以分页大小。如第0列的数字为4，分页数为：<code>4 * 2^0 * 4KB = 16KB</code></li>
+<li><p>buffer与cache</p>
+<ul>
+<li>buffer: buffer cache，块设备写缓冲区</li>
+<li><p>cache : page cache，文件系统读缓冲区，大说明cache住的文件多，如果频繁访问的文件被cache，磁盘IO效率低下</p>
+<blockquote>
+<p>A buffer is something that has yet to be “written” to disk.</p>
+<p>A cache is something that has been “read” from the disk and stored for later use.</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="五、pmap"><a href="#五、pmap" class="headerlink" title="五、pmap"></a>五、pmap</h1><pre><code># pmap -x $(pidof FwLoader)
+431:   ./FwLoader
+Address   Kbytes     RSS    Anon  Locked Mode   Mapping
+00008000      52       -       -       - r-x--  FwLoader
+0001d000       4       -       -       - rw---  FwLoader
+01940000   79908       -       -       - rw---    [ anon ]
+3006c000     104       -       -       - r-x--  ld-2.19-2014.06.so
+30086000       8       -       -       - rw---    [ anon ]
+
+# pmap -d $(pidof FwLoader)
+431:   ./FwLoader
+Address   Kbytes Mode  Offset           Device    Mapping
+00008000      52 r-x-- 0000000000000000 000:00014 FwLoader
+0001d000       4 rw--- 000000000000d000 000:00014 FwLoader
+01940000   79908 rw--- 0000000000000000 000:00000   [ anon ]
+3006c000     104 r-x-- 0000000000000000 000:0000d ld-2.19-2014.0
+
+Address: 映射起始地址
+Kbytes : 虚拟内存映射大小
+RSS    : 主内存驻留集
+Anon   : 匿名内存
+Dirty  : 脏页（包括共享和私有）
+Mode   : 映射权限
+Mapping: 支持映射的文件
+Offset : 文件偏移
+Device : 设备名
+</code></pre><h1 id="六、mpstat"><a href="#六、mpstat" class="headerlink" title="六、mpstat"></a>六、mpstat</h1><ol>
+<li><p>用于查看每个CPU相关统计数据</p>
+<pre><code>$ mpstat 1 10
+Linux 4.2.0-27-generic (ubuntu)         07/21/2016      _x86_64_        (2 CPU)
+
+08:06:55 PM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+08:06:56 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:06:57 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:06:58 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:06:59 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:07:00 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:07:01 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+08:07:02 PM  all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+^C
+Average:     all    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+</code></pre></li>
+<li><p>参数</p>
+<pre><code>-P 处理器编号
+-I {SUM|CPU|SCPU|ALL}
+    SUM：中断数据
+    CPU：cpu每秒接收的每个中断信息
+    SCPU：cpu每秒接收的每个软件中断信息
+    ALL：上面全部
+
+$ mpstat -I CPU
+Linux 4.2.0-27-generic (ubuntu)         07/21/2016      _x86_64_        (2 CPU)
+
+08:15:20 PM  CPU        0/s        1/s        6/s        7/s        8/s        9/s       12/s       14/s       15/s       16/s       17/s       18/s       19/s       24/s       25/s       26/s       27/s       28/s       29/s       30/s       31/s       32/s       33/s       34/s       35/s       36/s       37/s       38/s       39/s       40/s       41/s       42/s       43/s       44/s       45/s       46/s       47/s       48/s       49/s       50/s       51/s       52/s       53/s       54/s       55/s       56/s       57/s       58/s      NMI/s      LOC/s      SPU/s      PMI/s      IWI/s      RTR/s      RES/s      CAL/s      TLB/s      TRM/s      THR/s      DFR/s      MCE/s      MCP/s      HYP/s      ERR/s      MIS/s      PIN/s      PIW/s
+08:15:20 PM    0       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.15       0.00      17.84       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       1.00       0.00       0.00       0.00      21.79       0.00       0.00       0.00       0.00       1.97       0.00       0.01       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+08:15:20 PM    1       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00      17.12       0.00       0.00       0.00       0.00       2.41       0.00       0.04       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00       0.00
+
+$ mpstat -I SCPU
+Linux 4.2.0-27-generic (ubuntu)         07/21/2016      _x86_64_        (2 CPU)
+
+08:15:35 PM  CPU       HI/s    TIMER/s   NET_TX/s   NET_RX/s    BLOCK/s BLOCK_IOPOLL/s  TASKLET/s    SCHED/s  HRTIMER/s      RCU/s
+08:15:35 PM    0       0.00       8.15       0.20      17.86       1.15       0.00       0.00       8.08       0.00       1.17
+08:15:35 PM    1       0.00       3.22       0.00       0.00       0.00       0.00       0.00       3.18       0.00       0.88
+
+$ mpstat -I SUM
+Linux 4.2.0-27-generic (ubuntu)         07/21/2016      _x86_64_        (2 CPU)
+
+08:15:46 PM  CPU    intr/s
+08:15:46 PM  all     62.33
+</code></pre></li>
+<li><p>输出项</p>
+<pre><code>CPU：cpu编号
+%usr：用户态下cpu使用率
+%nice：使用nice优先级执行的cpu使用率
+%sys：内核态下cpu使用率，不含硬软中断的时间
+%iowait：等待磁盘IO造成的cpu空闲率
+%irq：硬中断的cpu时间
+%soft：软中断的cpu时间
+%steal：hypervisor为虚拟cpu服务所占用的cpu
+%guest：cpu运行虚处理器所占用的cpu
+%gnice：cpu运行nice的虚拟机占用的cpu
+%idle：cpu空闲率
+</code></pre></li>
+</ol>
+<h1 id="七、slaptop"><a href="#七、slaptop" class="headerlink" title="七、slaptop"></a>七、slaptop</h1><ul>
+<li><p>检查内核slab缓存使用情况</p>
+<pre><code>~ sudo slabtop
+ Active / Total Objects (% used)    : 412707 / 416956 (99.0%)             
+ Active / Total Slabs (% used)      : 9906 / 9906 (100.0%)                
+ Active / Total Caches (% used)     : 74 / 107 (69.2%)                    
+ Active / Total Size (% used)       : 119858.60K / 120963.80K (99.1%)     
+ Minimum / Average / Maximum Object : 0.01K / 0.29K / 8.00K               
+
+  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME               
+ 92781  92576  99%    0.10K   2379       39      9516K buffer_head        
+ 90762  90762 100%    0.19K   2161       42     17288K dentry             
+ 51801  51566  99%    1.01K   1671       31     53472K ext4_inode_cache   
+ 36958  36958 100%    0.12K   1087       34      4348K kernfs_node_cache  
+ 15708  15455  98%    0.04K    154      102       616K ext4_extent_status 
+ 14784  14354  97%    0.19K    352       42      2816K kmalloc-192        
+ 14336  14008  97%    0.06K    224       64       896K kmalloc-64         
+ 14250  14250 100%    0.55K    250       57      8000K inode_cache        
+  7672   7549  98%    0.57K    137       56      4384K radix_tree_node    
+  7168   5715  79%    0.03K     56      128       224K kmalloc-32         
+  7040   7040 100%    0.50K    220       32      3520K kmalloc-512        
+  6656   6656 100%    0.01K     13      512        52K kmalloc-8          
+  6144   6144 100%    0.02K     24      256        96K kmalloc-16         
+  5992   5992 100%    0.07K    107       56       428K Acpi-ParseExt      
+  5763   5535  96%    0.08K    113       51       452K anon_vma           
+  4576   4379  95%    0.61K     88       52      2816K proc_inode_cache   
+  4420   4420 100%    0.05K     52       85       208K ftrace_event_field 
+  4080   4080 100%    0.04K     40      102       160K Acpi-Namespace  
+  ...
+
+OBJS：对象数量
+ACTIVE：活动的
+USE：使用百分比
+OBJ SIZE：对象大小
+CACHE SIZE：缓存大小
+</code></pre><ul>
+<li>统计信息出自/proc/slabinfo</li>
+</ul>
+</li>
+<li><p>排序方式</p>
+<pre><code>sudo slabtop -h
+
+Usage:
+ slabtop [options]
+
+Options:
+ -d, --delay &lt;secs&gt;  delay updates
+ -o, --once          only display once, then exit
+ -s, --sort &lt;char&gt;   specify sort criteria by character (see below)
+
+ -h, --help     display this help and exit
+ -V, --version  output version information and exit
+
+The following are valid sort criteria:
+ a: sort by number of active objects
+ b: sort by objects per slab
+ c: sort by cache size
+ l: sort by number of slabs
+ v: sort by number of active slabs
+ n: sort by name
+ o: sort by number of objects (the default)
+ p: sort by pages per slab
+ s: sort by object size
+ u: sort by cache utilization
+
+For more details see slabtop(1).
+</code></pre></li>
+</ul>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/11/11/系统性能测试-系统性能工具篇-系统小工具/" data-id="civdtdq8v00egzj634y4ykj9y" class="article-share-link">分享到</a><div class="tags"><a href="/tags/系统性能/">系统性能</a></div><div class="post-nav"><a href="/2016/11/11/Linux内核学习-Linux内核初探-之-文件系统-二-——-块IO/" class="pre">Linux内核初探 之 文件系统(二) —— 块IO</a><a href="/2016/11/09/算法学习-基础算法学习-十六-——-堆排序/" class="next">基础算法学习(十六) —— 堆排序</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">18</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">17</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/11/算法学习-基础算法学习-十七-——-归并排序/">基础算法学习(十七) —— 归并排序</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/11/Linux内核学习-Linux内核初探-之-文件系统-二-——-块IO/">Linux内核初探 之 文件系统(二) —— 块IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/11/系统性能测试-系统性能工具篇-系统小工具/">系统性能工具篇(系统小工具)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/09/算法学习-基础算法学习-十六-——-堆排序/">基础算法学习(十六) —— 堆排序</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/08/算法学习-基础算法学习-十五-——-简单排序与希尔排序/">基础算法学习(十五) —— 简单排序与希尔排序</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/08/Linux内核学习-Linux内核初探-之-文件系统-一-——-虚拟文件系统VFS/">Linux内核初探 之 文件系统(一) —— 虚拟文件系统VFS</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/06/算法学习-基础算法学习-十四-——-散列查找/">基础算法学习(十四) —— 散列查找</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/04/算法学习-基础算法学习-十三-——-查找的基本概念与顺序查找/">基础算法学习(十三) —— 查找的基本概念与顺序查找</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/03/算法学习-基础算法学习-十二-——-图的关键路径/">基础算法学习(十二) —— 图的关键路径</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/03/Linux内核学习-Linux内核初探-之-进程-五-——-抢占与调度策略/">Linux内核初探 之 进程(五) —— 抢占与调度</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
