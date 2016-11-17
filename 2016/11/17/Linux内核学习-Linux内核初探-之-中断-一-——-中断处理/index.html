@@ -1,0 +1,680 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>Linux内核初探 之 中断(一) —— 中断处理 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Linux内核初探 之 中断(一) —— 中断处理</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Linux内核初探 之 中断(一) —— 中断处理</h1><div class="post-meta">Nov 17, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux内核初探-之-中断-一-——-中断处理"><span class="toc-number">1.</span> <span class="toc-text">Linux内核初探 之 中断(一) —— 中断处理</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、中断"><span class="toc-number">2.</span> <span class="toc-text">一、中断</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、中断处理程序"><span class="toc-number">3.</span> <span class="toc-text">二、中断处理程序</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、中断上下文"><span class="toc-number">4.</span> <span class="toc-text">三、中断上下文</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、中断处理机制"><span class="toc-number">5.</span> <span class="toc-text">四、中断处理机制</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、中断控制"><span class="toc-number">6.</span> <span class="toc-text">五、中断控制</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="Linux内核初探-之-中断-一-——-中断处理"><a href="#Linux内核初探-之-中断-一-——-中断处理" class="headerlink" title="Linux内核初探 之 中断(一) —— 中断处理"></a>Linux内核初探 之 中断(一) —— 中断处理</h1><hr>
+<h1 id="一、中断"><a href="#一、中断" class="headerlink" title="一、中断"></a>一、中断</h1><ol>
+<li>中断与异常<ul>
+<li>异常产生时必需考虑与处理器时钟同步，异常常常称为同步中断</li>
+</ul>
+</li>
+<li>中断处理程序<ul>
+<li>原子上下文，执行代码不可阻塞，必需保证快速执行</li>
+</ul>
+</li>
+<li>顶半与低半<ul>
+<li>上半部：有严格时限，中断时立即执行</li>
+<li>下半部：推后执行</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、中断处理程序"><a href="#二、中断处理程序" class="headerlink" title="二、中断处理程序"></a>二、中断处理程序</h1><ol>
+<li><p>注册</p>
+<pre><code>&lt;linux/interrupt.h&gt;
+typedef irqreturn_t (*irq_handler_t)(int, void *);
+
+extern int __must_check
+request_threaded_irq(unsigned int irq, irq_handler_t handler,
+             irq_handler_t thread_fn,
+             unsigned long flags, const char *name, void *dev);
+
+static inline int __must_check
+request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags,
+        const char *name, void *dev)
+{
+    return request_threaded_irq(irq, handler, NULL, flags, name, dev);
+}
+
+&lt;kernel/irq/manage.c&gt;
+/**
+ *    request_threaded_irq - allocate an interrupt line
+ *    @irq: Interrupt line to allocate
+ *    @handler: Function to be called when the IRQ occurs.
+ *          Primary handler for threaded interrupts
+ *          If NULL and thread_fn != NULL the default
+ *          primary handler is installed
+ *    @thread_fn: Function called from the irq handler thread
+ *            If NULL, no irq thread is created
+ *    @irqflags: Interrupt type flags
+ *    @devname: An ascii name for the claiming device
+ *    @dev_id: A cookie passed back to the handler function
+ *
+ *    This call allocates interrupt resources and enables the
+ *    interrupt line and IRQ handling. From the point this
+ *    call is made your handler function may be invoked. Since
+ *    your handler function must clear any interrupt the board
+ *    raises, you must take care both to initialise your hardware
+ *    and to set up the interrupt handler in the right order.
+ *
+ *    If you want to set up a threaded irq handler for your device
+ *    then you need to supply @handler and @thread_fn. @handler is
+ *    still called in hard interrupt context and has to check
+ *    whether the interrupt originates from the device. If yes it
+ *    needs to disable the interrupt on the device and return
+ *    IRQ_WAKE_THREAD which will wake up the handler thread and run
+ *    @thread_fn. This split handler design is necessary to support
+ *    shared interrupts.
+ *
+ *    Dev_id must be globally unique. Normally the address of the
+ *    device data structure is used as the cookie. Since the handler
+ *    receives this value it makes sense to use it.
+ *
+ *    If your interrupt is shared you must pass a non NULL dev_id
+ *    as this is required when freeing the interrupt.
+ *
+ *    Flags:
+ *
+ *    IRQF_SHARED        Interrupt is shared
+ *    IRQF_TRIGGER_*        Specify active edge(s) or level
+ *
+ */
+int request_threaded_irq(unsigned int irq, irq_handler_t handler,
+             irq_handler_t thread_fn, unsigned long irqflags,
+             const char *devname, void *dev_id)
+{
+    struct irqaction *action;
+    struct irq_desc *desc;
+    int retval;
+
+    /*
+     * Sanity-check: shared interrupts must pass in a real dev-ID,
+     * otherwise we&apos;ll have trouble later trying to figure out
+     * which interrupt is which (messes up the interrupt freeing
+     * logic etc).
+     */
+    if ((irqflags &amp; IRQF_SHARED) &amp;&amp; !dev_id)
+        return -EINVAL;
+
+    desc = irq_to_desc(irq);
+    if (!desc)
+        return -EINVAL;
+
+    if (!irq_settings_can_request(desc) ||
+        WARN_ON(irq_settings_is_per_cpu_devid(desc)))
+        return -EINVAL;
+
+    if (!handler) {
+        if (!thread_fn)
+            return -EINVAL;
+        handler = irq_default_primary_handler;
+    }
+
+    action = kzalloc(sizeof(struct irqaction), GFP_KERNEL);
+    if (!action)
+        return -ENOMEM;
+
+    action-&gt;handler = handler;
+    action-&gt;thread_fn = thread_fn;
+    action-&gt;flags = irqflags;
+    action-&gt;name = devname;
+    action-&gt;dev_id = dev_id;
+
+    chip_bus_lock(desc);
+    retval = __setup_irq(irq, desc, action);
+    chip_bus_sync_unlock(desc);
+
+    if (retval)
+        kfree(action);
+
+#ifdef CONFIG_DEBUG_SHIRQ_FIXME
+    if (!retval &amp;&amp; (irqflags &amp; IRQF_SHARED)) {
+        /*
+         * It&apos;s a shared IRQ -- the driver ought to be prepared for it
+         * to happen immediately, so let&apos;s make sure....
+         * We disable the irq to make sure that a &apos;real&apos; IRQ doesn&apos;t
+         * run in parallel with our fake.
+         */
+        unsigned long flags;
+
+        disable_irq(irq);
+        local_irq_save(flags);
+
+        handler(irq, dev_id);
+
+        local_irq_restore(flags);
+        enable_irq(irq);
+    }
+#endif
+    return retval;
+}
+EXPORT_SYMBOL(request_threaded_irq);
+</code></pre></li>
+</ol>
+<pre><code>* 参数
+    + irq：中断号irq
+        - 可以通过探测获取，或者编程动态确定
+    + name：中断设备的ASCII文本表示
+        - 用于/proc/irq和/proc/interrupts中
+    + dev：用于共享中断线
+        - 当一个中断处理程序要释放时，dev将提供唯一的标志信息，以便制定从共享的中断处理中删除哪一个
+        - 需要共享中断线时，必需传输唯一信息，不共享时为NULL
+        - 通常用于传输驱动的设备结构
+* 中断处理标志
+
+        /*
+         * These flags used only by the kernel as part of the
+         * irq handling routines.
+         *
+         * IRQF_DISABLED - keep irqs disabled when calling the action handler.
+         *                 DEPRECATED. This flag is a NOOP and scheduled to be removed
+         * IRQF_SHARED - allow sharing the irq among several devices
+         * IRQF_PROBE_SHARED - set by callers when they expect sharing mismatches to occur
+         * IRQF_TIMER - Flag to mark this interrupt as timer interrupt
+         * IRQF_PERCPU - Interrupt is per cpu
+         * IRQF_NOBALANCING - Flag to exclude this interrupt from irq balancing
+         * IRQF_IRQPOLL - Interrupt is used for polling (only the interrupt that is
+         *                registered first in an shared interrupt is considered for
+         *                performance reasons)
+         * IRQF_ONESHOT - Interrupt is not reenabled after the hardirq handler finished.
+         *                Used by threaded interrupts which need to keep the
+         *                irq line disabled until the threaded handler has been run.
+         * IRQF_NO_SUSPEND - Do not disable this IRQ during suspend
+         * IRQF_FORCE_RESUME - Force enable it on resume even if IRQF_NO_SUSPEND is set
+         * IRQF_NO_THREAD - Interrupt cannot be threaded
+         * IRQF_EARLY_RESUME - Resume IRQ early during syscore instead of at device
+         *                resume time.
+         */
+        #define IRQF_DISABLED        0x00000020
+        #define IRQF_SHARED            0x00000080
+        #define IRQF_PROBE_SHARED    0x00000100
+        #define __IRQF_TIMER        0x00000200
+        #define IRQF_PERCPU            0x00000400
+        #define IRQF_NOBALANCING    0x00000800
+        #define IRQF_IRQPOLL        0x00001000
+        #define IRQF_ONESHOT        0x00002000
+        #define IRQF_NO_SUSPEND        0x00004000
+        #define IRQF_FORCE_RESUME    0x00008000
+        #define IRQF_NO_THREAD        0x00010000
+        #define IRQF_EARLY_RESUME    0x00020000
+
+        #define IRQF_TIMER            (__IRQF_TIMER | IRQF_NO_SUSPEND | IRQF_NO_THREAD)
+
+    + `IRQF_DISABLED`：中断处理执行期间要禁止所有其它中断，用于希望快速执行的轻量级中断
+    + `IRQF_TIMER`：系统定时器的中断处理
+    + `IRQF_SHARED`：多个中断处理之间共享中断线，同一个给定中断线上注册的每个处理程序必须制定，否则每条中断线上只能有一个处理程序
+* 返回
+    + EBUSY：表示给定的中断线已在使用，或是没有指定`IRQF_SHARED`
+* 可能会睡眠，不能在中断上下文或者其它不允许阻塞的上下文中调用
+</code></pre><ol>
+<li><p>释放</p>
+<pre><code>&lt;linux/interrupt.h&gt;
+extern void free_irq(unsigned int, void *dev);
+
+&lt;kernel/irq/manage.c&gt;
+void free_irq(unsigned int irq, void *dev_id)
+{
+    struct irq_desc *desc = irq_to_desc(irq);
+
+    if (!desc || WARN_ON(irq_settings_is_per_cpu_devid(desc)))
+        return;
+
+#ifdef CONFIG_SMP
+    if (WARN_ON(desc-&gt;affinity_notify))
+        desc-&gt;affinity_notify = NULL;
+#endif
+
+    chip_bus_lock(desc);
+    kfree(__free_irq(irq, dev_id));
+    chip_bus_sync_unlock(desc);
+}
+EXPORT_SYMBOL(free_irq);
+</code></pre><ul>
+<li>dev用于共享中断的唯一区分信息</li>
+</ul>
+</li>
+<li><p>中断处理程序</p>
+<pre><code>irqreturn_t irq_handler_t(int irq, void *dev);
+</code></pre><ul>
+<li><p>参数</p>
+<ul>
+<li>irq：处理程序要响应的中断号</li>
+<li>dev：设备唯一的数据结构</li>
+</ul>
+</li>
+<li><p>返回值</p>
+<pre><code>/**
+ * enum irqreturn
+ * @IRQ_NONE        interrupt was not from this device
+ * @IRQ_HANDLED        interrupt was handled by this device
+ * @IRQ_WAKE_THREAD    handler requests to wake the handler thread
+ */
+enum irqreturn {
+    IRQ_NONE        = (0 &lt;&lt; 0),
+    IRQ_HANDLED        = (1 &lt;&lt; 0),
+    IRQ_WAKE_THREAD        = (1 &lt;&lt; 1),
+};
+
+typedef enum irqreturn irqreturn_t;
+#define IRQ_RETVAL(x)    ((x) != IRQ_NONE)
+</code></pre><ul>
+<li><code>IRQ_NONE</code>：中断对应设备并不是注册处理函数时指定的中断源</li>
+<li><code>IRQ_HANDLED</code>：正确调用</li>
+<li><code>IRQ_RETVAL</code>：正确调用时返回非0值</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>可重入性<ul>
+<li>中断处理程序无须可重入，当给定中断执行时，相应中断线上的所有其它中断被屏蔽</li>
+<li>不同中断线上的其它中断能被处理，当前中断线总是被禁止</li>
+<li>同一个中断处理程序绝不会被同时调用以处理嵌套的中断</li>
+</ul>
+</li>
+<li>共享的中断处理程序<ul>
+<li>必需设置<code>IRQF_SHARED</code>标志</li>
+<li>dev参数必须唯一，通常会选择设备结构，因为其唯一且可能被中断处理程序用到，不能给共享中断传输NULL</li>
+<li>中断处理程序必须区分是否真的产生中断，否则无法知道是否是对应设备产生的</li>
+<li>内核接收中断信号后，会依次调用中断线上注册的每一个处理程序</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、中断上下文"><a href="#三、中断上下文" class="headerlink" title="三、中断上下文"></a>三、中断上下文</h1><ol>
+<li>current宏<ul>
+<li>进程上下文可以通过current宏关联当前进程</li>
+<li>中断上下文与进程没有关系，此时current宏会指向被中断的进程</li>
+</ul>
+</li>
+<li>时间限制<ul>
+<li>中断上下文有严格时间限制，因为打断了其它代码</li>
+<li>不可以睡眠，因为没有后备进程所以无法重新调度</li>
+</ul>
+</li>
+<li>中断栈<ul>
+<li>每个处理器一个，大小为一页<ul>
+<li>32bit系统上为4KB</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、中断处理机制"><a href="#四、中断处理机制" class="headerlink" title="四、中断处理机制"></a>四、中断处理机制</h1><ol>
+<li><p>硬件产生中断信号，对于每条中断线，处理器跳到对应的唯一位置，内核获得中断的IRQ号，调用<code>do_IRQ()</code></p>
+<pre><code>&lt;arch/arm/include/asm/entry-macro-multi.S&gt;         -&gt;
+asm_do_IRQ()                &lt;arch/arm/kernel/irq.c&gt; -&gt;
+handle_IRQ()
+generic_handle_irq()       &lt;kernel/irq/irqdest.c&gt; -&gt;
+generic_handle_irq_desc()        &lt;linux/irqdesc.h&gt; -&gt;
+ambarella_gpio_irq_set_type()
+         &lt;arch/arm/plat-ambarella/generic/irq.c&gt; -&gt;
+handle_edge_irq()             &lt;kernel/irq/chip.c&gt; -&gt;
+handle_irq_event()           &lt;kernel/irq/handle.c&gt; -&gt;
+handle_irq_event_percpu()
+</code></pre></li>
+</ol>
+<pre><code>&lt;arch/arm/include/asm/entry-macro-multi.S&gt;
+/*
+ * Interrupt handling.  Preserves r7, r8, r9
+ */
+    .macro    arch_irq_handler_default
+    get_irqnr_preamble r6, lr
+1:    get_irqnr_and_base r0, r2, r6, lr
+    movne    r1, sp
+    @
+    @ routine called with r0 = irq number, r1 = struct pt_regs *
+    @
+    adrne    lr, BSYM(1b)
+    bne    asm_do_IRQ
+    ...
+
+&lt;arch/arm/kernel/irq.c&gt;
+/*
+ * asm_do_IRQ is the interface to be used from assembly code.
+ */
+// 因为C的调用惯例是将参数放在栈顶，所以pt_regs结构包含原始寄存器的值
+// 这些值由汇编入口程序保存在栈中，中断值也会被保存，所以可以提取出来
+asmlinkage void __exception_irq_entry
+asm_do_IRQ(unsigned int irq, struct pt_regs *regs)
+{
+    handle_IRQ(irq, regs);
+}
+
+&lt;arch/arm/kernel/irq.c&gt;
+/*
+ * handle_IRQ handles all hardware IRQ&apos;s.  Decoded IRQs should
+ * not come via this function.  Instead, they should provide their
+ * own &apos;handler&apos;.  Used by platform code implementing C-based 1st
+ * level decoding.
+ */
+void handle_IRQ(unsigned int irq, struct pt_regs *regs)
+{
+    struct pt_regs *old_regs = set_irq_regs(regs);
+
+    irq_enter();
+
+    /*
+     * Some hardware gives randomly wrong interrupts.  Rather
+     * than crashing, do something sensible.
+     */
+    if (unlikely(irq &gt;= nr_irqs)) {
+        if (printk_ratelimit())
+            printk(KERN_WARNING &quot;Bad IRQ%u\n&quot;, irq);
+        ack_bad_irq(irq);
+    } else {
+        generic_handle_irq(irq);
+    }
+
+    irq_exit();
+    set_irq_regs(old_regs);
+}
+
+&lt;linux/irqdesc.h&gt;
+/*
+ * Architectures call this to let the generic IRQ layer
+ * handle an interrupt. If the descriptor is attached to an
+ * irqchip-style controller then we call the -&gt;handle_irq() handler,
+ * and it calls __do_IRQ() if it&apos;s attached to an irqtype-style controller.
+ */
+static inline void generic_handle_irq_desc(unsigned int irq, struct irq_desc *desc)
+{
+    desc-&gt;handle_irq(irq, desc);
+}
+
+&lt;arch/arm/plat-ambarella/generic/irq.c&gt;
+int ambarella_gpio_irq_set_type(struct irq_data *d, unsigned int type)
+{
+    ...
+    switch (type) {
+    case IRQ_TYPE_EDGE_RISING:
+        sense &amp;= mask;
+        bothedges &amp;= mask;
+        event |= bit;
+        desc-&gt;handle_irq = handle_edge_irq;
+        break;
+    case IRQ_TYPE_EDGE_FALLING:
+        sense &amp;= mask;
+        bothedges &amp;= mask;
+        event &amp;= mask;
+        desc-&gt;handle_irq = handle_edge_irq;
+        break;
+    case IRQ_TYPE_EDGE_BOTH:
+        sense &amp;= mask;
+        bothedges |= bit;
+        event &amp;= mask;
+        desc-&gt;handle_irq = handle_edge_irq;
+        break;
+    case IRQ_TYPE_LEVEL_HIGH:
+        sense |= bit;
+        bothedges &amp;= mask;
+        event |= bit;
+        desc-&gt;handle_irq = handle_level_irq;
+        break;
+    case IRQ_TYPE_LEVEL_LOW:
+        sense |= bit;
+        bothedges &amp;= mask;
+        event &amp;= mask;
+        desc-&gt;handle_irq = handle_level_irq;
+        break;
+    ...
+}
+
+
+&lt;kernel/irq/chip.c&gt;
+/**
+ *    handle_edge_irq - edge type IRQ handler
+ *    @irq:    the interrupt number
+ *    @desc:    the interrupt description structure for this irq
+ *
+ *    Interrupt occures on the falling and/or rising edge of a hardware
+ *    signal. The occurrence is latched into the irq controller hardware
+ *    and must be acked in order to be reenabled. After the ack another
+ *    interrupt can happen on the same source even before the first one
+ *    is handled by the associated event handler. If this happens it
+ *    might be necessary to disable (mask) the interrupt depending on the
+ *    controller hardware. This requires to reenable the interrupt inside
+ *    of the loop which handles the interrupts which have arrived while
+ *    the handler was running. If all pending interrupts are handled, the
+ *    loop is left.
+ */
+void
+handle_edge_irq(unsigned int irq, struct irq_desc *desc)
+{
+    ...
+    handle_irq_event(desc);
+    ...
+}
+
+&lt;kernel/irq/handle.c&gt;
+irqreturn_t handle_irq_event(struct irq_desc *desc)
+{
+    struct irqaction *action = desc-&gt;action;
+    irqreturn_t ret;
+
+    desc-&gt;istate &amp;= ~IRQS_PENDING;
+    irqd_set(&amp;desc-&gt;irq_data, IRQD_IRQ_INPROGRESS);
+    raw_spin_unlock(&amp;desc-&gt;lock);
+
+    ret = handle_irq_event_percpu(desc, action);
+
+    raw_spin_lock(&amp;desc-&gt;lock);
+    irqd_clear(&amp;desc-&gt;irq_data, IRQD_IRQ_INPROGRESS);
+    return ret;
+}
+
+&lt;kernel/irq/handle.c&gt;
+irqreturn_t
+handle_irq_event_percpu(struct irq_desc *desc, struct irqaction *action)
+{
+    irqreturn_t retval = IRQ_NONE;
+    unsigned int flags = 0, irq = desc-&gt;irq_data.irq;
+
+    do {
+        irqreturn_t res;
+
+        trace_irq_handler_entry(irq, action);
+        res = action-&gt;handler(irq, action-&gt;dev_id);
+        trace_irq_handler_exit(irq, action, res);
+
+        if (WARN_ONCE(!irqs_disabled(),&quot;irq %u handler %pF enabled interrupts\n&quot;,
+                  irq, action-&gt;handler))
+            local_irq_disable();
+
+        switch (res) {
+        case IRQ_WAKE_THREAD:
+            /*
+             * Catch drivers which return WAKE_THREAD but
+             * did not set up a thread function
+             */
+            if (unlikely(!action-&gt;thread_fn)) {
+                warn_no_thread(irq, action);
+                break;
+            }
+
+            irq_wake_thread(desc, action);
+
+            /* Fall through to add to randomness */
+        case IRQ_HANDLED:
+            flags |= action-&gt;flags;
+            break;
+
+        default:
+            break;
+        }
+
+        retval |= res;
+        action = action-&gt;next;
+    } while (action);
+
+    // 使用中断间隔时间为随机数产生熵
+    add_interrupt_randomness(irq, flags);
+
+    if (!noirqdebug)
+        note_interrupt(irq, desc, retval);
+    return retval;
+}
+</code></pre><ol>
+<li><p><code>/proc/interrupts</code></p>
+<ul>
+<li><p>由<code>show_interrupts()</code>提供，与体系结构相关</p>
+<pre><code>show_interrupts()        &lt;kernel/irq/proc.c&gt; -&gt;
+arch_show_interrupts()  &lt;arch/arm/kernel/irq.c&gt;
+
+&lt;kernel/irq/proc.c&gt;
+int show_interrupts(struct seq_file *p, void *v)
+{
+    static int prec;
+
+    unsigned long flags, any_count = 0;
+    int i = *(loff_t *) v, j;
+    struct irqaction *action;
+    struct irq_desc *desc;
+
+    if (i &gt; ACTUAL_NR_IRQS)
+        return 0;
+
+    if (i == ACTUAL_NR_IRQS)
+        return arch_show_interrupts(p, prec);
+    ...
+}
+
+&lt;arch/arm/kernel/irq.c&gt;
+int arch_show_interrupts(struct seq_file *p, int prec)
+{
+#ifdef CONFIG_FIQ
+    show_fiq_list(p, prec);
+#endif
+#ifdef CONFIG_SMP
+    show_ipi_list(p, prec);
+#endif
+    seq_printf(p, &quot;%*s: %10lu\n&quot;, prec, &quot;Err&quot;, irq_err_count);
+    return 0;
+}
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="五、中断控制"><a href="#五、中断控制" class="headerlink" title="五、中断控制"></a>五、中断控制</h1><ol>
+<li>锁与禁止中断<ul>
+<li>禁止中断和禁止内核抢占，都不能防止其它处理器的并发访问，需要用锁来保护</li>
+<li>一般获取锁都需要同时禁止本地中断</li>
+<li>锁用于阻止多处理器的并发访问</li>
+<li>禁止中断用于阻止其它中断处理程序的并发访问</li>
+</ul>
+</li>
+<li><p>禁止与激活</p>
+<ul>
+<li>禁止中断前保持当前状态更加安全，激活时只要回复原来的状态，所以save和restore更佳</li>
+<li><p>flags不能传递给另一个函数，必须驻留在同一栈帧中，所以save和restore必需在同一个函数中进行</p>
+<pre><code>local_irq_enable()            &lt;linux/irqflags.h&gt; -&gt;
+local_irq_disable()
+local_irq_save()
+local_irq_restore()
+
+raw_local_irq_enable()                           -&gt;
+raw_local_irq_disable()
+raw_local_irq_save()
+raw_local_irq_restore()
+
+arch_local_irq_enable()        &lt;linux/irqflags.h&gt;
+arch_local_irq_disable()
+arch_local_irq_save()
+arch_local_irq_restore)_
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<pre><code>&lt;linux/irqflags.h&gt;
+#define local_irq_enable()    do { raw_local_irq_enable(); } while (0)
+#define local_irq_disable()    do { raw_local_irq_disable(); } while (0)
+#define local_irq_save(flags) do { raw_local_irq_save(flags); } while (0)
+#define local_irq_restore(flags) do { raw_local_irq_restore(flags); } while (0)
+
+&lt;linux/irqflags.h&gt;
+#define raw_local_irq_disable()        arch_local_irq_disable()
+#define raw_local_irq_enable()        arch_local_irq_enable()
+#define raw_local_irq_save(flags)            \
+    do {                        \
+        typecheck(unsigned long, flags);    \
+        flags = arch_local_irq_save();        \
+    } while (0)
+#define raw_local_irq_restore(flags)            \
+    do {                        \
+        typecheck(unsigned long, flags);    \
+        arch_local_irq_restore(flags);        \
+    } while (0)
+
+
+&lt;linux/irqflags.h&gt;
+static inline unsigned long arch_local_irq_save(void)
+{
+    unsigned long flags;
+
+    asm volatile(
+        &quot;    mrs    %0, cpsr    @ arch_local_irq_save\n&quot;
+        &quot;    cpsid    i&quot;
+        : &quot;=r&quot; (flags) : : &quot;memory&quot;, &quot;cc&quot;);
+    return flags;
+}
+
+static inline void arch_local_irq_enable(void)
+{
+    asm volatile(
+        &quot;    cpsie i            @ arch_local_irq_enable&quot;
+        :
+        :
+        : &quot;memory&quot;, &quot;cc&quot;);
+}
+
+static inline void arch_local_irq_disable(void)
+{
+    asm volatile(
+        &quot;    cpsid i            @ arch_local_irq_disable&quot;
+        :
+        :
+        : &quot;memory&quot;, &quot;cc&quot;);
+}
+
+/*
+ * restore saved IRQ &amp; FIQ state
+ */
+static inline void arch_local_irq_restore(unsigned long flags)
+{
+    asm volatile(
+        &quot;    msr    cpsr_c, %0    @ local_irq_restore&quot;
+        :
+        : &quot;r&quot; (flags)
+        : &quot;memory&quot;, &quot;cc&quot;);
+}
+</code></pre><ol>
+<li><p>禁止指定中断线</p>
+<pre><code>&lt;kernel/irq/manage.c&gt;
+void disable_irq(unsigned int irq)
+void disable_irq_nosync(unsigned int irq)
+void enable_irq(unsigned int irq)
+void synchronize_irq(unsigned int irq)
+</code></pre><ul>
+<li><code>disable_irq()</code>只有在当前正在执行的处理程序完成后才能返回，调用者不仅要确保不再指定线上传递新的中断，通知还要确保所有开始的处理程序一段全部退出</li>
+<li>disable和enable函数可以嵌套调用，在一条指定的中断线上，每一个disable调用都要对应一个enable</li>
+<li>disable和enable函数可以在中断上下文中调用，不会睡眠</li>
+<li><code>synchronize_irq()</code>等待一个特定的中断退出</li>
+<li>禁止多个中断处理程序共享的中断线时不合理的，这些接口不适用于新的设备</li>
+</ul>
+</li>
+<li><p>获取系统中断状态</p>
+<ul>
+<li><p>通过宏<code>irqs_disabled()</code>获取当前中断是否处于中断状态</p>
+<pre><code>irqs_disabled()            &lt;linux/irqflags.h&gt; 
+</code></pre></li>
+<li><p>是否在中断上下文中</p>
+<pre><code>&lt;linux/hardirq.h&gt;
+/*
+ * Are we doing bottom half or hardware interrupt processing?
+ * Are we in a softirq context? Interrupt context?
+ * in_softirq - Are we currently processing softirq or have bh disabled?
+ * in_serving_softirq - Are we currently processing softirq?
+ */
+#define in_irq()        (hardirq_count())
+#define in_softirq()        (softirq_count())
+#define in_interrupt()        (irq_count())
+#define in_serving_softirq()    (softirq_count() &amp; SOFTIRQ_OFFSET)
+</code></pre></li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/11/17/Linux内核学习-Linux内核初探-之-中断-一-——-中断处理/" data-id="civmk6r1g001u1w63xamz6spr" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/11/15/Linux内核学习-Linux内核初探-之-内核同步/" class="next">Linux内核初探 之 内核同步</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">22</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">19</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/17/Linux内核学习-Linux内核初探-之-中断-一-——-中断处理/">Linux内核初探 之 中断(一) —— 中断处理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/15/Linux内核学习-Linux内核初探-之-内核同步/">Linux内核初探 之 内核同步</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/14/算法学习-基础算法学习-十九-——-排序总结/">基础算法学习(十九) —— 排序总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/14/Linux内核学习-Linux内核初探-之-系统时间（二）-——-时钟中断与定时器、等待/">Linux内核初探 之 系统时间（二） —— 时钟中断与定时器、等待</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/12/算法学习-基础算法学习-十八-——-排序之王：快排/">基础算法学习(十八) —— 排序之王：快排</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/12/Linux内核学习-Linux内核初探-之-系统时间（一）-——-内核时间的基本概念/">Linux内核初探 之 系统时间（一） —— 内核时间的基本概念</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/11/算法学习-基础算法学习-十七-——-归并排序/">基础算法学习(十七) —— 归并排序</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/11/Linux内核学习-Linux内核初探-之-文件系统-二-——-块IO/">Linux内核初探 之 文件系统(二) —— 块IO</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/11/系统性能测试-系统性能工具篇-系统小工具/">系统性能工具篇(系统小工具)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/09/算法学习-基础算法学习-十六-——-堆排序/">基础算法学习(十六) —— 堆排序</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
