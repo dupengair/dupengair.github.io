@@ -1,0 +1,372 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>Linux内核初探 之 中断(三) —— 工作队列和底半机制 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Linux内核初探 之 中断(三) —— 工作队列和底半机制</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Linux内核初探 之 中断(三) —— 工作队列和底半机制</h1><div class="post-meta">Nov 22, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux内核初探-之-中断-三-——-工作队列和底半机制"><span class="toc-number">1.</span> <span class="toc-text">Linux内核初探 之 中断(三) —— 工作队列和底半机制</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、工作队列"><span class="toc-number">2.</span> <span class="toc-text">一、工作队列</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、底半机制的选择"><span class="toc-number">3.</span> <span class="toc-text">二、底半机制的选择</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、下半部加锁"><span class="toc-number">4.</span> <span class="toc-text">三、下半部加锁</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、禁止底半"><span class="toc-number">5.</span> <span class="toc-text">四、禁止底半</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="Linux内核初探-之-中断-三-——-工作队列和底半机制"><a href="#Linux内核初探-之-中断-三-——-工作队列和底半机制" class="headerlink" title="Linux内核初探 之 中断(三) —— 工作队列和底半机制"></a>Linux内核初探 之 中断(三) —— 工作队列和底半机制</h1><hr>
+<h1 id="一、工作队列"><a href="#一、工作队列" class="headerlink" title="一、工作队列"></a>一、工作队列</h1><ol>
+<li><p>基本概念</p>
+<ul>
+<li>将工作推给总在进程上下文中执行的内核线程，可以允许重新调度甚至睡眠</li>
+<li>如果推后的任务不需要睡眠，选择软中断或者tasklet，否则选择工作队列</li>
+<li>工作队列通常可以使用内核线程替换，但不推荐创建新的内核线程</li>
+<li>在需要大量内存，获取信号或者执行阻塞式IO时考虑</li>
+<li>CPU密集型和性能要求严格的任务会因为工作者线程受益<br>2.实现</li>
+<li>内核实现<ul>
+<li>工作队列子系统是一个用于创建内核线程的接口，把需要推后执行的任务交给特定的通用线程</li>
+<li>默认工作线程是event/n(n为处理器编号)</li>
+</ul>
+</li>
+<li><p>数据结构</p>
+<ul>
+<li><p>内核线程相关    </p>
+<pre><code>&lt;kernel/workqueue.c&gt;
+/*
+ * The externally visible workqueue abstraction is an array of
+ * per-CPU workqueues:
+ */
+struct workqueue_struct {
+    unsigned int        flags;        /* W: WQ_* flags */
+    union {
+        struct cpu_workqueue_struct __percpu    *pcpu;
+        struct cpu_workqueue_struct        *single;
+        unsigned long                v;
+    } cpu_wq;                /* I: cwq&apos;s */
+    struct list_head    list;        /* W: list of all workqueues */
+
+    struct mutex        flush_mutex;    /* protects wq flushing */
+    int            work_color;    /* F: current work color */
+    int            flush_color;    /* F: current flush color */
+    atomic_t        nr_cwqs_to_flush; /* flush in progress */
+    struct wq_flusher    *first_flusher;    /* F: first flusher */
+    struct list_head    flusher_queue;    /* F: flush waiters */
+    struct list_head    flusher_overflow; /* F: flush overflow list */
+
+    mayday_mask_t        mayday_mask;    /* cpus requesting rescue */
+    struct worker        *rescuer;    /* I: rescue worker */
+
+    int            nr_drainers;    /* W: drain in progress */
+    int            saved_max_active; /* W: saved cwq max_active */
+#ifdef CONFIG_LOCKDEP
+    struct lockdep_map    lockdep_map;
+#endif
+    char            name[];        /* I: workqueue name */
+};
+
+&lt;kernel/workqueue.c&gt;
+/*
+ * The per-CPU workqueue.  The lower WORK_STRUCT_FLAG_BITS of
+ * work_struct-&gt;data are used for flags and thus cwqs need to be
+ * aligned at two&apos;s power of the number of flag bits.
+ */
+struct cpu_workqueue_struct {
+    struct worker_pool    *pool;        /* I: the associated pool */
+    struct workqueue_struct *wq;        /* I: the owning workqueue */
+    int            work_color;    /* L: current color */
+    int            flush_color;    /* L: flushing color */
+    int            nr_in_flight[WORK_NR_COLORS];
+                        /* L: nr of in_flight works */
+    int            nr_active;    /* L: nr of active works */
+    int            max_active;    /* L: max active works */
+    struct list_head    delayed_works;    /* L: delayed works */
+};
+</code></pre><ul>
+<li>每个处理器一个工作线程，对应一个<code>cpu_workqueue_struct</code></li>
+<li>每个工作线程对应一个<code>workqueue_struct</code></li>
+</ul>
+</li>
+<li><p>表示工作的数据结构</p>
+<pre><code>&lt;kernel/workqueue.c&gt;
+struct worker_pool {
+    struct global_cwq    *gcwq;        /* I: the owning gcwq */
+    unsigned int        flags;        /* X: flags */
+
+    struct list_head    worklist;    /* L: list of pending works */
+    int            nr_workers;    /* L: total number of workers */
+
+    /* nr_idle includes the ones off idle_list for rebinding */
+    int            nr_idle;    /* L: currently idle ones */
+
+    struct list_head    idle_list;    /* X: list of idle workers */
+    struct timer_list    idle_timer;    /* L: worker idle timeout */
+    struct timer_list    mayday_timer;    /* L: SOS timer for workers */
+
+    struct mutex        assoc_mutex;    /* protect GCWQ_DISASSOCIATED */
+    struct ida        worker_ida;    /* L: for worker IDs */
+};
+
+&lt;kernel/workqueue.c&gt;
+/*
+ * The poor guys doing the actual heavy lifting.  All on-duty workers
+ * are either serving the manager role, on idle list or on busy hash.
+ */
+struct worker {
+    /* on idle list while idle, on busy hash table while busy */
+    union {
+        struct list_head    entry;    /* L: while idle */
+        struct hlist_node    hentry;    /* L: while busy */
+    };
+
+    struct work_struct    *current_work;    /* L: work being processed */
+    work_func_t        current_func;    /* L: current_work&apos;s fn */
+    struct cpu_workqueue_struct *current_cwq; /* L: current_work&apos;s cwq */
+    struct list_head    scheduled;    /* L: scheduled works */
+    struct task_struct    *task;        /* I: worker task */
+    struct worker_pool    *pool;        /* I: the associated pool */
+    /* 64 bytes boundary on 64bit, 32 on 32bit */
+    unsigned long        last_active;    /* L: last active timestamp */
+    unsigned int        flags;        /* X: flags */
+    int            id;        /* I: worker id */
+
+    /* for rebinding worker to CPU */
+    struct work_struct    rebind_work;    /* L: for busy worker */
+};
+</code></pre></li>
+<li><p>定义工作函数</p>
+<pre><code>struct work_struct {
+    atomic_long_t data;
+    struct list_head entry;
+    work_func_t func;
+#ifdef CONFIG_LOCKDEP
+    struct lockdep_map lockdep_map;
+#endif
+};
+
+typedef void (*work_func_t)(struct work_struct *work);
+</code></pre></li>
+</ul>
+</li>
+<li><p>执行过程</p>
+<pre><code>worker_thread()            [kernel/workqueue.c] -&gt;
+process_scheduled_works()                     -&gt;
+process_one_work()        
+
+&lt;kernel/workqueue.c&gt;
+/**
+ * worker_thread - the worker thread function
+ * @__worker: self
+ *
+ * The gcwq worker thread function.  There&apos;s a single dynamic pool of
+ * these per each cpu.  These workers process all works regardless of
+ * their specific target workqueue.  The only exception is works which
+ * belong to workqueues with a rescuer which will be explained in
+ * rescuer_thread().
+ */
+static int worker_thread(void *__worker)
+{
+    ...
+    /*
+     * When control reaches this point, we&apos;re guaranteed to have
+     * at least one idle worker or that someone else has already
+     * assumed the manager role.
+     */
+    worker_clr_flags(worker, WORKER_PREP);
+
+    do {
+        struct work_struct *work =
+            list_first_entry(&amp;pool-&gt;worklist,
+                     struct work_struct, entry);
+
+        if (likely(!(*work_data_bits(work) &amp; WORK_STRUCT_LINKED))) {
+            /* optimization path, not strictly necessary */
+            process_one_work(worker, work);
+            if (unlikely(!list_empty(&amp;worker-&gt;scheduled)))
+                process_scheduled_works(worker);
+        } else {
+            move_linked_works(work, &amp;worker-&gt;scheduled, NULL);
+            process_scheduled_works(worker);
+        }
+    } while (keep_working(pool));
+
+    worker_set_flags(worker, WORKER_PREP, false);
+    ...
+}
+
+/**
+ * process_scheduled_works - process scheduled works
+ * @worker: self
+ *
+ * Process all scheduled works.  Please note that the scheduled list
+ * may change while processing a work, so this function repeatedly
+ * fetches a work from the top and executes it.
+ *
+ * CONTEXT:
+ * spin_lock_irq(gcwq-&gt;lock) which may be released and regrabbed
+ * multiple times.
+ */
+static void process_scheduled_works(struct worker *worker)
+{
+    while (!list_empty(&amp;worker-&gt;scheduled)) {
+        struct work_struct *work = list_first_entry(&amp;worker-&gt;scheduled,
+                        struct work_struct, entry);
+        process_one_work(worker, work);
+    }
+}
+
+&lt;kernel/workqueue.c&gt;
+/**
+ * process_one_work - process single work
+ * @worker: self
+ * @work: work to process
+ *
+ * Process @work.  This function contains all the logics necessary to
+ * process a single work including synchronization against and
+ * interaction with other workers on the same cpu, queueing and
+ * flushing.  As long as context requirement is met, any worker can
+ * call this function to process a work.
+ *
+ * CONTEXT:
+ * spin_lock_irq(gcwq-&gt;lock) which is released and regrabbed.
+ */
+static void process_one_work(struct worker *worker, struct work_struct *work)
+__releases(&amp;gcwq-&gt;lock)
+__acquires(&amp;gcwq-&gt;lock)
+{
+    ...
+    /* claim and dequeue */
+    ...
+    worker-&gt;current_work = work;
+    worker-&gt;current_func = work-&gt;func;
+    worker-&gt;current_cwq = cwq;
+    ...
+    worker-&gt;current_func(work);
+    ...
+    worker-&gt;current_work = NULL;
+    worker-&gt;current_func = NULL;
+    worker-&gt;current_cwq = NULL;
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>使用</p>
+<ul>
+<li><p>创建工作任务</p>
+<ul>
+<li><p>静态创建</p>
+<pre><code>&lt;fs/bio.c&gt;
+static DECLARE_WORK(bio_dirty_work, bio_dirty_fn);
+</code></pre></li>
+<li><p>动态创建</p>
+<pre><code>&lt;fs/bio-integrity.c&gt;
+INIT_WORK(&amp;bip-&gt;bip_work, bio_integrity_verify_fn);
+</code></pre></li>
+</ul>
+</li>
+<li><p>定义工作函数</p>
+<pre><code>&lt;fs/bio.c&gt;
+/*
+ * This runs in process context
+ */
+static void bio_dirty_fn(struct work_struct *work)
+{
+    unsigned long flags;
+    struct bio *bio;
+
+    spin_lock_irqsave(&amp;bio_dirty_lock, flags);
+    bio = bio_dirty_list;
+    bio_dirty_list = NULL;
+    spin_unlock_irqrestore(&amp;bio_dirty_lock, flags);
+
+    while (bio) {
+        struct bio *next = bio-&gt;bi_private;
+
+        bio_set_pages_dirty(bio);
+        bio_release_pages(bio);
+        bio_put(bio);
+        bio = next;
+    }
+}
+</code></pre></li>
+<li><p>工作调度</p>
+<ul>
+<li><p>马上调度</p>
+<pre><code>&lt;fs/bio.c&gt;
+schedule_work(&amp;bio_dirty_work);
+</code></pre><ul>
+<li>调用后工作就被交给缺省的events工作线程，work马上会被调度，一旦工作线程被唤醒就得以执行</li>
+</ul>
+</li>
+<li><p>推后调度</p>
+<pre><code>schedule_delayed_work(&amp;cifs_dfs_automount_task, cifs_dfs_mountpoint_expiry_timeout);
+</code></pre><ul>
+<li>delay到指定的时钟节拍完后执行</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>刷新</p>
+<ul>
+<li><p>一直等待到队列中所有对象执行完毕才返回，等待时进入休眠状态，只能在进程上下文中使用</p>
+<pre><code>&lt;drivers/net/wireless/ath/ath6kl/usb.c&gt;
+flush_scheduled_work();
+</code></pre></li>
+</ul>
+</li>
+<li><p>取消</p>
+<pre><code>&lt;block/blk-core.c&gt;
+cancel_delayed_work(&amp;q-&gt;delay_work);
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="二、底半机制的选择"><a href="#二、底半机制的选择" class="headerlink" title="二、底半机制的选择"></a>二、底半机制的选择</h1><ol>
+<li>软中断<ul>
+<li>执行序列化保障少，同类软中断可以在不同处理器上同时执行，需要严格的共享数据保护</li>
+<li>适用于代码线索化好，时间要求严格和执行频率高，性能之选</li>
+</ul>
+</li>
+<li>tasklet<ul>
+<li>基于软中断实现，接口简单，首选</li>
+<li>相同类型的tasklet不能并发执行，无法利用多处理器</li>
+</ul>
+</li>
+<li>工作队列<ul>
+<li>进程上下文执行，开销大，涉及内核线程和上下文切换</li>
+<li>可调度可休眠的唯一选择</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、下半部加锁"><a href="#三、下半部加锁" class="headerlink" title="三、下半部加锁"></a>三、下半部加锁</h1><ol>
+<li>下半部可能在任何时间执行</li>
+<li>只有不同的tasklet之间共享数据时，才需要考虑锁</li>
+<li>当进程上下文和下半部之间共享数据，需要在访问前禁止底半处理，并使用锁保护</li>
+<li>当中断上下文和下半部之间共享数据，需要在访问前禁止中断，并使用锁保护</li>
+</ol>
+<h1 id="四、禁止底半"><a href="#四、禁止底半" class="headerlink" title="四、禁止底半"></a>四、禁止底半</h1><ol>
+<li>禁止底半的常见作法是先获得锁，再禁止底半处理</li>
+<li><p>禁止和允许所有底半</p>
+<pre><code>&lt;kernel/softirq.h&gt;
+static inline void __local_bh_disable(unsigned long ip, unsigned int cnt)
+{
+    add_preempt_count(cnt);
+    barrier();
+}
+
+void local_bh_disable(void)
+{
+    __local_bh_disable((unsigned long)__builtin_return_address(0),
+                SOFTIRQ_DISABLE_OFFSET);
+}
+
+static void __local_bh_enable(unsigned int cnt)
+{
+    WARN_ON_ONCE(in_irq());
+    WARN_ON_ONCE(!irqs_disabled());
+
+    if (softirq_count() == cnt)
+        trace_softirqs_on((unsigned long)__builtin_return_address(0));
+    sub_preempt_count(cnt);
+}
+
+/*
+ * Special-case - softirqs can safely be enabled in
+ * cond_resched_softirq(), or by __do_softirq(),
+ * without processing still-pending softirqs:
+ */
+void _local_bh_enable(void)
+{
+    __local_bh_enable(SOFTIRQ_DISABLE_OFFSET);
+}
+</code></pre><ul>
+<li><code>preempt_count()</code>为每个进程维护一个计数器</li>
+</ul>
+</li>
+<li>不会禁止工作队列，因为工作队列是在进程上下文中运行，不会涉及异步执行的问题，所以没必要禁止，软中断和tasklet是异步执行的，所以必须禁止</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/11/22/Linux内核学习-Linux内核初探-之-中断-三-——-工作队列和底半机制/" data-id="civtlve1s001sw96387rx0ph4" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/11/20/Linux内核学习-Linux内核初探-之-中断-二-——-底半处理/" class="next">Linux内核初探 之 中断(二) —— 底半处理</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">19</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/22/Linux内核学习-Linux内核初探-之-中断-三-——-工作队列和底半机制/">Linux内核初探 之 中断(三) —— 工作队列和底半机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/20/Linux内核学习-Linux内核初探-之-中断-二-——-底半处理/">Linux内核初探 之 中断(二) —— 底半处理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/17/Linux内核学习-Linux内核初探-之-中断-一-——-中断处理/">Linux内核初探 之 中断(一) —— 中断处理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/15/Linux内核学习-Linux内核初探-之-内核同步/">Linux内核初探 之 内核同步</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/14/算法学习-基础算法学习-十九-——-排序总结/">基础算法学习(十九) —— 排序总结</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/14/Linux内核学习-Linux内核初探-之-系统时间（二）-——-时钟中断与定时器、等待/">Linux内核初探 之 系统时间（二） —— 时钟中断与定时器、等待</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/12/算法学习-基础算法学习-十八-——-排序之王：快排/">基础算法学习(十八) —— 排序之王：快排</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/12/Linux内核学习-Linux内核初探-之-系统时间（一）-——-内核时间的基本概念/">Linux内核初探 之 系统时间（一） —— 内核时间的基本概念</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/11/算法学习-基础算法学习-十七-——-归并排序/">基础算法学习(十七) —— 归并排序</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/11/Linux内核学习-Linux内核初探-之-文件系统-二-——-块IO/">Linux内核初探 之 文件系统(二) —— 块IO</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
