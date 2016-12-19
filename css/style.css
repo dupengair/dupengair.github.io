@@ -109,7 +109,7 @@ a:focus {
       #sidebar .widget .category-list-count:after {
         content: ')'; }
     #sidebar .widget .category-list-child {
-      padding-left: 7px; }
+      padding-left: 10px; }
     #sidebar .widget .tagcloud {
       margin-top: 10px; }
       #sidebar .widget .tagcloud a {
