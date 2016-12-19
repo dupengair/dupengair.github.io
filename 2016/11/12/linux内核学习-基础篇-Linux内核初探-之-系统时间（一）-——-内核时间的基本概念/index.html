@@ -1,0 +1,215 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>Linux内核初探 之 系统时间（一） —— 内核时间的基本概念 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Linux内核初探 之 系统时间（一） —— 内核时间的基本概念</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Linux内核初探 之 系统时间（一） —— 内核时间的基本概念</h1><div class="post-meta">Nov 12, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a><a href="/categories/Linux内核学习/基础篇/">基础篇</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux内核初探-之-系统时间（一）-——-内核时间的基本概念"><span class="toc-number">1.</span> <span class="toc-text">Linux内核初探 之 系统时间（一） —— 内核时间的基本概念</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、基本概念"><span class="toc-number">2.</span> <span class="toc-text">一、基本概念</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、节拍率HZ"><span class="toc-number">3.</span> <span class="toc-text">二、节拍率HZ</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、jiffies"><span class="toc-number">4.</span> <span class="toc-text">三、jiffies</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、硬时钟和系统定时器"><span class="toc-number">5.</span> <span class="toc-text">四、硬时钟和系统定时器</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="Linux内核初探-之-系统时间（一）-——-内核时间的基本概念"><a href="#Linux内核初探-之-系统时间（一）-——-内核时间的基本概念" class="headerlink" title="Linux内核初探 之 系统时间（一） —— 内核时间的基本概念"></a>Linux内核初探 之 系统时间（一） —— 内核时间的基本概念</h1><hr>
+<h1 id="一、基本概念"><a href="#一、基本概念" class="headerlink" title="一、基本概念"></a>一、基本概念</h1><ol>
+<li>系统定时器<ul>
+<li>系统周期性事件是由系统定时器驱动，定时器中断负责更新系统时间</li>
+<li>系统定时器以固定节拍率自行触发中断，间隔时间为内核节拍tick</li>
+</ul>
+</li>
+<li>墙上时间与系统时间<ul>
+<li>墙上时间<ul>
+<li>实际时间</li>
+</ul>
+</li>
+<li>系统时间<ul>
+<li>自系统开始所经过的时间</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、节拍率HZ"><a href="#二、节拍率HZ" class="headerlink" title="二、节拍率HZ"></a>二、节拍率HZ</h1><ol>
+<li><p>定义</p>
+<ul>
+<li><p>系统定时器节拍通过静态预处理器定义</p>
+<pre><code>&lt;uapi/asm-generic/param.h&gt;
+#ifndef HZ
+#define HZ 100
+#endif
+</code></pre></li>
+</ul>
+</li>
+<li><p>高HZ</p>
+<ul>
+<li>好处<ul>
+<li>提高时间驱动事件的解析度和准确度<ul>
+<li>对于依赖定时器精度的系统调用，如果select，能提高精度</li>
+<li>进程抢占更加准确</li>
+<li>提高系统响应</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>坏处<ul>
+<li>增加系统负担，中断处理占用cpu</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、jiffies"><a href="#三、jiffies" class="headerlink" title="三、jiffies"></a>三、jiffies</h1><ol>
+<li>全局变量jiffies<ul>
+<li>jiffy用在科学领域中表示各种间隔</li>
+<li>记录自系统启动以来产生的节拍总数<ul>
+<li>jiffies = 系统运行时间秒数 seconds * HZ</li>
+</ul>
+</li>
+<li>1S内增加的jiffies数为HZ<ul>
+<li>系统运行时间秒数 seconds = jiffies / HZ</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>定义</p>
+<ul>
+<li>类型为unsigned long，与处理器位数相关，32bit或者64bit<ul>
+<li>32bit下100HZ，497天溢出</li>
+</ul>
+</li>
+<li><p>定义</p>
+<pre><code>&lt;linux/jiffies.h&gt;
+/*
+ * The 64-bit value is not atomic - you MUST NOT read it
+ * without sampling the sequence number in jiffies_lock.
+ * get_jiffies_64() will do this for you as appropriate.
+ */
+extern u64 __jiffy_data jiffies_64;
+extern unsigned long volatile __jiffy_data jiffies;
+extern seqlock_t jiffies_lock;
+
+#if (BITS_PER_LONG &lt; 64)
+    u64 get_jiffies_64(void);
+#else
+    static inline u64 get_jiffies_64(void)
+    {
+        return (u64)jiffies;
+    }
+#endif
+</code></pre><ul>
+<li><p>在链接脚本<code>&lt;arch/srm/kernel/vmlinux.lds.S&gt;</code>中，用<code>jiffies_64</code>覆盖<code>jiffies</code>变量，所以<code>jiffies</code>取<code>jiffies_64</code>低32位</p>
+<pre><code>&lt;arch/srm/kernel/vmlinux.lds.S&gt;
+#ifndef __ARMEB__
+    jiffies = jiffies_64;
+#else
+    jiffies = jiffies_64 + 4;
+#endif
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>处理回绕问题</p>
+<ul>
+<li>jiffies会发送溢出导致回绕</li>
+<li><p>内核提供一组比较接口能正确处理回绕</p>
+<pre><code>/*
+ *    These inlines deal with timer wrapping correctly. You are 
+ *    strongly encouraged to use them
+ *    1. Because people otherwise forget
+ *    2. Because if the timer wrap changes in future you won&apos;t have to
+ *       alter your driver code.
+ *
+ * time_after(a,b) returns true if the time a is after time b.
+ *
+ * Do this with &quot;&lt;0&quot; and &quot;&gt;=0&quot; to only test the sign of the result. A
+ * good compiler would generate better code (and a really good compiler
+ * wouldn&apos;t care). Gcc is currently neither.
+ */
+#define time_after(a,b)        \
+    (typecheck(unsigned long, a) &amp;&amp; \
+     typecheck(unsigned long, b) &amp;&amp; \
+     ((long)(b) - (long)(a) &lt; 0))
+#define time_before(a,b)    time_after(b,a)
+
+#define time_after_eq(a,b)    \
+    (typecheck(unsigned long, a) &amp;&amp; \
+     typecheck(unsigned long, b) &amp;&amp; \
+     ((long)(a) - (long)(b) &gt;= 0))
+#define time_before_eq(a,b)    time_after_eq(b,a)
+
+/*
+ * Calculate whether a is in the range of [b, c].
+ */
+#define time_in_range(a,b,c) \
+    (time_after_eq(a,b) &amp;&amp; \
+     time_before_eq(a,c))
+
+/*
+ * Calculate whether a is in the range of [b, c).
+ */
+#define time_in_range_open(a,b,c) \
+    (time_after_eq(a,b) &amp;&amp; \
+     time_before(a,c))
+
+/* Same as above, but does so with platform independent 64bit types.
+ * These must be used when utilizing jiffies_64 (i.e. return value of
+ * get_jiffies_64() */
+#define time_after64(a,b)    \
+    (typecheck(__u64, a) &amp;&amp;    \
+     typecheck(__u64, b) &amp;&amp; \
+     ((__s64)(b) - (__s64)(a) &lt; 0))
+#define time_before64(a,b)    time_after64(b,a)
+
+#define time_after_eq64(a,b)    \
+    (typecheck(__u64, a) &amp;&amp; \
+     typecheck(__u64, b) &amp;&amp; \
+     ((__s64)(a) - (__s64)(b) &gt;= 0))
+#define time_before_eq64(a,b)    time_after_eq64(b,a)
+
+/*
+ * These four macros compare jiffies and &apos;a&apos; for convenience.
+ */
+
+/* time_is_before_jiffies(a) return true if a is before jiffies */
+#define time_is_before_jiffies(a) time_after(jiffies, a)
+
+/* time_is_after_jiffies(a) return true if a is after jiffies */
+#define time_is_after_jiffies(a) time_before(jiffies, a)
+
+/* time_is_before_eq_jiffies(a) return true if a is before or equal to jiffies*/
+#define time_is_before_eq_jiffies(a) time_after_eq(jiffies, a)
+
+/* time_is_after_eq_jiffies(a) return true if a is after or equal to jiffies*/
+#define time_is_after_eq_jiffies(a) time_before_eq(jiffies, a)
+</code></pre></li>
+</ul>
+</li>
+<li><p>用户空间访问</p>
+<ul>
+<li><p>内核定义<code>USER_HZ</code>代表用户空间看到的HZ，目的是是避免用户空间直接用内核的HZ计算，当内HZ发生变化时，对用户空间造成影响</p>
+<pre><code>&lt;asm-generic/param.h&gt;
+# define USER_HZ    100        /* some user interfaces are */
+</code></pre></li>
+<li><p>导出到用户空间时，需要调用内核定义的函数进行转换，当<code>USER_HZ ！= HZ</code>时，函数来完成转换</p>
+<pre><code>&lt;kernel/timer.c&gt;
+/*
+ * Convert jiffies/jiffies_64 to clock_t and back.
+ */
+clock_t jiffies_to_clock_t(unsigned long x)
+{
+#if (TICK_NSEC % (NSEC_PER_SEC / USER_HZ)) == 0
+    # if HZ &lt; USER_HZ
+        return x * (USER_HZ / HZ);
+    # else
+        return x / (HZ / USER_HZ);
+    # endif
+#else
+    return div_u64((u64)x * TICK_NSEC, NSEC_PER_SEC / USER_HZ);
+#endif
+}
+EXPORT_SYMBOL(jiffies_to_clock_t);
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="四、硬时钟和系统定时器"><a href="#四、硬时钟和系统定时器" class="headerlink" title="四、硬时钟和系统定时器"></a>四、硬时钟和系统定时器</h1><ol>
+<li>硬时钟<ul>
+<li>系统启动时，内核读取RTC来初始化xtime(timekeeper)，设置墙上时间</li>
+</ul>
+</li>
+<li>系统定时器<ul>
+<li>依赖于可编程时钟PIT周期性产生中断(即HZ)</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/11/12/linux内核学习-基础篇-Linux内核初探-之-系统时间（一）-——-内核时间的基本概念/" data-id="ciww5zl3200e7unfy4u6uth39" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/11/12/算法学习-基础算法学习-十八-——-排序之王：快排/" class="pre">基础算法学习(十八) —— 排序之王：快排</a><a href="/2016/11/11/算法学习-基础算法学习-十七-——-归并排序/" class="next">基础算法学习(十七) —— 归并排序</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">31</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/基础篇/">基础篇</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/配置篇/">配置篇</a><span class="category-list-count">7</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">19</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/12/14/linux内核学习-配置篇-Linux内核配置详解-七-——-Executable-file-formats-Emulations-可执行文件格式-仿真/">Linux内核配置详解(七) ——   Executable file formats / Emulations (可执行文件格式/仿真)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/12/linux内核学习-配置篇-Linux内核配置详解-六-——-Power-management-and-ACPI-options-电源管理和ACPI选项/">Linux内核配置详解(六) ——  Power management and ACPI options (电源管理和ACPI选项)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/10/linux内核学习-配置篇-Linux内核配置详解-五-——-Processor-type-and-features-中央处理器-CPU-类型及特性/">Linux内核配置详解(五) ——  Processor type and features(中央处理器(CPU)类型及特性)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/07/linux内核学习-配置篇-Linux内核配置详解-四-——-Enable-the-block-layer-块设备支持/">Linux内核配置详解(四) ——  Enable the block layer(块设备支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/04/linux内核学习-配置篇-Linux内核配置详解-三-——-Enable-loadable-module-support-可加载模块支持/">Linux内核配置详解(三) ——  Enable loadable module support(可加载模块支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/01/linux内核学习-配置篇-Linux内核配置详解-二-——-General-setup-常规设置/">Linux内核配置详解(二) —— General setup(常规设置)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/linux内核学习-配置篇-Linux内核配置详解-一-——-main-主菜单/">Linux内核配置详解(一) —— main(主菜单)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/22/linux内核学习-基础篇-Linux内核初探-之-中断-三-——-工作队列和底半机制/">Linux内核初探 之 中断(三) —— 工作队列和底半机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/20/linux内核学习-基础篇-Linux内核初探-之-中断-二-——-底半处理/">Linux内核初探 之 中断(二) —— 底半处理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/17/linux内核学习-基础篇-Linux内核初探-之-中断-一-——-中断处理/">Linux内核初探 之 中断(一) —— 中断处理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

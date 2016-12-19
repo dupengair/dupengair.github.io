@@ -1,0 +1,537 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>Linux内核初探 之 系统时间（二） —— 时钟中断与定时器、等待 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Linux内核初探 之 系统时间（二） —— 时钟中断与定时器、等待</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Linux内核初探 之 系统时间（二） —— 时钟中断与定时器、等待</h1><div class="post-meta">Nov 14, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a><a href="/categories/Linux内核学习/基础篇/">基础篇</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux内核初探-之-系统时间（二）-——-时钟中断与定时器、等待"><span class="toc-number">1.</span> <span class="toc-text">Linux内核初探 之 系统时间（二） —— 时钟中断与定时器、等待</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、时钟中断"><span class="toc-number">2.</span> <span class="toc-text">一、时钟中断</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、定时器"><span class="toc-number">3.</span> <span class="toc-text">三、定时器</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、等待"><span class="toc-number">4.</span> <span class="toc-text">四、等待</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="Linux内核初探-之-系统时间（二）-——-时钟中断与定时器、等待"><a href="#Linux内核初探-之-系统时间（二）-——-时钟中断与定时器、等待" class="headerlink" title="Linux内核初探 之 系统时间（二） —— 时钟中断与定时器、等待"></a>Linux内核初探 之 系统时间（二） —— 时钟中断与定时器、等待</h1><hr>
+<h1 id="一、时钟中断"><a href="#一、时钟中断" class="headerlink" title="一、时钟中断"></a>一、时钟中断</h1><ol>
+<li>体系相关部分<ul>
+<li>作为系统定时器中断注册到内核</li>
+<li>主要工作：<ul>
+<li>获得<code>xtime_lock</code>锁，保护<code>jiffies_64</code>和<code>xtime</code></li>
+<li>应答或重新设置系统时钟</li>
+<li>周期性使用墙上时间更新系统时钟</li>
+<li>调用系统无关部分<code>tick_periodic()</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>体系无关部分</p>
+<ul>
+<li>主要工作：<ul>
+<li>递增<code>jiffies_64</code></li>
+<li>更新资源消耗的统计值</li>
+<li>执行到期的定时器</li>
+<li>执行<code>sheduler_tick()</code>减少进程时间片，根据需要设置<code>need_resched</code>标志</li>
+<li>更新xtime变量中的墙上时间</li>
+<li>计算平均负载</li>
+</ul>
+</li>
+<li><p>实现</p>
+<ul>
+<li><p>中断过程</p>
+<pre><code>&lt;kernel/time/tick-common.c&gt;
+static void tick_periodic(int cpu)
+{
+    if (tick_do_timer_cpu == cpu) {
+        write_seqlock(&amp;jiffies_lock);
+
+        /* Keep track of the next tick event */
+        tick_next_period = ktime_add(tick_next_period, tick_period);
+
+        do_timer(1);
+        write_sequnlock(&amp;jiffies_lock);
+    }
+
+    update_process_times(user_mode(get_irq_regs()));
+    profile_tick(CPU_PROFILING);
+}
+</code></pre></li>
+<li><p>增加<code>jiffies_64</code>，更新墙上时间，计算平均负载</p>
+<pre><code>&lt;kernel/time/timekeeping.c&gt;
+/*
+ * Must hold jiffies_lock
+ */
+void do_timer(unsigned long ticks)
+{
+    jiffies_64 += ticks;
+    // 更新墙上时间
+    update_wall_time();
+    // 计算平均负载
+    calc_global_load(ticks);
+}
+</code></pre></li>
+<li><p>更新资源统计，执行到期定时器，执行<code>scheduler_tick()</code></p>
+<pre><code>&lt;kernel/timer.c&gt;
+/*
+ * Called from the timer interrupt handler to charge one tick to the current
+ * process.  user_tick is 1 if the tick is user time, 0 for system.
+ */
+void update_process_times(int user_tick)
+{
+    struct task_struct *p = current;
+    int cpu = smp_processor_id();
+
+    /* Note: this timer irq context must be accounted for as well. */
+    // 更新进程时间
+    account_process_tick(p, user_tick);
+    // 执行定时器
+    run_local_timers();
+    rcu_check_callbacks(cpu, user_tick);
+    printk_tick();
+#ifdef CONFIG_IRQ_WORK
+    if (in_irq())
+        irq_work_run();
+#endif
+    // 减少进程时间片，根据需要设置`need_resched`标志
+    scheduler_tick();
+    run_posix_cpu_timers(p);
+}
+</code></pre></li>
+<li><p>更新进程时间</p>
+<pre><code>&lt;kernel/sched/cputime.c&gt;
+/*
+ * Account a single tick of cpu time.
+ * @p: the process that the cpu time gets accounted to
+ * @user_tick: indicates if the tick is a user or a system tick
+ */
+void account_process_tick(struct task_struct *p, int user_tick)
+{
+    cputime_t one_jiffy_scaled = cputime_to_scaled(cputime_one_jiffy);
+    struct rq *rq = this_rq();
+
+    if (sched_clock_irqtime) {
+        irqtime_account_process_tick(p, user_tick, rq);
+        return;
+    }
+
+    if (steal_account_process_tick())
+        return;
+
+    if (user_tick)
+        account_user_time(p, cputime_one_jiffy, one_jiffy_scaled);
+    else if ((p != rq-&gt;idle) || (irq_count() != HARDIRQ_OFFSET))
+        account_system_time(p, HARDIRQ_OFFSET, cputime_one_jiffy,
+                    one_jiffy_scaled);
+    else
+        account_idle_time(cputime_one_jiffy);
+}
+</code></pre><ul>
+<li>把一个tick全部计算给进程，与实际有一定误差</li>
+<li>进程在一个tick内可能多次进出内核模式</li>
+<li>目前没有更加精确的计算方式</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>#　二、墙上时间</p>
+<ol>
+<li><p>定义</p>
+<pre><code>&lt;kernel/time/timekeeping.c&gt;
+static struct timekeeper timekeeper;
+
+&lt;linux/timekeeper_internal.h&gt;
+/* Structure holding internal timekeeping values. */
+struct timekeeper {
+    /* Current clocksource used for timekeeping. */
+    struct clocksource    *clock;
+    /* NTP adjusted clock multiplier */
+    u32            mult;
+    /* The shift value of the current clocksource. */
+    u32            shift;
+    /* Number of clock cycles in one NTP interval. */
+    cycle_t            cycle_interval;
+    /* Number of clock shifted nano seconds in one NTP interval. */
+    u64            xtime_interval;
+    /* shifted nano seconds left over when rounding cycle_interval */
+    s64            xtime_remainder;
+    /* Raw nano seconds accumulated per NTP interval. */
+    u32            raw_interval;
+
+    /* Current CLOCK_REALTIME time in seconds */
+    u64            xtime_sec;
+    /* Clock shifted nano seconds */
+    u64            xtime_nsec;
+
+    /* Difference between accumulated time and NTP time in ntp
+     * shifted nano seconds. */
+    s64            ntp_error;
+    /* Shift conversion between clock shifted nano seconds and
+     * ntp shifted nano seconds. */
+    u32            ntp_error_shift;
+
+    /*
+     * wall_to_monotonic is what we need to add to xtime (or xtime corrected
+     * for sub jiffie times) to get to monotonic time.  Monotonic is pegged
+     * at zero at system boot time, so wall_to_monotonic will be negative,
+     * however, we will ALWAYS keep the tv_nsec part positive so we can use
+     * the usual normalization.
+     *
+     * wall_to_monotonic is moved after resume from suspend for the
+     * monotonic time not to jump. We need to add total_sleep_time to
+     * wall_to_monotonic to get the real boot based time offset.
+     *
+     * - wall_to_monotonic is no longer the boot time, getboottime must be
+     * used instead.
+     */
+    struct timespec        wall_to_monotonic;
+    /* Offset clock monotonic -&gt; clock realtime */
+    ktime_t            offs_real;
+    /* time spent in suspend */
+    struct timespec        total_sleep_time;
+    /* Offset clock monotonic -&gt; clock boottime */
+    ktime_t            offs_boot;
+    /* The raw monotonic time for the CLOCK_MONOTONIC_RAW posix clock. */
+    struct timespec        raw_time;
+    /* Seqlock for all timekeeper values */
+    seqlock_t        lock;
+};
+
+&lt;uapi/linux/time.h&gt;
+#ifndef _STRUCT_TIMESPEC
+#define _STRUCT_TIMESPEC
+struct timespec {
+    __kernel_time_t    tv_sec;            /* seconds */
+    long        tv_nsec;        /* nanoseconds */
+};
+#endif
+
+&lt;uapi/asm-genetic/posix_types.h&gt;
+#ifndef __kernel_long_t
+    typedef long        __kernel_long_t;
+    typedef unsigned long    __kernel_ulong_t;
+#endif
+typedef __kernel_long_t    __kernel_time_t;
+</code></pre></li>
+</ol>
+<ol>
+<li><p>获取墙上时间</p>
+<ul>
+<li><p>系统调用定义</p>
+<pre><code>&lt;kernel/time.c&gt;
+SYSCALL_DEFINE2(gettimeofday, struct timeval __user *, tv, struct timezone __user *, tz)
+{
+    if (likely(tv != NULL)) {
+        struct timeval ktv;
+        do_gettimeofday(&amp;ktv);
+        if (copy_to_user(tv, &amp;ktv, sizeof(ktv)))
+            return -EFAULT;
+    }
+    if (unlikely(tz != NULL)) {
+        if (copy_to_user(tz, &amp;sys_tz, sizeof(sys_tz)))
+            return -EFAULT;
+    }
+    return 0;
+}
+</code></pre></li>
+<li><p>读取墙上时间</p>
+<pre><code>&lt;kernel/time/timekeeping.c&gt;
+/**
+ * do_gettimeofday - Returns the time of day in a timeval
+ * @tv:        pointer to the timeval to be set
+ *
+ * NOTE: Users should be converted to using getnstimeofday()
+ */
+void do_gettimeofday(struct timeval *tv)
+{
+    struct timespec now;
+
+    getnstimeofday(&amp;now);
+    tv-&gt;tv_sec = now.tv_sec;
+    tv-&gt;tv_usec = now.tv_nsec/1000;
+}
+</code></pre><ul>
+<li>xtime在内核中并不频繁使用，除了更新，一般在文件系统中存放时间戳会用到</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、定时器"><a href="#三、定时器" class="headerlink" title="三、定时器"></a>三、定时器</h1><ol>
+<li>运行方式<ul>
+<li>定时器并不周期运行，而是超时后撤销</li>
+<li>通过不断的撤销和创建，可以无限次的运行    </li>
+</ul>
+</li>
+<li><p>使用</p>
+<ul>
+<li><p>定义</p>
+<pre><code>&lt;linux/timer.h&gt;
+struct timer_list {
+    /*
+     * All fields that change during normal runtime grouped to the
+     * same cacheline
+     */
+    struct list_head entry;
+    unsigned long expires;        // 定时值以jiffies为单位
+    struct tvec_base *base;        // 定时器内部值
+
+    void (*function)(unsigned long);    // 处理函数
+    unsigned long data;        // 处理函数参数
+
+    int slack;
+    ...
+};
+</code></pre></li>
+<li><p>创建与初始化</p>
+<pre><code>static struct timer_list device_timer;
+init_timer(&amp;device_timer);
+// 填值
+device_timer.function = hd_times_out;
+</code></pre></li>
+<li><p>激活定时器</p>
+<pre><code>add_timer(&amp;ifp-&gt;timer);
+</code></pre></li>
+<li><p>修改定时器并激活</p>
+<pre><code>mod_timer(&amp;device_timer, jiffies + TIMEOUT_VALUE);
+</code></pre><ul>
+<li>返回时timer总是被激活的，无论之前是否激活</li>
+</ul>
+</li>
+<li><p>到期前删除定时器</p>
+<pre><code>del_timer(&amp;device_timer);
+</code></pre><ul>
+<li>已到期的定时器会自动删除，不需要调用</li>
+<li>删除后定时器不再被激活</li>
+</ul>
+</li>
+<li><p>等待所有处理器中断退出再删除</p>
+<pre><code>del_timer_sync(&amp;q-&gt;timeout);
+</code></pre><ul>
+<li>在多处理器下，有可能删除时其它处理器上正在运行定时器中断，需要等待所有中断运行完璧再进行删除</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>竞争条件<ul>
+<li>定时器中断与当前进程异步运行，在多处理器上就可能产生竞争条件</li>
+<li>一般情况下用过使用<code>del_timer_sync()</code></li>
+<li>需要重点保护定时器中断内部的共享数据</li>
+</ul>
+</li>
+<li><p>实现</p>
+<ul>
+<li><p>在内核时钟中断中执行，如前所述：</p>
+<pre><code>tick_periodic()        &lt;tick-common.c&gt; -&gt;
+update_process_times()    &lt;timer.c&gt;   -&gt;
+run_local_timers()
+
+&lt;kernel/timer.c&gt;
+/*
+ * Called by the local, per-CPU timer interrupt on SMP.
+ */
+void run_local_timers(void)
+{
+    hrtimer_run_queues();
+    raise_softirq(TIMER_SOFTIRQ);
+}
+</code></pre></li>
+<li><p>为了提高搜索效率，内核将定时器按超时时间划分为5组</p>
+<ul>
+<li>当超时时间接近时，定时器随组一起下移</li>
+<li>减少了在执行软中断中搜索带来的负担，管理非常搞笑</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、等待"><a href="#四、等待" class="headerlink" title="四、等待"></a>四、等待</h1><ol>
+<li>所有的等待，都不应该发生在中断或者持有锁时</li>
+<li><p>忙等待</p>
+<ul>
+<li><p>在循环中自旋到tick耗尽，简单粗暴效率低</p>
+<pre><code>unsigned long timeout = jiffies + 20;
+while (time_before(jiffies, timeout));
+</code></pre></li>
+<li><p>等待时允许重新调度</p>
+<pre><code>&lt;drivers/mtd/nand/nand_base.c&gt;
+while (time_before(jiffies, timeo)) {
+    if (chip-&gt;dev_ready) {
+        if (chip-&gt;dev_ready(mtd))
+            break;
+    } else {
+        if (chip-&gt;read_byte(mtd) &amp; NAND_STATUS_READY)
+            break;
+    }
+    cond_resched();        //  允许重新调度
+}
+</code></pre><ul>
+<li>产生调度，不能用在中断中</li>
+</ul>
+</li>
+<li>jiffies在<code>&lt;jiffies.h&gt;</code>中被定义为volatile，所以可以保证每次访问都从内存中重新装载，从而符合实际</li>
+</ul>
+</li>
+<li><p>短延迟</p>
+<ul>
+<li>有时候与硬件同步，要求延迟短暂且精确，而对于基于jiffies的延迟，HZ为100时，精度只有10ms</li>
+<li><p>定义</p>
+<pre><code>&lt;asm-generic/delay.h&gt;            
+/*
+ * The weird n/20000 thing suppresses a &quot;comparison is always false due to
+ * limited range of data type&quot; warning with non-const 8-bit arguments.
+ */
+
+/* 0x10c7 is 2**32 / 1000000 (rounded up) */
+#define udelay(n)                            \
+    ({                                \
+        if (__builtin_constant_p(n)) {                \
+            if ((n) / 20000 &gt;= 1)                \
+                 __bad_udelay();            \
+            else                        \
+                __const_udelay((n) * 0x10c7ul);        \
+        } else {                        \
+            __udelay(n);                    \
+        }                            \
+    })
+
+/* 0x5 is 2**32 / 1000000000 (rounded up) */
+#define ndelay(n)                            \
+    ({                                \
+        if (__builtin_constant_p(n)) {                \
+            if ((n) / 20000 &gt;= 1)                \
+                __bad_ndelay();                \
+            else                        \
+                __const_udelay((n) * 5ul);        \
+        } else {                        \
+            __ndelay(n);                    \
+        }                            \
+    })
+
+&lt;linux/delay.h&gt;
+#ifndef mdelay
+    #define mdelay(n) (\
+        (__builtin_constant_p(n) &amp;&amp; (n)&lt;=MAX_UDELAY_MS) ? udelay((n)*1000) : \
+        ({unsigned long __ms=(n); while (__ms--) udelay(1000);}))
+#endif
+
+#ifndef ndelay
+    static inline void ndelay(unsigned long x)
+    {
+        udelay(DIV_ROUND_UP(x, 1000));
+    }
+    #define ndelay(x) ndelay(x)
+#endif
+</code></pre></li>
+<li><p>BogoMIPS(伪MIPS)</p>
+<ul>
+<li><p>记录处理器在空闲时的速度</p>
+<pre><code># cat /proc/cpuinfo 
+processor       : 0
+model name      : ARMv7 Processor rev 0 (v7l)
+BogoMIPS        : 1980.41
+Features        : swp half thumb fastmult vfp edsp thumbee neon vfpv3 tls 
+CPU implementer : 0x41
+CPU architecture: 7
+CPU variant     : 0x3
+CPU part        : 0xc09
+CPU revision    : 0
+
+processor       : 1
+model name      : ARMv7 Processor rev 0 (v7l)
+BogoMIPS        : 1990.65
+Features        : swp half thumb fastmult vfp edsp thumbee neon vfpv3 tls 
+CPU implementer : 0x41
+CPU architecture: 7
+CPU variant     : 0x3
+CPU part        : 0xc09
+CPU revision    : 0
+
+Hardware        : Ginkgo
+Revision        : 23283041
+Serial          : 0000000000000000
+</code></pre></li>
+<li><p>内核启动时<code>start_kernel()</code>调用<code>calibrate_delay()</code>计算<code>loop_per_jiffy</code></p>
+<pre><code>&lt;init/calibrate.c&gt;
+void __cpuinit calibrate_delay(void)
+{
+    unsigned long lpj;
+    static bool printed;
+    int this_cpu = smp_processor_id();
+
+    ...
+
+    loops_per_jiffy = lpj;
+    printed = true;
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>应用范围：</p>
+<ul>
+<li>udelay只适合在小延迟中用，通常小于1ms，否则容易溢出</li>
+<li>也属于忙等待，除非必要，一般不用，降低系统响应时间和性能</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><code>schedule_timeout()</code></p>
+<ul>
+<li>使任务睡眠到指定时间，再被内核唤醒，重新放回运行队列</li>
+<li><p>使用</p>
+<pre><code>// 将任务设置为可中断睡眠态
+set_current_state(TASK_INTERRUPTIBLE);
+
+// 睡眠到timeout个jiffies后唤醒
+schedule_timeout(timeout);
+</code></pre><ul>
+<li>延迟的相对时间为jiffies</li>
+<li>需要先将任务根据是否可被信号打断，设置为<code>TASK_INTERRUPTIBLE/TASK_UNINTERRUPTIBLE</code>，否则不会睡眠</li>
+<li>调用代码必需处于进程上下文且不能持有锁，因为会产生调度</li>
+</ul>
+</li>
+<li><p>实现</p>
+<pre><code>&lt;kernel/timer.c&gt;
+signed long __sched schedule_timeout(signed long timeout)
+{
+    struct timer_list timer;
+    unsigned long expire;
+
+    switch (timeout)
+    {
+    // 无限期休眠，立刻产生调度，不用定时器唤醒
+    case MAX_SCHEDULE_TIMEOUT:
+        schedule();
+        goto out;
+    default:
+        if (timeout &lt; 0) {
+            printk(KERN_ERR &quot;schedule_timeout: wrong timeout &quot; &quot;value %lx\n&quot;, timeout);
+            dump_stack();
+            current-&gt;state = TASK_RUNNING;
+            goto out;
+        }
+    }
+
+    expire = timeout + jiffies;
+
+    // 创建定时器并设置超时处理函数process_timeout
+    setup_timer_on_stack(&amp;timer, process_timeout, (unsigned long)current);
+    __mod_timer(&amp;timer, expire, false, TIMER_NOT_PINNED);
+    // 任务调度后不再运行自身，因为之前已经设置为睡眠态
+    schedule();
+    del_singleshot_timer_sync(&amp;timer);
+    destroy_timer_on_stack(&amp;timer);
+
+    timeout = expire - jiffies;
+
+ out:
+    return timeout &lt; 0 ? 0 : timeout;
+}
+EXPORT_SYMBOL(schedule_timeout);
+</code></pre><ul>
+<li>创建定时器并设置超时处理函数process_timeout，然后进行任务调度，由于之前已经设置为睡眠态<code>TASK_INTERRUPTIBLE/TASK_UNINTERRUPTIBLE</code>，进程睡眠内核选择其它任务运行</li>
+<li><p>重新调度时，内核返回休眠前的位置，如果任务被提前唤醒(比如信号)，<code>process_timeout()</code>返回剩余时间</p>
+<pre><code>&lt;kernel/timer.c&gt;
+static void process_timeout(unsigned long __data)
+{
+    wake_up_process((struct task_struct *)__data);
+}
+</code></pre></li>
+<li><p>无限期休眠时，立刻产生调度，不用设置定时器，需要采用其它方法唤醒</p>
+</li>
+</ul>
+</li>
+<li>有时候任务既在等待一个事件唤醒，又需要设置超时超时时间，此时可以用<code>schedule_timeout()</code>代替<code>schedule()</code></li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/11/14/linux内核学习-基础篇-Linux内核初探-之-系统时间（二）-——-时钟中断与定时器、等待/" data-id="ciww5zl3000e5unfy7vj25hcp" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/11/15/linux内核学习-基础篇-Linux内核初探-之-内核同步/" class="pre">Linux内核初探 之 内核同步</a><a href="/2016/11/14/算法学习-基础算法学习-十九-——-排序总结/" class="next">基础算法学习(十九) —— 排序总结</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">31</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/基础篇/">基础篇</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/配置篇/">配置篇</a><span class="category-list-count">7</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">19</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/12/14/linux内核学习-配置篇-Linux内核配置详解-七-——-Executable-file-formats-Emulations-可执行文件格式-仿真/">Linux内核配置详解(七) ——   Executable file formats / Emulations (可执行文件格式/仿真)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/12/linux内核学习-配置篇-Linux内核配置详解-六-——-Power-management-and-ACPI-options-电源管理和ACPI选项/">Linux内核配置详解(六) ——  Power management and ACPI options (电源管理和ACPI选项)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/10/linux内核学习-配置篇-Linux内核配置详解-五-——-Processor-type-and-features-中央处理器-CPU-类型及特性/">Linux内核配置详解(五) ——  Processor type and features(中央处理器(CPU)类型及特性)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/07/linux内核学习-配置篇-Linux内核配置详解-四-——-Enable-the-block-layer-块设备支持/">Linux内核配置详解(四) ——  Enable the block layer(块设备支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/04/linux内核学习-配置篇-Linux内核配置详解-三-——-Enable-loadable-module-support-可加载模块支持/">Linux内核配置详解(三) ——  Enable loadable module support(可加载模块支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/01/linux内核学习-配置篇-Linux内核配置详解-二-——-General-setup-常规设置/">Linux内核配置详解(二) —— General setup(常规设置)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/linux内核学习-配置篇-Linux内核配置详解-一-——-main-主菜单/">Linux内核配置详解(一) —— main(主菜单)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/22/linux内核学习-基础篇-Linux内核初探-之-中断-三-——-工作队列和底半机制/">Linux内核初探 之 中断(三) —— 工作队列和底半机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/20/linux内核学习-基础篇-Linux内核初探-之-中断-二-——-底半处理/">Linux内核初探 之 中断(二) —— 底半处理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/17/linux内核学习-基础篇-Linux内核初探-之-中断-一-——-中断处理/">Linux内核初探 之 中断(一) —— 中断处理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

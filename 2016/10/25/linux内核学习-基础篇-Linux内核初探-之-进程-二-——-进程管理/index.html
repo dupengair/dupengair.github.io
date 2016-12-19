@@ -1,0 +1,571 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>Linux内核初探 之 进程(二) —— 进程管理 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Linux内核初探 之 进程(二) —— 进程管理</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Linux内核初探 之 进程(二) —— 进程管理</h1><div class="post-meta">Oct 25, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a><a href="/categories/Linux内核学习/基础篇/">基础篇</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux内核初探-之-进程-二-————-进程管理"><span class="toc-number">1.</span> <span class="toc-text">Linux内核初探 之 进程(二) ———— 进程管理</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、进程创建"><span class="toc-number">2.</span> <span class="toc-text">一、进程创建</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、线程的实现"><span class="toc-number">3.</span> <span class="toc-text">二、线程的实现</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、进程退出"><span class="toc-number">4.</span> <span class="toc-text">三、进程退出</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="Linux内核初探-之-进程-二-————-进程管理"><a href="#Linux内核初探-之-进程-二-————-进程管理" class="headerlink" title="Linux内核初探 之 进程(二) ———— 进程管理"></a>Linux内核初探 之 进程(二) ———— 进程管理</h1><hr>
+<h1 id="一、进程创建"><a href="#一、进程创建" class="headerlink" title="一、进程创建"></a>一、进程创建</h1><ol>
+<li>Unix产生(spawn)进程的机制<ul>
+<li>fork：拷贝当前进程创建子进程<ul>
+<li>子进程独有的属性：<ul>
+<li>PID、PPID</li>
+<li>共享文件描述符的拷贝</li>
+<li>系统时间与用户时间</li>
+<li>pending的信号</li>
+<li>定时器事件        </li>
+</ul>
+</li>
+</ul>
+</li>
+<li>exec：载入可执行文件到进程地址空间并运行</li>
+</ul>
+</li>
+<li><p>写时拷贝COW</p>
+<ul>
+<li>复制只在需要写入时进行</li>
+<li>fork的实际开销是复制父进程页表，以及给子进程创建唯一的进程描述符</li>
+<li>一般情况下fork以后会直接运行一个可执行文件，拷贝过程不会发生</li>
+</ul>
+</li>
+<li><p>fork实现</p>
+<ul>
+<li><p>syscall最终调用的是<code>do_fork()</code></p>
+<pre><code>fork
+clone -&gt; do_fork() &lt;kernel/fork.c&gt;
+vfork
+
+/*
+ * Create a kernel thread.
+ */
+pid_t kernel_thread(int (*fn)(void *), void *arg, unsigned long flags)
+{
+    return do_fork(flags|CLONE_VM|CLONE_UNTRACED, (unsigned long)fn, (unsigned long)arg, NULL, NULL);
+}
+
+SYSCALL_DEFINE0(fork)
+{
+    return do_fork(SIGCHLD, 0, 0, NULL, NULL);
+    return(-EINVAL);
+}
+
+SYSCALL_DEFINE0(vfork)
+{
+    return do_fork(CLONE_VFORK | CLONE_VM | SIGCHLD, 0, 0, NULL, NULL);
+}
+
+SYSCALL_DEFINE5(clone, unsigned long, clone_flags, unsigned long, newsp, int __user *, parent_tidptr, int __user *, child_tidptr, int, tls_val)
+{
+    long ret = do_fork(clone_flags, newsp, 0, parent_tidptr, child_tidptr);
+    asmlinkage_protect(5, ret, clone_flags, newsp, parent_tidptr, child_tidptr, tls_val);
+    return ret;
+}
+</code></pre></li>
+<li><p><code>do_fork()</code>调用<code>copy_process()</code>创建新的进程</p>
+<ul>
+<li><p>调用<code>dup_task_struct()</code>创建内核栈、<code>thread_info</code>结构和<code>task_struct</code>(见前一篇描述)</p>
+<pre><code>p = dup_task_struct(current);
+if (!p)
+    goto fork_out;
+</code></pre><ul>
+<li>此时父子进程的PID相同</li>
+</ul>
+</li>
+<li><p>确定用户拥有的进程数没有超出分配资源的限制</p>
+<pre><code>/*
+ * If multiple threads are within copy_process(), then this check
+ * triggers too late. This doesn&apos;t hurt, the check is only there
+ * to stop root fork bombs.
+ */
+if (nr_threads &gt;= max_threads)
+    goto bad_fork_cleanup_count;
+</code></pre></li>
+<li><p>调用<code>copy_flags()</code>清空进程标志</p>
+<pre><code>copy_flags(clone_flags, p); -&gt;
+
+static void copy_flags(unsigned long clone_flags, struct task_struct *p)
+{
+    unsigned long new_flags = p-&gt;flags;
+
+    new_flags &amp;= ~(PF_SUPERPRIV | PF_WQ_WORKER);
+    new_flags |= PF_FORKNOEXEC;
+    p-&gt;flags = new_flags;
+}
+</code></pre><ul>
+<li><code>PF_SUPERPRIV</code>超级用户权限清0</li>
+<li><code>PF_FORKNOEXEC</code>还没调用exec</li>
+</ul>
+</li>
+<li><p>清空pending的信号集合</p>
+<pre><code>init_sigpending(&amp;p-&gt;pending);
+</code></pre></li>
+<li><p>将进程设置为<code>TASK_RUNNING</code>态，初始化调度策略等，并分配到特定cpu上</p>
+<pre><code>/* Perform scheduler related setup. Assign this task to a CPU. */
+sched_fork(p);    -&gt;
+
+&lt;sched/core.c&gt;
+/*
+ * fork()/clone()-time setup:
+ */
+void sched_fork(struct task_struct *p)
+{
+    ...
+    p-&gt;state = TASK_RUNNING;
+    p-&gt;prio = current-&gt;normal_prio;
+    ...                    
+    if (!rt_prio(p-&gt;prio))
+        p-&gt;sched_class = &amp;fair_sched_class;
+    if (p-&gt;sched_class-&gt;task_fork)
+        p-&gt;sched_class-&gt;task_fork(p);
+    ...
+    set_task_cpu(p, cpu);
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<pre><code>        - 此时还没唤醒(加入调度队列)，所以不会被调度。`copy_process()`返回后，`do_fork()`调用`wake_up_new_task()`激活(见下面)
+
+    + 根据`clone_flags`的设置，拷贝共享信息
+
+            /* copy all the process information */
+            retval = copy_semundo(clone_flags, p);
+            if (retval)
+                goto bad_fork_cleanup_audit;
+            retval = copy_files(clone_flags, p);
+            if (retval)
+                goto bad_fork_cleanup_semundo;
+            retval = copy_fs(clone_flags, p);
+            if (retval)
+                goto bad_fork_cleanup_files;
+            retval = copy_sighand(clone_flags, p);
+            if (retval)
+                goto bad_fork_cleanup_fs;
+            retval = copy_signal(clone_flags, p);
+            if (retval)
+                goto bad_fork_cleanup_sighand;
+            retval = copy_mm(clone_flags, p);
+            if (retval)
+                goto bad_fork_cleanup_signal;
+            retval = copy_namespaces(clone_flags, p);
+            if (retval)
+                goto bad_fork_cleanup_mm;
+            retval = copy_io(clone_flags, p);
+            if (retval)
+                goto bad_fork_cleanup_namespaces;
+            retval = copy_thread(clone_flags, stack_start, stack_size, p);
+            if (retval)
+                goto bad_fork_cleanup_io;
+
+    + 分配有效pid
+
+            if (pid != &amp;init_struct_pid) {
+                retval = -ENOMEM;
+                pid = alloc_pid(p-&gt;nsproxy-&gt;pid_ns);
+                if (!pid)
+                    goto bad_fork_cleanup_io;
+            }
+
+* 最后返回到`do_fork()`，将新进程激活(加入task队列)
+
+        do_fork()             &lt;fork.c&gt; -&gt;
+        wake_up_new_task(p); &lt;core.c&gt; -&gt;
+        activate_task();              -&gt;
+        enqueue_task();
+
+        &lt;core.c&gt;
+        void wake_up_new_task(struct task_struct *p)
+        {
+            unsigned long flags;
+            struct rq *rq;
+
+            ...
+            activate_task(rq, p, 0);
+            ...
+        }
+
+        void activate_task(struct rq *rq, struct task_struct *p, int flags)
+        {
+            if (task_contributes_to_load(p))
+                rq-&gt;nr_uninterruptible--;
+
+            enqueue_task(rq, p, flags);
+        }
+</code></pre><ol>
+<li><p>vfork</p>
+<ul>
+<li>vfork使用标志<code>CLONE_VFORK | CLONE_VM</code></li>
+<li><p>子进程在父进程的空间中运行，在exec之前不能向地址空间写入</p>
+<pre><code>static struct task_struct *copy_process()
+{
+    ...        
+
+    /*
+     * sigaltstack should be cleared when sharing the same VM
+     */
+    if ((clone_flags &amp; (CLONE_VM|CLONE_VFORK)) == CLONE_VM)
+        p-&gt;sas_ss_sp = p-&gt;sas_ss_size = 0;
+
+    /*
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<pre><code>* 不拷贝父进程的页表，由于fork的cow，vfork没有其它优势
+* 见《Linux内核初探 之 进程的内存管理(一) ———— 进程地址空间》二.2
+    &gt; 如果fork时设置`CLONE_VM`标志，内核不调用`allocate_mm`宏为子进程分配内存描述符，只需要将其mm域指向父进程的`mm_struct`，这样的进程即是线程
+
+        &lt;fork.c&gt;
+        static int copy_mm(unsigned long clone_flags, struct task_struct *tsk)
+        {
+            struct mm_struct *mm, *oldmm;
+            int retval;
+
+            ...
+
+            /*
+             * Are we cloning a kernel thread?
+             *
+             * We need to steal a active VM for that..
+             */
+            oldmm = current-&gt;mm;
+            if (!oldmm)
+                return 0;
+
+            if (clone_flags &amp; CLONE_VM) {
+                atomic_inc(&amp;oldmm-&gt;mm_users);
+                mm = oldmm;
+                goto good_mm;
+        }
+</code></pre><h1 id="二、线程的实现"><a href="#二、线程的实现" class="headerlink" title="二、线程的实现"></a>二、线程的实现</h1><ol>
+<li>线程与内核<ul>
+<li>内核没有线程的概念，线程被视为与其它进程共享资源的进程，作为进程间共享资源的手段</li>
+<li>线程共享进程地址空间，支持多处理器上的并发</li>
+</ul>
+</li>
+<li><p>用户线程创建</p>
+<ul>
+<li><p>对内核来说，用户空间创建线程就是通过clone调用在创建进程时指定共享资源</p>
+<pre><code>do_fork(CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND, ...)
+</code></pre><ul>
+<li><p>普通进程的fork</p>
+<pre><code>do_fork(SIGCHLD, 0, 0, NULL, NULL);
+</code></pre></li>
+<li><p>vfork</p>
+<pre><code>do_fork(CLONE_VFORK | CLONE_VM | SIGCHLD, 0, 0, NULL, NULL);
+</code></pre></li>
+</ul>
+</li>
+<li><p>CLONE标志</p>
+<ul>
+<li><code>CLONE_FILES</code>：共享打开文件</li>
+<li><code>CLONE_FS</code>：共享文件系统信息</li>
+<li><code>CLONE_SIGHAND</code>：共享信号处理和pending信号</li>
+<li><code>CLONE_VM</code>：共享地址空间</li>
+<li><code>CLONE_VFORK</code>：vfork时父进程睡眠等待子进程唤醒</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>内核线程</p>
+<ul>
+<li>内核线程与普通线程<ul>
+<li>没有独立的地址空间，mm指针被设为NULL</li>
+<li>只在内核空间运行</li>
+<li>和普通进程一样可以被抢占和调度</li>
+<li>主要完成一些内核任务，如flush、ksoftirq</li>
+</ul>
+</li>
+<li><p>都是从kthreadd进程创建</p>
+<pre><code>kthreadd() &lt;kthread.c&gt;   -&gt;
+create_kthread()          -&gt;
+kernel_thread()    &lt;fork.c&gt; -&gt;
+do_fork()
+
+&lt;kthread.c&gt;
+int kthreadd(void *unused)
+{
+    struct task_struct *tsk = current;
+    ...
+
+    for (;;) {
+        ...
+        create_kthread(create);
+    }
+}
+
+static void create_kthread(struct kthread_create_info *create)
+{
+    int pid;
+
+    ...
+    pid = kernel_thread(kthread, create, CLONE_FS | CLONE_FILES | SIGCHLD);
+    ...
+}
+
+&lt;fork.c&gt;
+/*
+ * Create a kernel thread.
+ */
+pid_t kernel_thread(int (*fn)(void *), void *arg, unsigned long flags)
+{
+    return do_fork(flags|CLONE_VM|CLONE_UNTRACED, (unsigned long)fn,
+        (unsigned long)arg, NULL, NULL);
+}
+</code></pre></li>
+<li><p>运行</p>
+<ul>
+<li>旧内核新建的内核线程处于不可运行态，需要通过<code>wake_up_process()</code>唤醒，貌似现在的新内核都不需要了，直接创建好就是可以运行的(有待考证)</li>
+</ul>
+</li>
+<li>退出<ul>
+<li>自身运行到<code>do_exit()</code></li>
+<li>其它地方调用<code>kthread_stop()</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="三、进程退出"><a href="#三、进程退出" class="headerlink" title="三、进程退出"></a>三、进程退出</h1><ol>
+<li><p>内核通过<code>do_exit()</code>执行进程退出过程</p>
+<ul>
+<li><p>将task的flag设为<code>PF_EXITING</code></p>
+<pre><code>exit_signals(tsk);  /* sets PF_EXITING */
+</code></pre></li>
+<li><p>设置退进程出码</p>
+<pre><code>tsk-&gt;exit_code = code;
+</code></pre></li>
+<li><p>释放进程地址空间<code>mm_struct</code>    </p>
+<pre><code>exit_mm(tsk);
+</code></pre></li>
+<li><p>退出进程上正在排队的信号量</p>
+<pre><code>exit_sem(tsk);
+</code></pre></li>
+<li><p>删除进程建立的共享内存（其实只是设置为不可用，系统后面会进行回收）</p>
+<pre><code>exit_shm(tsk);
+</code></pre></li>
+<li><p>递减文件描述符和文件系统数据的引用计数</p>
+<pre><code>exit_files(tsk);
+exit_fs(tsk);
+</code></pre></li>
+<li><p>通知自身线程执行退出</p>
+<pre><code>exit_thread()
+</code></pre></li>
+<li><p>向父进程发信号，给子进程寻找养父，找不到则指定为init进程，并设置退出状态为<code>EXIT_ZOMBIE</code></p>
+<pre><code>exit_notify(tsk, group_dead)
+
+&lt;exit.c&gt;
+/*
+ * Send signals to all our closest relatives so that they know
+ * to properly mourn us..
+ */
+static void exit_notify(struct task_struct *tsk, int group_dead)
+{
+    ...
+    tsk-&gt;exit_state = autoreap ? EXIT_DEAD : EXIT_ZOMBIE;
+    ...
+}
+</code></pre></li>
+<li><p>最后调用schedule()切换到新进程，当前进程不再被调度</p>
+<pre><code>/* causes final put_task_struct in finish_task_switch(). */
+tsk-&gt;state = TASK_DEAD;
+tsk-&gt;flags |= PF_NOFREEZE;    /* tell freezer to ignore us */
+schedule();
+</code></pre></li>
+<li><p>最后进程退出时，退出状态处于<code>EXIT_ZOMBIE</code>，占用内核栈、<code>thread_info</code>和<code>task_struct</code>结构，等待父进程检索到进程信息，执行最后的清理工作</p>
+</li>
+</ul>
+</li>
+<li><p>最后的清理工作——wait()</p>
+<ul>
+<li>进程exit后，进程描述符还保留，等待父进程执行wait系统调用进行回收</li>
+<li><p>wait对应的系统调用，都是通过<code>do_wait()</code>来执行清理过程</p>
+<pre><code>waitid
+wait4     -&gt; do_wait() 
+waitpid
+</code></pre></li>
+<li><p><code>do_wait()</code>中遍历每个子进程，最终对<code>EXIT_ZOMBIE</code>态的进行进行回收</p>
+<pre><code>do_wait()    &lt;exit.c&gt; -&gt;
+do_wait_thread()     -&gt;
+wait_consider_task() -&gt;
+wait_task_zombie()
+
+&lt;exit.c&gt;
+static long do_wait(struct wait_opts *wo)
+{
+    ...
+    set_current_state(TASK_INTERRUPTIBLE);
+    read_lock(&amp;tasklist_lock);
+    tsk = current;
+    do {
+        retval = do_wait_thread(wo, tsk);
+        if (retval)
+            goto end;            
+        ...
+    } while_each_thread(current, tsk);
+    read_unlock(&amp;tasklist_lock);
+    ...
+}    
+
+static int do_wait_thread(struct wait_opts *wo, struct task_struct *tsk)
+{
+    struct task_struct *p;
+
+    list_for_each_entry(p, &amp;tsk-&gt;children, sibling) {
+        int ret = wait_consider_task(wo, 0, p);
+        if (ret)
+            return ret;
+    }
+
+    return 0;
+}
+
+static int wait_consider_task(struct wait_opts *wo, int ptrace,
+    struct task_struct *p)
+{
+    ...
+    /* slay zombie? */
+    if (p-&gt;exit_state == EXIT_ZOMBIE) {
+        ...
+        /* we don&apos;t reap group leaders with subthreads */
+        if (!delay_group_leader(p))
+            return wait_task_zombie(wo, p);
+    ...
+}
+
+static int wait_task_zombie(struct wait_opts *wo, struct task_struct *p)
+{
+    // 回收子进程PID
+    ... 
+    if (p != NULL)
+        release_task(p);
+
+    return retval;
+}
+</code></pre></li>
+<li><p><code>wait_task_zombie()</code>中回收子进程PID，然后调用<code>release_task()</code>执行最终的退出过程</p>
+<ul>
+<li><p>从pidhash和task列表上删除进程，处理信号</p>
+<pre><code>__exit_signal(p);
+</code></pre></li>
+<li><p>如果leader进程已经不存在，需要通知leader进程的父进程</p>
+<pre><code>/*
+ * If we are the last non-leader member of the thread
+ * group, and the leader is zombie, then notify the
+ * group leader&apos;s parent process. (if it wants notification.)
+ */
+zap_leader = 0;
+leader = p-&gt;group_leader;
+if (leader != p &amp;&amp; thread_group_empty(leader) &amp;&amp; leader-&gt;exit_state == EXIT_ZOMBIE) {
+    /*
+     * If we were the last child thread and the leader has
+     * exited already, and the leader&apos;s parent ignores SIGCHLD,
+     * then we are the one who should release the leader.
+     */
+    zap_leader = do_notify_parent(leader, leader-&gt;exit_signal);
+    if (zap_leader)
+        leader-&gt;exit_state = EXIT_DEAD;
+}
+</code></pre></li>
+<li><p>释放进程描述符和<code>thread_info</code>，最终调用<code>free_task()</code>来释放</p>
+<pre><code>call_rcu(&amp;p-&gt;rcu, delayed_put_task_struct);
+
+delayed_put_task_struct()    &lt;exit.c&gt; -&gt;
+put_task_struct()        &lt;sched.h&gt; -&gt;
+__put_task_struct()        &lt;fork.c&gt;  -&gt;
+free_task()                &lt;fork.c&gt;  
+
+void free_task(struct task_struct *tsk)
+{
+    account_kernel_stack(tsk-&gt;stack, -1);
+    arch_release_thread_info(tsk-&gt;stack);
+    free_thread_info(tsk-&gt;stack);
+    rt_mutex_debug_task_free(tsk);
+    ftrace_graph_exit_task(tsk);
+    put_seccomp_filter(tsk);
+    arch_release_task_struct(tsk);
+    free_task_struct(tsk);
+}
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>孤儿进程的处理</p>
+<ul>
+<li>前面讲到，<code>do_exit()</code>调用<code>exit_notify()</code>来执行寻找父进程的过程</li>
+<li><p><code>exit_notify()</code>首先调用<code>forget_original_parent()</code>,最终通过<code>find_new_reaper()</code>来寻找可能的父进程</p>
+<pre><code>exit_notify()    &lt;exit.c&gt; -&gt;
+forget_original_parent() -&gt;
+find_new_reaper()    
+</code></pre><ul>
+<li><p>先找进程内其他线程</p>
+<pre><code>thread = father;
+while_each_thread(father, thread) {
+    if (thread-&gt;flags &amp; PF_EXITING)
+        continue;
+    if (unlikely(pid_ns-&gt;child_reaper == father))
+        pid_ns-&gt;child_reaper = thread;
+    return thread;
+}
+</code></pre></li>
+<li><p>既没有线程，又没有子进程，只能是init了</p>
+<pre><code>if (unlikely(pid_ns-&gt;child_reaper == father)) {
+    write_unlock_irq(&amp;tasklist_lock);
+    if (unlikely(pid_ns == &amp;init_pid_ns)) {
+        panic(&quot;Attempted to kill init! exitcode=0x%08x\n&quot;,
+            father-&gt;signal-&gt;group_exit_code ?:
+                father-&gt;exit_code);
+    }
+
+    zap_pid_ns_processes(pid_ns);
+    write_lock_irq(&amp;tasklist_lock);
+
+&lt;pid_namespace.c&gt;
+void zap_pid_ns_processes(struct pid_namespace *pid_ns)
+{
+    ...
+    nr = next_pidmap(pid_ns, 1);
+</code></pre></li>
+<li><p>如果没有线程但有子进程，就找子进程</p>
+<pre><code>} else if (father-&gt;signal-&gt;has_child_subreaper) {
+    struct task_struct *reaper;
+
+    /*
+     * Find the first ancestor marked as child_subreaper.
+     * Note that the code below checks same_thread_group(reaper,
+     * pid_ns-&gt;child_reaper).  This is what we need to DTRT in a
+     * PID namespace. However we still need the check above, see
+     * http://marc.info/?l=linux-kernel&amp;m=131385460420380
+     */
+    for (reaper = father-&gt;real_parent;
+         reaper != &amp;init_task;
+         reaper = reaper-&gt;real_parent) {
+        if (same_thread_group(reaper, pid_ns-&gt;child_reaper))
+            break;
+        if (!reaper-&gt;signal-&gt;is_child_subreaper)
+            continue;
+        thread = reaper;
+        do {
+            if (!(thread-&gt;flags &amp; PF_EXITING))
+                return reaper;
+        } while_each_thread(reaper, thread);
+    }
+}
+</code></pre></li>
+</ul>
+</li>
+<li><p>如果正在调试，临时将父进程设置为调试进程</p>
+<pre><code>if (unlikely(tsk-&gt;ptrace)) {
+    int sig = thread_group_leader(tsk) &amp;&amp;
+            thread_group_empty(tsk) &amp;&amp;
+            !ptrace_reparented(tsk) ?
+        tsk-&gt;exit_signal : SIGCHLD;
+    autoreap = do_notify_parent(tsk, sig);
+} else if (thread_group_leader(tsk)) {
+    autoreap = thread_group_empty(tsk) &amp;&amp;
+        do_notify_parent(tsk, tsk-&gt;exit_signal);
+} else {
+    autoreap = true;
+}
+</code></pre></li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/10/25/linux内核学习-基础篇-Linux内核初探-之-进程-二-——-进程管理/" data-id="ciww5zl3700egunfynqq9pl7x" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/10/25/算法学习-基础算法学习-八-——-图的遍历/" class="pre">基础算法学习(八) —— 图的遍历</a><a href="/2016/10/24/linux内核学习-基础篇-Linux内核初探-之-进程-一-——-进程基础/" class="next">Linux内核初探 之 进程(一) —— 进程基础</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">31</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/基础篇/">基础篇</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/配置篇/">配置篇</a><span class="category-list-count">7</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">19</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/12/14/linux内核学习-配置篇-Linux内核配置详解-七-——-Executable-file-formats-Emulations-可执行文件格式-仿真/">Linux内核配置详解(七) ——   Executable file formats / Emulations (可执行文件格式/仿真)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/12/linux内核学习-配置篇-Linux内核配置详解-六-——-Power-management-and-ACPI-options-电源管理和ACPI选项/">Linux内核配置详解(六) ——  Power management and ACPI options (电源管理和ACPI选项)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/10/linux内核学习-配置篇-Linux内核配置详解-五-——-Processor-type-and-features-中央处理器-CPU-类型及特性/">Linux内核配置详解(五) ——  Processor type and features(中央处理器(CPU)类型及特性)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/07/linux内核学习-配置篇-Linux内核配置详解-四-——-Enable-the-block-layer-块设备支持/">Linux内核配置详解(四) ——  Enable the block layer(块设备支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/04/linux内核学习-配置篇-Linux内核配置详解-三-——-Enable-loadable-module-support-可加载模块支持/">Linux内核配置详解(三) ——  Enable loadable module support(可加载模块支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/01/linux内核学习-配置篇-Linux内核配置详解-二-——-General-setup-常规设置/">Linux内核配置详解(二) —— General setup(常规设置)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/linux内核学习-配置篇-Linux内核配置详解-一-——-main-主菜单/">Linux内核配置详解(一) —— main(主菜单)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/22/linux内核学习-基础篇-Linux内核初探-之-中断-三-——-工作队列和底半机制/">Linux内核初探 之 中断(三) —— 工作队列和底半机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/20/linux内核学习-基础篇-Linux内核初探-之-中断-二-——-底半处理/">Linux内核初探 之 中断(二) —— 底半处理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/17/linux内核学习-基础篇-Linux内核初探-之-中断-一-——-中断处理/">Linux内核初探 之 中断(一) —— 中断处理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

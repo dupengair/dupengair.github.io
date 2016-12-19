@@ -1,0 +1,314 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>Linux内核初探 之 文件系统(二) —— 块IO | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Linux内核初探 之 文件系统(二) —— 块IO</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Linux内核初探 之 文件系统(二) —— 块IO</h1><div class="post-meta">Nov 11, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a><a href="/categories/Linux内核学习/基础篇/">基础篇</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux内核初探-之-文件系统-二-——-块IO"><span class="toc-number">1.</span> <span class="toc-text">Linux内核初探 之 文件系统(二) —— 块IO</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、块设备"><span class="toc-number">2.</span> <span class="toc-text">一、块设备</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、块缓冲区"><span class="toc-number">3.</span> <span class="toc-text">二、块缓冲区</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、bio"><span class="toc-number">4.</span> <span class="toc-text">三、bio</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#四、请求队列"><span class="toc-number">5.</span> <span class="toc-text">四、请求队列</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#五、IO调度程序"><span class="toc-number">6.</span> <span class="toc-text">五、IO调度程序</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="Linux内核初探-之-文件系统-二-——-块IO"><a href="#Linux内核初探-之-文件系统-二-——-块IO" class="headerlink" title="Linux内核初探 之 文件系统(二) —— 块IO"></a>Linux内核初探 之 文件系统(二) —— 块IO</h1><hr>
+<h1 id="一、块设备"><a href="#一、块设备" class="headerlink" title="一、块设备"></a>一、块设备</h1><ol>
+<li>字符设备与块设备<ul>
+<li>字符设备<ul>
+<li>按字节流的方式有序访问</li>
+<li>仅仅需要控制当前位置</li>
+</ul>
+</li>
+<li>块设备<ul>
+<li>随机访问固定大小的数据片</li>
+<li>访问位置必须能在不同区间前后移动，对设备执行性能要求高</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>块设备的寻址<ul>
+<li>块设备的物理最小寻址单元是扇区</li>
+<li>文件系统的最小可寻址单位是块，建立在扇区之上<ul>
+<li>块大小为扇区的2的倍数，要小于页面大小</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、块缓冲区"><a href="#二、块缓冲区" class="headerlink" title="二、块缓冲区"></a>二、块缓冲区</h1><ol>
+<li>缓冲区    <ul>
+<li>块被调入内存时，存储在缓冲区中</li>
+<li>一个块对应一个缓冲区，缓冲区是磁盘块在内存中的表示</li>
+<li>一页包含一个或多个块</li>
+</ul>
+</li>
+<li><p>缓冲区头</p>
+<ul>
+<li>用于描述磁盘物理块与内存缓冲区的对应关系</li>
+<li>2.6以前的内核用缓冲区头进行磁盘IO，有很多弊端：<ul>
+<li>缓冲区头很大，而内核直接操作页面的效率更高</li>
+<li>一个缓冲区头仅描述单个缓冲区，使内核把数据IO分解为对多个<code>buffer_head</code>结构体的操作，造成浪费</li>
+</ul>
+</li>
+<li><p>定义</p>
+<pre><code>&lt;linux/buffer_head.h&gt;
+struct buffer_head {
+    // 缓冲区状态
+    unsigned long b_state;        /* buffer state bitmap (see above) */
+    struct buffer_head *b_this_page;/* circular list of page&apos;s buffers */
+    // 缓冲区对应的内存页
+    struct page *b_page;        /* the page this bh is mapped to */
+
+    sector_t b_blocknr;        /* start block number */
+    size_t b_size;            /* size of mapping */
+    // 块在内存页上的位置
+    char *b_data;            /* pointer to data within the page */
+
+    struct block_device *b_bdev;
+    bh_end_io_t *b_end_io;        /* I/O completion */
+     void *b_private;        /* reserved for b_end_io */
+    struct list_head b_assoc_buffers; /* associated with another mapping */
+    struct address_space *b_assoc_map;    /* mapping this buffer is associated with */
+    // 使用计数
+    atomic_t b_count;        /* users using this buffer_head */
+};
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="三、bio"><a href="#三、bio" class="headerlink" title="三、bio"></a>三、bio</h1><ol>
+<li>聚散IO<ul>
+<li>bio代表以片断链表组织的活动的块IO操作</li>
+<li>一个片断是一块连续的内存，不用保证单个缓冲区一定连续，通过片断将分散在内存多个位置上的片断组织成一块缓冲区</li>
+<li>每一个块io请求都通过一个bio结构体表示，每个请求包含一个或多个块，存储在bio向量数组中</li>
+<li>idx指向不断被更新为当前片段，块IO通过当前片段来跟踪块IO操作的完成程度</li>
+<li>当bio结构体被分割为片段后，RAID这样的驱动器可以将单独结构体分割到不同存储介质中去</li>
+</ul>
+</li>
+<li><p>定义</p>
+<pre><code>/*
+ * main unit of I/O for the block layer and lower layers (ie drivers and
+ * stacking drivers)
+ */
+struct bio {
+    sector_t            bi_sector;    /* device address in 512 byte sectors */
+    struct bio            *bi_next;    /* request queue link */
+    struct block_device    *bi_bdev;
+    unsigned long        bi_flags;    /* status, command, etc */
+    unsigned long        bi_rw;        /* bottom bits READ/WRITE, top bits priority */
+    // bi_io_vec指向的数组中向量数目
+    unsigned short        bi_vcnt;    /* how many bio_vec&apos;s */
+    // 指向IO完成后指向数组的当前索引，总是被更新
+    unsigned short        bi_idx;        /* current index into bvl_vec */
+    unsigned int        bi_phys_segments;
+    unsigned int        bi_size;    /* residual I/O count */
+    unsigned int        bi_seg_front_size;
+    unsigned int        bi_seg_back_size;
+    bio_end_io_t        *bi_end_io;
+    // 私有域，只有bio的创建者可以读写
+    void                *bi_private;
+    ...
+    unsigned int        bi_max_vecs;    /* max bvl_vecs we can hold */
+    // bio结构体的使用计数
+    atomic_t            bi_cnt;        /* pin count */
+    struct bio_vec        *bi_io_vec;    /* the actual vec list */
+    struct bio_set        *bi_pool;
+    struct bio_vec        bi_inline_vecs[0];
+};
+</code></pre></li>
+<li><p>与页面的关系</p>
+<pre><code>              bio_vec -&gt; page i
+struct bio -&gt; bio_vec -&gt; page j
+              bio_vec -&gt; page k
+</code></pre></li>
+<li><p>bio向量</p>
+<ul>
+<li>描述一个特定片段：<ul>
+<li>片段所在物理页</li>
+<li>块在物理页中的偏移量</li>
+<li>从给定偏移量开始的块长度</li>
+</ul>
+</li>
+<li><p>定义</p>
+<pre><code>/*
+ * was unsigned short, but we might as well be ready for &gt; 64kB I/O pages
+ */
+struct bio_vec {
+    struct   page    *bv_page;
+    unsigned int    bv_len;
+    unsigned int    bv_offset;
+};
+</code></pre></li>
+</ul>
+</li>
+<li><p>对比缓冲区头与bio结构体</p>
+<ul>
+<li>对比<ul>
+<li>bio是轻量级的，代表io操作，与内存页的组织形式无关，所描述的块可以不需要连续存储区，并且不需要IO分割<ul>
+<li>仅仅是一个矢量数组，描述一个或多个块IO操作的数据片段和相关信息</li>
+</ul>
+</li>
+<li><code>buffer_head</code>代表缓冲区，描述的是磁盘中对应的一个物理块，因为关联了单独页中的单独磁盘块，需要将请求按块划分，再重新组合<ul>
+<li>负责磁盘块到内存页面的映射</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>bio的好处<ul>
+<li>容易处理高端内存，因为直接处理物理页，而不是指针</li>
+<li>皆可以处理普通页IO，也可以代表直接IO(不通过页高速缓存)</li>
+<li>便于分散-集中的方式，对多个物理页面进行聚合操作</li>
+<li>轻量级结构体，面向IO操作，不含缓冲区相关的不必要信息</li>
+</ul>
+</li>
+<li>缓冲区头的用处<ul>
+<li>描述磁盘块到页面的映射，当bio结构体描述当前的io操作时，<code>buffer_head</code>结构体仍然要包含缓冲区信息</li>
+<li>内核分别在两个结构体中保存操作和缓冲区信息，保证每个结构的信息尽量少</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="四、请求队列"><a href="#四、请求队列" class="headerlink" title="四、请求队列"></a>四、请求队列</h1><ol>
+<li><p>请求队列表</p>
+<ul>
+<li>块设备将挂起的IO请求保存在请求队列中，对应的块设备驱动从队列头获取请求，请求列表的每一项表示一个单独的请求</li>
+<li><p>定义</p>
+<pre><code>&lt;linux/blkdev.h&gt;    
+struct request_queue {
+    struct list_head    queue_head;
+    struct request        *last_merge;
+    struct elevator_queue    *elevator;
+    int            nr_rqs[2];    /* # allocated [a]sync rqs */
+    int            nr_rqs_elvpriv;    /* # allocated rqs w/ elvpriv */
+    struct request_list    root_rl;
+    request_fn_proc        *request_fn;
+    make_request_fn        *make_request_fn;
+    prep_rq_fn        *prep_rq_fn;
+    unprep_rq_fn        *unprep_rq_fn;
+    merge_bvec_fn        *merge_bvec_fn;
+    softirq_done_fn        *softirq_done_fn;
+    rq_timed_out_fn        *rq_timed_out_fn;
+    dma_drain_needed_fn    *dma_drain_needed;
+    lld_busy_fn        *lld_busy_fn;
+    ...
+</code></pre></li>
+</ul>
+</li>
+<li><p>请求</p>
+<ul>
+<li>队列中的请求由request表示</li>
+<li>一个请求可能操作多个连续的磁盘块，所以每个请求可能由多个bio结构体组成，每个bio可能描述多个片段，而这些块通过bio向量，可以分布在不同地址(甚至磁盘)上</li>
+<li><p>定义</p>
+<pre><code>struct request {
+    struct list_head queuelist;
+    struct call_single_data csd;
+
+    struct request_queue *q;
+
+    unsigned int cmd_flags;
+    enum rq_cmd_type_bits cmd_type;
+    unsigned long atomic_flags;
+
+    int cpu;
+
+    /* the following two fields are internal, NEVER access directly */
+    unsigned int __data_len;    /* total data len */
+    sector_t __sector;        /* sector cursor */
+
+    struct bio *bio;
+    struct bio *biotail;
+
+    struct hlist_node hash;    /* merge hash */
+    ...
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="五、IO调度程序"><a href="#五、IO调度程序" class="headerlink" title="五、IO调度程序"></a>五、IO调度程序</h1><ol>
+<li>IO调度<ul>
+<li>提高系统性能的关键在于尽量缩短寻址时间</li>
+<li>IO调度程序在提交请求到磁盘前，会执行合并和排序的预操作</li>
+<li>IO调度程序通过将请求队列中挂起的请求合并和排序，将磁盘IO资源分配给系统中所有挂起的块IO</li>
+<li>IO调度与进程调度：<ul>
+<li>IO调度使用户的分散操作聚合为对设备的集中访问，以虚拟块设备给多个磁盘请求</li>
+<li>进程调度程序是将cpu资源分散给多个用户共享，以虚拟处理器资源</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>管理请求队列<ul>
+<li>IO调度程序对请求队列进行排序和派发，从而提高全局吞吐量</li>
+<li>合并请求：<ul>
+<li>将多次请求的开销压缩成一次，只需要对磁盘进行一次寻址</li>
+</ul>
+</li>
+<li>排序：<ul>
+<li>将请求队列按扇区增长方向有序排列</li>
+<li>通过保持磁盘头以直线方向移动，缩短请求的寻址时间</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>elevator电梯调度<ul>
+<li>思路<ul>
+<li>电梯不能随意在层间移动，应向一个方向移动，直到同一方向的最后一层再掉头</li>
+</ul>
+</li>
+<li>操作<ul>
+<li>先检查每个挂起的请求是否可以与新请求合并<ul>
+<li>可以执行向前和向后合并</li>
+</ul>
+</li>
+<li>如果合并失败，则要寻找插入点<ul>
+<li>新请求的插入点必须符合以扇区方向有序排序的原则</li>
+</ul>
+</li>
+<li>对于队列中驻留时间过长的请求，也将加入到队列尾部</li>
+<li>如果不存在合适的插入位置，则插入队列尾部</li>
+</ul>
+</li>
+<li>问题<ul>
+<li>总按扇区顺序插入队列，可能导致饥饿，一个对磁盘同一位置的请求流可能造成较远位置的其它请求永远得不到运行机会</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>deadline<ul>
+<li>写-饥饿-读问题<ul>
+<li>写操作是异步操作，通常内核有空时提交，不影响应用程序运行</li>
+<li>读操作通常是同步操作，且通常是相互依赖的串行操作，读响应时间对系统响应影响大</li>
+</ul>
+</li>
+<li>为解决饥饿问题而生<ul>
+<li>必须以降低全局吞吐量为代价</li>
+<li>以磁盘物理位置为次序维护请求队列，每个请求一个超时时间<ul>
+<li>默认读500ms，写5s</li>
+</ul>
+</li>
+<li>读写请求按次序插入到各自特定的FIFO队列，请求从队列头部取出，放入派发队列中，当FIFO队列头的请求超时时，直接从FIFO队列提取请求，不用在派发队列中排队</li>
+<li>读请求的超时时间一般比写短很多，可以保证写请求不会因为排在读请求之前阻塞读请求而导致饥饿(因为分了两个队列)</li>
+</ul>
+</li>
+<li>问题<ul>
+<li>降低系统吞吐量<ul>
+<li>如果系统处于繁重的写操作期间，IO会先为读操作寻址再返回写操作，需要两次寻址，在提高系统响应的同时影响了吞吐量</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Anticipation<ul>
+<li>增加预测启发，以减少寻址</li>
+<li>请求提交后不立即返回，刻意空闲片刻等待其它请求的提交，以提高对相邻位置的操作响应<ul>
+<li>默认6ms</li>
+</ul>
+</li>
+<li>效果不稳定，3.X内核取消</li>
+</ul>
+</li>
+<li>CFQ完全公平(default)<ul>
+<li>为专有多媒体工作负荷设计，普遍表现良好</li>
+<li>根据IO进程组织，每个进入的请求与相邻请求合并，按扇区方式分类插入</li>
+<li>队列以时间片轮转调度，从每个队列选取请求个数，确保每个进程拥有公平的磁盘带宽片段</li>
+</ul>
+</li>
+<li>Noop空操作调度<ul>
+<li>不排序，只合并，专为随机访问设备设计</li>
+<li>用在随机访问设备，没有寻道负担，不需要对请求进行插入排序<ul>
+<li>如块设备</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/11/11/linux内核学习-基础篇-Linux内核初探-之-文件系统-二-——-块IO/" data-id="ciww5zl3300eaunfy8o9apg4u" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/11/11/算法学习-基础算法学习-十七-——-归并排序/" class="pre">基础算法学习(十七) —— 归并排序</a><a href="/2016/11/11/系统性能测试-系统性能工具篇-系统小工具/" class="next">系统性能工具篇(系统小工具)</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">31</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/基础篇/">基础篇</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/配置篇/">配置篇</a><span class="category-list-count">7</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">19</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/12/14/linux内核学习-配置篇-Linux内核配置详解-七-——-Executable-file-formats-Emulations-可执行文件格式-仿真/">Linux内核配置详解(七) ——   Executable file formats / Emulations (可执行文件格式/仿真)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/12/linux内核学习-配置篇-Linux内核配置详解-六-——-Power-management-and-ACPI-options-电源管理和ACPI选项/">Linux内核配置详解(六) ——  Power management and ACPI options (电源管理和ACPI选项)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/10/linux内核学习-配置篇-Linux内核配置详解-五-——-Processor-type-and-features-中央处理器-CPU-类型及特性/">Linux内核配置详解(五) ——  Processor type and features(中央处理器(CPU)类型及特性)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/07/linux内核学习-配置篇-Linux内核配置详解-四-——-Enable-the-block-layer-块设备支持/">Linux内核配置详解(四) ——  Enable the block layer(块设备支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/04/linux内核学习-配置篇-Linux内核配置详解-三-——-Enable-loadable-module-support-可加载模块支持/">Linux内核配置详解(三) ——  Enable loadable module support(可加载模块支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/01/linux内核学习-配置篇-Linux内核配置详解-二-——-General-setup-常规设置/">Linux内核配置详解(二) —— General setup(常规设置)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/linux内核学习-配置篇-Linux内核配置详解-一-——-main-主菜单/">Linux内核配置详解(一) —— main(主菜单)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/22/linux内核学习-基础篇-Linux内核初探-之-中断-三-——-工作队列和底半机制/">Linux内核初探 之 中断(三) —— 工作队列和底半机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/20/linux内核学习-基础篇-Linux内核初探-之-中断-二-——-底半处理/">Linux内核初探 之 中断(二) —— 底半处理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/17/linux内核学习-基础篇-Linux内核初探-之-中断-一-——-中断处理/">Linux内核初探 之 中断(一) —— 中断处理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

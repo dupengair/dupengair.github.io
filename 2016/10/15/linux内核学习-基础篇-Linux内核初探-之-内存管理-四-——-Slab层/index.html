@@ -1,0 +1,354 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="keep it simple, stupid"><title>Linux内核初探 之 内存管理(四) —— Slab层 | dupengair的blog</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Linux内核初探 之 内存管理(四) —— Slab层</h1><a id="logo" href="/.">dupengair的blog</a><p class="description">日拱一卒 精而悟道</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Linux内核初探 之 内存管理(四) —— Slab层</h1><div class="post-meta">Oct 15, 2016<span> | </span><span class="category"><a href="/categories/Linux内核学习/">Linux内核学习</a><a href="/categories/Linux内核学习/基础篇/">基础篇</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><div class="clear"><div id="toc" class="toc-article"><div class="toc-title">文章目录</div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux内核初探-之-内存管理-四-————-Slab层"><span class="toc-number">1.</span> <span class="toc-text">Linux内核初探 之 内存管理(四) ———— Slab层</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#一、介绍"><span class="toc-number">2.</span> <span class="toc-text">一、介绍</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#二、Slab的设计"><span class="toc-number">3.</span> <span class="toc-text">二、Slab的设计</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#三、slab的应用——内核的fork操作"><span class="toc-number">4.</span> <span class="toc-text">三、slab的应用——内核的fork操作</span></a></li></ol></div></div><div class="post-content"><hr>
+<h1 id="Linux内核初探-之-内存管理-四-————-Slab层"><a href="#Linux内核初探-之-内存管理-四-————-Slab层" class="headerlink" title="Linux内核初探 之 内存管理(四) ———— Slab层"></a>Linux内核初探 之 内存管理(四) ———— Slab层</h1><hr>
+<h1 id="一、介绍"><a href="#一、介绍" class="headerlink" title="一、介绍"></a>一、介绍</h1><ol>
+<li><p>假如采用空闲链表</p>
+<ul>
+<li>空闲链表包含已分配好的内存块，需要内存时从链表中找，不用实时分配</li>
+<li>问题在于空闲链表的操作是局部于功能模块的，每个功能模块维护不同空闲链表，内核对它们缺乏全局性的控制。当需要对内核的所有内存做一些统一操作的时候就无能为力了，如内存紧张时通知每个(功能模块)空闲链表释放其内存。而如果内核只有一个全局的空闲链表，则是无法想象的</li>
+<li>因此，需要一种全局性的机制，让内核知道，是哪些地方，分别申请了多少内存，用作什么用途，当需要全局控制的时候，能方便的进行统一操作</li>
+</ul>
+</li>
+<li><p>Slab的思想</p>
+<ul>
+<li>避免物理内存分配<ul>
+<li>回收的对象可以立即进行下一次分配</li>
+</ul>
+</li>
+<li>避免碎片<ul>
+<li>内存连续，避免碎片</li>
+</ul>
+</li>
+<li>缓存对象<ul>
+<li>频繁使用的对象可能会频繁分配和释放，可以缓存起来    </li>
+</ul>
+</li>
+<li>策略优化<ul>
+<li>对象、页、总缓存大小已知的话，分配器能进行优化，采用best-fit策略</li>
+<li>对于同一类型对象，大小通常接近，分配时便于优化</li>
+<li>支持硬件缓存对齐和着色，这允许不同缓存中的对象占用相同的缓存行，从而提高缓存的利用率并获得更好的性能        </li>
+</ul>
+</li>
+<li>多核优化<ul>
+<li>部分缓存专属单个处理器时，可以在不加SMP锁的情况下进行</li>
+<li>对于NUMA相关的分配器，可以从相同的内存节点为请求者分配</li>
+</ul>
+</li>
+<li>避免false sharing<ul>
+<li>对存放的对象进行着色(color)，防止多个对象映射到相同的cache line</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="二、Slab的设计"><a href="#二、Slab的设计" class="headerlink" title="二、Slab的设计"></a>二、Slab的设计</h1><ol>
+<li><p>Slab的结构</p>
+<ul>
+<li>高速缓存用于存放不同的对象<ul>
+<li>如fd和inode</li>
+<li>kmalloc使用了高速缓存</li>
+</ul>
+</li>
+<li>高速缓存由Slab组成<ul>
+<li>slab是一个或多个<strong>物理上连续</strong>的page</li>
+<li>slab的三种状态：<ul>
+<li>满：所有对象都已被分配<code>slabs_full</code></li>
+<li>部分满：部分对象被分配<code>slabs_partial</code></li>
+<li>空：所有对象都没被分配<code>slabs_empty</code></li>
+</ul>
+</li>
+<li>对象分配的策略：<ul>
+<li>先从对象部分满的slab开始分配</li>
+<li>没有部分满的，就找空的slab</li>
+<li>slab 是 slab 分配器进行操作的最小分配单位</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>管理<ul>
+<li>在每个高速缓存的基础上，通过提供给整个内核一个简单的接口来完成        </li>
+<li>支持通用对象的初始化，从而避免了为同一目而对一个对象重复进行初始化</li>
+</ul>
+</li>
+<li><p>图示</p>
+<pre><code>                -&gt; 对象
+        -&gt; slab    -&gt; 对象
+                -&gt; 对象
+高速缓存
+        -&gt; slab    -&gt; 对象
+</code></pre></li>
+</ul>
+</li>
+<li><p>slab实现</p>
+<ul>
+<li><p>每个高速缓存用<code>kmem_cache</code>结构表示<code>&lt;slab_def.h&gt;</code></p>
+<pre><code>/*
+ * struct kmem_cache
+ *
+ * manages a cache.
+ */
+struct kmem_cache {
+/* 1) Cache tunables. Protected by cache_chain_mutex */
+    unsigned int batchcount;
+    unsigned int limit;
+    unsigned int shared;
+    unsigned int size;
+    u32 reciprocal_buffer_size;
+
+/* 2) touched by every alloc &amp; free from the backend */
+    unsigned int flags;            /* constant flags */
+    unsigned int num;            /* # of objs per slab */
+
+/* 3) cache_grow/shrink */    
+    unsigned int gfporder;        /* order of pgs per slab (2^n) */    
+    gfp_t allocflags;            /* force GFP flags, e.g. GFP_DMA */
+    size_t colour;                /* cache colouring range */
+    unsigned int colour_off;    /* colour offset */
+    struct kmem_cache *slabp_cache;
+    unsigned int slab_size;    
+    void (*ctor)(void *obj);    /* constructor func */
+
+/* 4) cache creation/removal */
+    const char *name;
+    struct list_head list;
+    int refcount;
+    int object_size;
+    int align;
+
+/* 5) statistics */
+    ...
+
+/* 6) per-cpu/per-node data, touched during every alloc/free */
+    /*
+     * We put array[] at the end of kmem_cache, because we want to size
+     * this array to nr_cpu_ids slots instead of NR_CPUS
+     * (see kmem_cache_init())
+     * We still use [NR_CPUS] and not [1] or [0] because cache_cache
+     * is statically defined, so we reserve the max number of cpus.
+     *
+     * We also need to guarantee that the list is able to accomodate a
+     * pointer for each node since &quot;nodelists&quot; uses the remainder of
+     * available pointers.
+     */
+    struct kmem_list3 **nodelists;
+    struct array_cache *array[NR_CPUS + MAX_NUMNODES];
+    /*
+     * Do not add fields after array[]
+     */
+};
+</code></pre></li>
+<li><p>slab存放在<code>kmem_list3</code>结构中<code>&lt;slab.c&gt;</code>：</p>
+<pre><code>/*
+ * The slab lists for all objects.
+ */
+struct kmem_list3 {
+    struct list_head slabs_partial;    /* partial list first, better asm code */
+    struct list_head slabs_full;
+    struct list_head slabs_free;
+    unsigned long free_objects;
+    unsigned int free_limit;
+    unsigned int colour_next;    /* Per-node cache coloring */
+    spinlock_t list_lock;
+    struct array_cache *shared;    /* shared per node */
+    struct array_cache **alien;    /* on other nodes */
+    unsigned long next_reap;    /* updated without locking */
+    int free_touched;        /* updated without locking */
+};
+</code></pre><ul>
+<li>满：<code>slabs_full</code></li>
+<li>部分：<code>slabs_partial</code></li>
+<li>空：<code>slabs_empty</code></li>
+</ul>
+</li>
+<li><p>slab 结构<code>&lt;slab.c&gt;</code>：</p>
+<pre><code>/*
+ * struct slab
+ *
+ * Manages the objs in a slab. Placed either at the beginning of mem allocated
+ * for a slab, or allocated from an general cache.
+ * Slabs are chained into three list: fully used, partial, fully free slabs.
+ */
+struct slab {
+    union {
+        struct {
+            struct list_head list;
+            unsigned long colouroff;
+            void *s_mem;        /* including colour offset */
+            unsigned int inuse;    /* num of objs active in slab */
+            kmem_bufctl_t free;
+            unsigned short nodeid;
+        };
+        struct slab_rcu __slab_cover_slab_rcu;
+    };
+};
+</code></pre></li>
+</ul>
+</li>
+<li><p>slab操作</p>
+<ul>
+<li><p>分配</p>
+<ul>
+<li>关键在于避免频繁分配和释放内存页，只有高速缓存没有部分满或者空的slab时才会分配内存页(一次性分配一个slab)</li>
+<li>slab描述符要么在slab之外，要么在slab自身开始的地方</li>
+<li><p>通过slab分配器可以创建新的slab</p>
+<pre><code>kmem_getpages()                [slab.c] -&gt;
+alloc_pages_exact_node()         [gfp.h] -&gt;
+__alloc_pages()                 [gfp.h] -&gt;
+__alloc_pages_nodemask() [page_alloc.c] -&gt;
+get_page_from_freelist() [page_alloc.c]
+__alloc_pages_slowpath（）[page_alloc.c]
+</code></pre></li>
+</ul>
+</li>
+<li><p>回收</p>
+<ul>
+<li>内存紧缺时，系统会试图释放</li>
+<li><p>高速缓存被显式撤销</p>
+<pre><code>kmem_freepages()              [slab.c] -&gt;
+kmemcheck_free_shadow() [kmemcheck.c] -&gt;
+__free_pages()            [page_alloc.c]
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>slab分配器接口</p>
+<ul>
+<li><p>创建高速缓存</p>
+<pre><code>struct kmem_cache *kmem_cache_create(const char *name, size_t size, size_t align, unsigned long flags, void (*ctor)(void *))
+
+align：slab内第一个对象的偏移，确保在页内进行特定的对齐，通常为0，即标准对齐
+flags：控制高速缓存的行为，默认为0，可以设置为：
+    SLAB_HWCACHE_ALIGN：
+        一个slab内的所有对象按cache line行对齐
+        防止伪共享，性能最佳，对齐严格浪费内存
+    SLAB_POISON：
+        使用a5a5a5填充，有利于未初始化内存的访问
+    SLAB_RED_ZONE：
+        已分配内存周围插入标识，以探测缓冲越界
+    SLAB_PANIC:
+        分配失败时提醒slab层，用于分配只能成功时，如VMA
+    SLBA_CACHE_DMA：
+        可以分配DMA给每个slab空间，只有分配对象必需驻留且用于DMA时
+ctor：构造函数，当新页追加到高速缓存时调用，实际上内核的高速缓存不会用到
+</code></pre><ul>
+<li>成功时返回指向所创建的高速缓存的指针，失败时返回NULL</li>
+<li>不能再中断上下文中调用，因为可能睡眠</li>
+</ul>
+</li>
+<li><p>撤销</p>
+<pre><code>void kmem_cache_destroy(struct kmem_cache *s)
+</code></pre><ul>
+<li>只有在两个条件下可以撤销<ul>
+<li>高速缓存中所有的slab为空</li>
+<li>调用过程中，不能再访问高速缓存</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>从高速缓存中获取对象</p>
+<pre><code>/**
+ * kmem_cache_alloc - Allocate an object
+ * @cachep: The cache to allocate from.
+ * @flags: See kmalloc().
+ *
+ * Allocate an object from this cache.  The flags are only relevant
+ * if the cache has no available objects.
+ */
+void *kmem_cache_alloc(struct kmem_cache *cachep, gfp_t flags)
+</code></pre><ul>
+<li>cachep返回一个指向高速缓存对象的指针</li>
+<li>如果高速缓存的所有slab都没有空闲对象，则需要通过<code>kmem_getpages()</code>获取新的页</li>
+</ul>
+</li>
+<li><p>释放对象，返回原来的slab</p>
+<pre><code>/**
+ * kmem_cache_free - Deallocate an object
+ * @cachep: The cache the allocation was from.
+ * @objp: The previously allocated object.
+ *
+ * Free an object which was previously allocated from this
+ * cache.
+ */
+void kmem_cache_free(struct kmem_cache *cachep, void *objp)
+</code></pre></li>
+</ul>
+</li>
+</ol>
+<h1 id="三、slab的应用——内核的fork操作"><a href="#三、slab的应用——内核的fork操作" class="headerlink" title="三、slab的应用——内核的fork操作"></a>三、slab的应用——内核的fork操作</h1><ol>
+<li><p><code>task_struct</code>的高速缓存 </p>
+<ul>
+<li><p>内核用全局变量<code>task_struct_cachep</code>来保存<code>task_struct</code>的高速缓存指针</p>
+<pre><code>&lt;kernel/fork.c&gt;
+static struct kmem_cache *task_struct_cachep;
+</code></pre></li>
+<li><p>分配与回收    </p>
+<pre><code>static inline struct task_struct *alloc_task_struct_node(int node)
+{
+    return kmem_cache_alloc_node(task_struct_cachep, GFP_KERNEL, node);
+}
+
+static inline void free_task_struct(struct task_struct *tsk)
+{
+    kmem_cache_free(task_struct_cachep, tsk);
+}                    
+</code></pre></li>
+</ul>
+</li>
+<li><p>创建高速缓存</p>
+<ul>
+<li><p>在<code>start_kernal</code>的过程中调用<code>fork_init()</code>创建</p>
+<pre><code>&lt;kernel/fork.c -&gt; fork_init()&gt;
+/* create a slab on which task_structs can be allocated */
+task_struct_cachep = kmem_cache_create(&quot;task_struct&quot;, sizeof(struct task_struct), ARCH_MIN_TASKALIGN, SLAB_PANIC | SLAB_NOTRACK, NULL);
+</code></pre><ul>
+<li>注意flag是<code>SLAB_PANIC | SLAB_NOTRACK</code>，表明分配失败会调用panic</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>分配</p>
+<ul>
+<li><p>在<code>do_fork()</code>时创建新的文件描述符，则会为current指针，即当前thread的task对象，分配slab对象</p>
+<ul>
+<li><p><code>do_fork()</code>-&gt;<code>copy_process()</code>-&gt;<code>dup_task_struct()</code> -&gt; <code>alloc_task_struct_node()</code> -&gt; <code>kmem_cache_alloc_node()</code></p>
+<pre><code>&lt;kernel/fork.c -&gt; do_fork()&gt;
+p = copy_process(clone_flags, stack_start, stack_size, child_tidptr, NULL, trace);
+
+&lt;kernel/fork.c -&gt; copy_process()&gt;
+p = dup_task_struct(current);
+if (!p)
+    goto fork_out;
+
+&lt;kernel/fork.c -&gt; dup_task_struct()&gt;
+tsk = alloc_task_struct_node(node);
+if (!tsk)
+    return NULL;
+
+&lt;kernel/fork.c -&gt; alloc_task_struct_node()&gt;
+return kmem_cache_alloc_node(task_struct_cachep, GFP_KERNEL, node);
+</code></pre></li>
+<li><p>注意current的定义，在current.h中</p>
+<pre><code>#define get_current() (current_thread_info()-&gt;task)
+#define current get_current()
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>释放</p>
+<ul>
+<li><p>进程结束是，需要调用<code>put_task_struct()</code>，其最终调用<code>free_task_struct()</code>来释放slab对象</p>
+<ul>
+<li><p>调用流程：</p>
+<pre><code>`put_task_struct()` [sched.h] -&gt;
+`__put_task_struct()` [fork.c] -&gt;
+`free_task()` [fork.c] -&gt;
+`free_task_struct()` [fork.c] -&gt;
+`kmem_cache_free` [slab.c]
+</code></pre></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/10/15/linux内核学习-基础篇-Linux内核初探-之-内存管理-四-——-Slab层/" data-id="ciww5zl2v00dxunfylyol0k2g" class="article-share-link">分享到</a><div class="tags"><a href="/tags/Linux内核学习/">Linux内核学习</a></div><div class="post-nav"><a href="/2016/10/15/linux内核学习-基础篇-Linux内核初探-之-内存管理-五-——-静态分配与高端内存映射/" class="pre">Linux内核初探 之 内存管理(五) —— 静态分配与高端内存映射</a><a href="/2016/10/12/开发环境搭建-VIM配置/" class="next">VIM配置</a></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://yoursite.com"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/C-C-经验累积/">C&C++经验累积</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Docker学习/">Docker学习</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux使用/">Linux使用</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/">Linux内核学习</a><span class="category-list-count">31</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/基础篇/">基础篇</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux内核学习/配置篇/">配置篇</a><span class="category-list-count">7</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux系统编程/">Linux系统编程</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Linux网络编程/">Linux网络编程</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Q-A/">Q&A</a><span class="category-list-count">11</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Sip协议/">Sip协议</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux内核驱动与文件系统/">linux内核驱动与文件系统</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/">project_note</a><span class="category-list-count">13</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/decode/">decode</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/project-note/think-about/">think_about</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/开发环境搭建/">开发环境搭建</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/杂项/">杂项</a><span class="category-list-count">10</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/渗透测试/">渗透测试</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/源码分析/">源码分析</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/算法学习/">算法学习</a><span class="category-list-count">19</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/系统性能/">系统性能</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/">阅读笔记</a><span class="category-list-count">258</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-11新特性/">C++11新特性</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C-Templates/">C++Templates</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/C程序设计语言/">C程序设计语言</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveC/">EffectiveC++</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/EffectiveSTL/">EffectiveSTL</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/InsideC-ObjectModel/">InsideC++ObjectModel</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux多线程服务器编程/">Linux多线程服务器编程</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux性能优化大师/">Linux性能优化大师</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/Linux设备驱动程序/">Linux设备驱动程序</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/MoreEffectiveC/">MoreEffectiveC++</a><span class="category-list-count">26</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TCPIP详解Vol1/">TCPIP详解Vol1</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd1/">TheC++StandardLibraryEd1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/TheC-StandardLibraryEd2/">TheC++StandardLibraryEd2</a><span class="category-list-count">23</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/http权威指南/">http权威指南</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/unix网络编程Ed3/">unix网络编程Ed3</a><span class="category-list-count">28</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/wireshark数据包分析实战/">wireshark数据包分析实战</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/实战LinuxShell编程与服务器管理/">实战LinuxShell编程与服务器管理</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/程序员的自我修养/">程序员的自我修养</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/网络安全基础/">网络安全基础</a><span class="category-list-count">9</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/面向模式的软件体系结构Vol1/">面向模式的软件体系结构Vol1</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/阅读笔记/高级C-C-编译技术/">高级C&C++编译技术</a><span class="category-list-count">2</span></li></ul></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/InsideC-ObjectModel/" style="font-size: 15px;">InsideC++ObjectModel</a> <a href="/tags/Docker学习/" style="font-size: 15px;">Docker学习</a> <a href="/tags/Linux系统编程/" style="font-size: 15px;">Linux系统编程</a> <a href="/tags/C-C-经验累积/" style="font-size: 15px;">C&C++经验累积</a> <a href="/tags/Linux网络编程/" style="font-size: 15px;">Linux网络编程</a> <a href="/tags/Q-A/" style="font-size: 15px;">Q&A</a> <a href="/tags/Sip协议/" style="font-size: 15px;">Sip协议</a> <a href="/tags/开发环境搭建/" style="font-size: 15px;">开发环境搭建</a> <a href="/tags/杂项/" style="font-size: 15px;">杂项</a> <a href="/tags/linux内核驱动与文件系统/" style="font-size: 15px;">linux内核驱动与文件系统</a> <a href="/tags/渗透测试/" style="font-size: 15px;">渗透测试</a> <a href="/tags/阅读笔记/" style="font-size: 15px;">阅读笔记</a> <a href="/tags/系统性能/" style="font-size: 15px;">系统性能</a> <a href="/tags/源码分析/" style="font-size: 15px;">源码分析</a> <a href="/tags/算法学习/" style="font-size: 15px;">算法学习</a> <a href="/tags/Linux内核学习/" style="font-size: 15px;">Linux内核学习</a> <a href="/tags/decode/" style="font-size: 15px;">decode</a> <a href="/tags/think-about/" style="font-size: 15px;">think_about</a> <a href="/tags/C-11新特性/" style="font-size: 15px;">C++11新特性</a> <a href="/tags/Linux使用/" style="font-size: 15px;">Linux使用</a> <a href="/tags/C-Templates/" style="font-size: 15px;">C++Templates</a> <a href="/tags/C程序设计语言/" style="font-size: 15px;">C程序设计语言</a> <a href="/tags/Linux性能优化大师/" style="font-size: 15px;">Linux性能优化大师</a> <a href="/tags/Linux多线程服务器编程/" style="font-size: 15px;">Linux多线程服务器编程</a> <a href="/tags/MoreEffectiveC/" style="font-size: 15px;">MoreEffectiveC++</a> <a href="/tags/Linux设备驱动程序/" style="font-size: 15px;">Linux设备驱动程序</a> <a href="/tags/TCPIP详解Vol1/" style="font-size: 15px;">TCPIP详解Vol1</a> <a href="/tags/TheC-StandardLibraryEd1/" style="font-size: 15px;">TheC++StandardLibraryEd1</a> <a href="/tags/http权威指南/" style="font-size: 15px;">http权威指南</a> <a href="/tags/EffectiveC/" style="font-size: 15px;">EffectiveC++</a> <a href="/tags/wireshark数据包分析实战/" style="font-size: 15px;">wireshark数据包分析实战</a> <a href="/tags/unix网络编程Ed3/" style="font-size: 15px;">unix网络编程Ed3</a> <a href="/tags/EffectiveSTL/" style="font-size: 15px;">EffectiveSTL</a> <a href="/tags/实战LinuxShell编程与服务器管理/" style="font-size: 15px;">实战LinuxShell编程与服务器管理</a> <a href="/tags/网络安全基础/" style="font-size: 15px;">网络安全基础</a> <a href="/tags/程序员的自我修养/" style="font-size: 15px;">程序员的自我修养</a> <a href="/tags/高级C-C-编译技术/" style="font-size: 15px;">高级C&C++编译技术</a> <a href="/tags/面向模式的软件体系结构Vol1/" style="font-size: 15px;">面向模式的软件体系结构Vol1</a> <a href="/tags/TheC-StandardLibraryEd2/" style="font-size: 15px;">TheC++StandardLibraryEd2</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/12/14/linux内核学习-配置篇-Linux内核配置详解-七-——-Executable-file-formats-Emulations-可执行文件格式-仿真/">Linux内核配置详解(七) ——   Executable file formats / Emulations (可执行文件格式/仿真)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/12/linux内核学习-配置篇-Linux内核配置详解-六-——-Power-management-and-ACPI-options-电源管理和ACPI选项/">Linux内核配置详解(六) ——  Power management and ACPI options (电源管理和ACPI选项)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/10/linux内核学习-配置篇-Linux内核配置详解-五-——-Processor-type-and-features-中央处理器-CPU-类型及特性/">Linux内核配置详解(五) ——  Processor type and features(中央处理器(CPU)类型及特性)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/07/linux内核学习-配置篇-Linux内核配置详解-四-——-Enable-the-block-layer-块设备支持/">Linux内核配置详解(四) ——  Enable the block layer(块设备支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/04/linux内核学习-配置篇-Linux内核配置详解-三-——-Enable-loadable-module-support-可加载模块支持/">Linux内核配置详解(三) ——  Enable loadable module support(可加载模块支持)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/01/linux内核学习-配置篇-Linux内核配置详解-二-——-General-setup-常规设置/">Linux内核配置详解(二) —— General setup(常规设置)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/linux内核学习-配置篇-Linux内核配置详解-一-——-main-主菜单/">Linux内核配置详解(一) —— main(主菜单)</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/22/linux内核学习-基础篇-Linux内核初探-之-中断-三-——-工作队列和底半机制/">Linux内核初探 之 中断(三) —— 工作队列和底半机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/20/linux内核学习-基础篇-Linux内核初探-之-中断-二-——-底半处理/">Linux内核初探 之 中断(二) —— 底半处理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/11/17/linux内核学习-基础篇-Linux内核初探-之-中断-一-——-中断处理/">Linux内核初探 之 中断(一) —— 中断处理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://easy.ac.cn/" title="easy" target="_blank">easy</a><ul></ul><a href="http://www.example2.com/" title="site-name2" target="_blank">site-name2</a><ul></ul><a href="http://www.example3.com/" title="site-name3" target="_blank">site-name3</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">dupengair的blog.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
