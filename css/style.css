@@ -80,7 +80,7 @@ a:focus {
 
 #sidebar {
   border-left: 1px solid #ddd;
-  padding-left: 35px;
+  padding-left: 25px;
   margin-top: 40px;
   padding-bottom: 20px;
   word-wrap: break-word; }
@@ -103,7 +103,7 @@ a:focus {
       display: block;
       font-weight: normal; }
     #sidebar .widget .category-list-count {
-      margin-left: 3px; }
+      margin-left: 5px; }
       #sidebar .widget .category-list-count:before {
         content: '('; }
       #sidebar .widget .category-list-count:after {
